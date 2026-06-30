@@ -249,21 +249,27 @@ function OrderForm({ existingId }: { existingId?: string }) {
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label>City (search RajaOngkir)</Label>
-              {form.destination_city_id ? (
+              <Label>Tujuan (kelurahan)</Label>
+              {form.destination_subdistrict_id ? (
                 <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                   <div>
-                    <div className="font-medium">{form.city}</div>
-                    {form.province && (
-                      <div className="text-xs text-muted-foreground">{form.province}</div>
-                    )}
+                    <div className="font-medium">{form.destination_label || form.city}</div>
+                    <div className="text-xs text-muted-foreground">ID: {form.destination_subdistrict_id}</div>
                   </div>
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() =>
-                      setForm((f) => ({ ...f, destination_city_id: "", city: "", province: "" }))
+                      setForm((f) => ({
+                        ...f,
+                        destination_subdistrict_id: "",
+                        destination_label: "",
+                        destination_city_id: "",
+                        city: "",
+                        province: "",
+                        district: "",
+                      }))
                     }
                   >
                     Ganti
@@ -272,36 +278,42 @@ function OrderForm({ existingId }: { existingId?: string }) {
               ) : (
                 <div className="rounded-md border">
                   <Input
-                    placeholder="Search city…"
+                    placeholder="Cari kelurahan/kecamatan/kota (min. 3 huruf)…"
                     value={cityQ}
                     onChange={(e) => setCityQ(e.target.value)}
                     className="rounded-none border-0 border-b focus-visible:ring-0"
                   />
                   <div className="max-h-64 overflow-auto">
-                    {(citiesQuery.data ?? []).map((c) => (
+                    {(citiesQuery.data ?? []).map((c: Destination) => (
                       <button
-                        key={c.city_id}
+                        key={c.id}
                         type="button"
                         className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
-                        onClick={() =>
+                        onClick={() => {
                           setForm((f) => ({
                             ...f,
-                            destination_city_id: c.city_id,
-                            city: `${c.type} ${c.city_name}`,
-                            province: c.province,
-                            postal_code: f.postal_code || c.postal_code,
-                          }))
-                        }
+                            destination_subdistrict_id: c.id,
+                            destination_label: c.label,
+                            city: c.city_name,
+                            province: c.province_name,
+                            district: c.district_name,
+                            postal_code: f.postal_code || c.zip_code,
+                          }));
+                          setCityQ("");
+                        }}
                       >
-                        <div>{c.type} {c.city_name}</div>
-                        <div className="text-xs text-muted-foreground">{c.province} · {c.postal_code}</div>
+                        <div className="font-medium">{c.subdistrict_name}, {c.district_name}</div>
+                        <div className="text-xs text-muted-foreground">{c.city_name} · {c.province_name} · {c.zip_code}</div>
                       </button>
                     ))}
-                    {citiesQuery.data?.length === 0 && (
-                      <div className="p-3 text-sm text-muted-foreground">No results — try syncing cities in Settings</div>
+                    {cityQ.trim().length >= 3 && !citiesQuery.isLoading && (citiesQuery.data?.length ?? 0) === 0 && (
+                      <div className="p-3 text-sm text-muted-foreground">Tidak ada hasil</div>
                     )}
-                    {!citiesQuery.data && (
-                      <div className="p-3 text-sm text-muted-foreground">Type to search…</div>
+                    {cityQ.trim().length < 3 && (
+                      <div className="p-3 text-sm text-muted-foreground">Ketik minimal 3 huruf…</div>
+                    )}
+                    {citiesQuery.isLoading && (
+                      <div className="p-3 text-sm text-muted-foreground">Mencari…</div>
                     )}
                   </div>
                 </div>
