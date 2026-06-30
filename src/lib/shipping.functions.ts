@@ -6,16 +6,34 @@ const RO_BASE = "https://api.rajaongkir.com/starter";
 
 async function rajaongkir(path: string, init?: RequestInit) {
   const key = process.env.RAJAONGKIR_API_KEY;
-  if (!key) throw new Error("RAJAONGKIR_API_KEY not configured");
-  const res = await fetch(`${RO_BASE}${path}`, {
-    ...init,
-    headers: {
-      key,
-      "content-type": "application/x-www-form-urlencoded",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const json = (await res.json()) as { rajaongkir: { status: { code: number; description: string }; results?: unknown } };
+  if (!key) throw new Error("RAJAONGKIR_API_KEY belum di-set di Settings → Secrets");
+  let res: Response;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    res = await fetch(`${RO_BASE}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        key,
+        "content-type": "application/x-www-form-urlencoded",
+        ...(init?.headers ?? {}),
+      },
+    });
+    clearTimeout(timeout);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("RajaOngkir fetch failed:", msg);
+    throw new Error(
+      `Tidak bisa menghubungi RajaOngkir (${msg}). Endpoint starter api.rajaongkir.com mungkin sudah tidak aktif — cek status API key Anda di dashboard RajaOngkir/Komerce.`,
+    );
+  }
+  let json: { rajaongkir?: { status?: { code: number; description: string }; results?: unknown } };
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(`RajaOngkir mengembalikan respons non-JSON (HTTP ${res.status})`);
+  }
   if (!res.ok || json.rajaongkir?.status?.code !== 200) {
     throw new Error(json.rajaongkir?.status?.description || `RajaOngkir error (${res.status})`);
   }
