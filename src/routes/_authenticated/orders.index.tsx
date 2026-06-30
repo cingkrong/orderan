@@ -20,6 +20,7 @@ import { formatIDR, STATUS_LABEL, STATUS_TONE, SOURCES, COURIER_LABEL, COURIERS 
 import { Plus, Search, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/orders/")({
   component: OrdersList,
@@ -187,7 +188,7 @@ function OrdersList() {
                     <td className="p-3 text-right font-medium tabular-nums">{formatIDR(o.total)}</td>
                     <td className="p-3 text-xs">{o.source ?? "—"}</td>
                     <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(o.created_at), "dd MMM HH:mm")}
+                      {format(new Date(o.created_at), "dd MMM HH:mm", { locale: idLocale })}
                     </td>
                   </tr>
                 ))

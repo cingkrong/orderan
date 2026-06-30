@@ -9,6 +9,7 @@ import { formatIDR, STATUS_LABEL, STATUS_TONE } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ShoppingCart, Clock, Truck, CheckCircle2, DollarSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Dashboard,
@@ -99,7 +100,7 @@ function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
                       <span className="truncate">{formatIDR(o.total)}</span>
-                      <span>{formatDistanceToNow(new Date(o.created_at), { addSuffix: true })}</span>
+                      <span>{formatDistanceToNow(new Date(o.created_at), { addSuffix: true, locale: idLocale })}</span>
                     </div>
                   </button>
                 ))}

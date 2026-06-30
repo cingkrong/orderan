@@ -21,6 +21,7 @@ import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/forma
 import { Pencil, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/orders/$id")({
   component: OrderDetail,
