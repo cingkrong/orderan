@@ -114,6 +114,8 @@ export type Database = {
           customer_id: string | null
           customer_name: string
           destination_city_id: string | null
+          destination_label: string | null
+          destination_subdistrict_id: string | null
           district: string | null
           eta: string | null
           full_address: string
@@ -145,6 +147,8 @@ export type Database = {
           customer_id?: string | null
           customer_name: string
           destination_city_id?: string | null
+          destination_label?: string | null
+          destination_subdistrict_id?: string | null
           district?: string | null
           eta?: string | null
           full_address: string
@@ -176,6 +180,8 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string
           destination_city_id?: string | null
+          destination_label?: string | null
+          destination_subdistrict_id?: string | null
           district?: string | null
           eta?: string | null
           full_address?: string
@@ -265,41 +271,13 @@ export type Database = {
         }
         Relationships: []
       }
-      rajaongkir_cities: {
-        Row: {
-          city_id: string
-          city_name: string
-          created_at: string
-          postal_code: string | null
-          province: string | null
-          province_id: string | null
-          type: string | null
-        }
-        Insert: {
-          city_id: string
-          city_name: string
-          created_at?: string
-          postal_code?: string | null
-          province?: string | null
-          province_id?: string | null
-          type?: string | null
-        }
-        Update: {
-          city_id?: string
-          city_name?: string
-          created_at?: string
-          postal_code?: string | null
-          province?: string | null
-          province_id?: string | null
-          type?: string | null
-        }
-        Relationships: []
-      }
       settings: {
         Row: {
           id: number
           logo_url: string | null
           origin_city_id: string
+          origin_label: string
+          origin_subdistrict_id: string
           origin_type: string
           sender_address: string
           sender_city: string
@@ -311,6 +289,8 @@ export type Database = {
           id?: number
           logo_url?: string | null
           origin_city_id?: string
+          origin_label?: string
+          origin_subdistrict_id?: string
           origin_type?: string
           sender_address?: string
           sender_city?: string
@@ -322,6 +302,8 @@ export type Database = {
           id?: number
           logo_url?: string | null
           origin_city_id?: string
+          origin_label?: string
+          origin_subdistrict_id?: string
           origin_type?: string
           sender_address?: string
           sender_city?: string

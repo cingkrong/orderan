@@ -6,7 +6,7 @@ import { z } from "zod";
 import { saveOrder, getOrder, type OrderInput } from "@/lib/orders.functions";
 import { listProducts } from "@/lib/products.functions";
 import { getCustomerByPhone } from "@/lib/customers.functions";
-import { searchCities, getShippingCost } from "@/lib/shipping.functions";
+import { searchDestinations, getShippingCost, type Destination } from "@/lib/shipping.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const save = useServerFn(saveOrder);
   const fetchProducts = useServerFn(listProducts);
   const fetchCustomer = useServerFn(getCustomerByPhone);
-  const fetchCities = useServerFn(searchCities);
+  const fetchCities = useServerFn(searchDestinations);
   const fetchCost = useServerFn(getShippingCost);
   const fetchOrder = useServerFn(getOrder);
 
@@ -58,6 +58,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
     district: "",
     postal_code: "",
     destination_city_id: "",
+    destination_subdistrict_id: "",
+    destination_label: "",
     courier: "jne",
     service: "",
     tracking_number: "",
@@ -86,6 +88,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
         district: order.district ?? "",
         postal_code: order.postal_code ?? "",
         destination_city_id: order.destination_city_id ?? "",
+        destination_subdistrict_id: order.destination_subdistrict_id ?? "",
+        destination_label: order.destination_label ?? "",
         courier: order.courier ?? "jne",
         service: order.service ?? "",
         tracking_number: order.tracking_number ?? "",
@@ -129,6 +133,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
           district: f.district || (c.last_address as any)?.district || "",
           postal_code: f.postal_code || (c.last_address as any)?.postal_code || "",
           destination_city_id: f.destination_city_id || (c.last_address as any)?.destination_city_id || "",
+          destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
+          destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
         }));
         toast.info(`Loaded ${c.name} from previous orders`);
       }
@@ -148,20 +154,19 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const [loadingCost, setLoadingCost] = useState(false);
 
   async function calcShipping() {
-    if (!form.destination_city_id) return toast.error("Pick destination city first");
-    if (!weight) return toast.error("Add products first");
-    if (!form.courier) return toast.error("Pick a courier");
+    if (!form.destination_subdistrict_id) return toast.error("Pilih tujuan dulu");
+    if (!weight) return toast.error("Tambah produk dulu");
     setLoadingCost(true);
     try {
       const r = await fetchCost({
         data: {
-          destination_city_id: form.destination_city_id,
+          destination_subdistrict_id: form.destination_subdistrict_id,
           weight_g: weight,
-          courier: form.courier,
+          courier: form.courier || "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana",
         },
       });
       setServices(r.services);
-      if (r.services.length === 0) toast.warning("No services available");
+      if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -244,21 +249,27 @@ function OrderForm({ existingId }: { existingId?: string }) {
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label>City (search RajaOngkir)</Label>
-              {form.destination_city_id ? (
+              <Label>Tujuan (kelurahan)</Label>
+              {form.destination_subdistrict_id ? (
                 <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                   <div>
-                    <div className="font-medium">{form.city}</div>
-                    {form.province && (
-                      <div className="text-xs text-muted-foreground">{form.province}</div>
-                    )}
+                    <div className="font-medium">{form.destination_label || form.city}</div>
+                    <div className="text-xs text-muted-foreground">ID: {form.destination_subdistrict_id}</div>
                   </div>
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() =>
-                      setForm((f) => ({ ...f, destination_city_id: "", city: "", province: "" }))
+                      setForm((f) => ({
+                        ...f,
+                        destination_subdistrict_id: "",
+                        destination_label: "",
+                        destination_city_id: "",
+                        city: "",
+                        province: "",
+                        district: "",
+                      }))
                     }
                   >
                     Ganti
@@ -267,36 +278,42 @@ function OrderForm({ existingId }: { existingId?: string }) {
               ) : (
                 <div className="rounded-md border">
                   <Input
-                    placeholder="Search city…"
+                    placeholder="Cari kelurahan/kecamatan/kota (min. 3 huruf)…"
                     value={cityQ}
                     onChange={(e) => setCityQ(e.target.value)}
                     className="rounded-none border-0 border-b focus-visible:ring-0"
                   />
                   <div className="max-h-64 overflow-auto">
-                    {(citiesQuery.data ?? []).map((c) => (
+                    {(citiesQuery.data ?? []).map((c: Destination) => (
                       <button
-                        key={c.city_id}
+                        key={c.id}
                         type="button"
                         className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
-                        onClick={() =>
+                        onClick={() => {
                           setForm((f) => ({
                             ...f,
-                            destination_city_id: c.city_id,
-                            city: `${c.type} ${c.city_name}`,
-                            province: c.province,
-                            postal_code: f.postal_code || c.postal_code,
-                          }))
-                        }
+                            destination_subdistrict_id: c.id,
+                            destination_label: c.label,
+                            city: c.city_name,
+                            province: c.province_name,
+                            district: c.district_name,
+                            postal_code: f.postal_code || c.zip_code,
+                          }));
+                          setCityQ("");
+                        }}
                       >
-                        <div>{c.type} {c.city_name}</div>
-                        <div className="text-xs text-muted-foreground">{c.province} · {c.postal_code}</div>
+                        <div className="font-medium">{c.subdistrict_name}, {c.district_name}</div>
+                        <div className="text-xs text-muted-foreground">{c.city_name} · {c.province_name} · {c.zip_code}</div>
                       </button>
                     ))}
-                    {citiesQuery.data?.length === 0 && (
-                      <div className="p-3 text-sm text-muted-foreground">No results — try syncing cities in Settings</div>
+                    {cityQ.trim().length >= 3 && !citiesQuery.isLoading && (citiesQuery.data?.length ?? 0) === 0 && (
+                      <div className="p-3 text-sm text-muted-foreground">Tidak ada hasil</div>
                     )}
-                    {!citiesQuery.data && (
-                      <div className="p-3 text-sm text-muted-foreground">Type to search…</div>
+                    {cityQ.trim().length < 3 && (
+                      <div className="p-3 text-sm text-muted-foreground">Ketik minimal 3 huruf…</div>
+                    )}
+                    {citiesQuery.isLoading && (
+                      <div className="p-3 text-sm text-muted-foreground">Mencari…</div>
                     )}
                   </div>
                 </div>
