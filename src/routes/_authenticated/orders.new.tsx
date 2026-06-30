@@ -88,6 +88,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
         district: order.district ?? "",
         postal_code: order.postal_code ?? "",
         destination_city_id: order.destination_city_id ?? "",
+        destination_subdistrict_id: order.destination_subdistrict_id ?? "",
+        destination_label: order.destination_label ?? "",
         courier: order.courier ?? "jne",
         service: order.service ?? "",
         tracking_number: order.tracking_number ?? "",
