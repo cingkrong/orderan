@@ -1,0 +1,201 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { listOrders, updateOrderStatus } from "@/lib/orders.functions";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatIDR, STATUS_LABEL, STATUS_TONE, SOURCES, COURIER_LABEL, COURIERS } from "@/lib/format";
+import { Plus, Search, Printer } from "lucide-react";
+import { toast } from "sonner";
+import { format } from "date-fns";
+
+export const Route = createFileRoute("/_authenticated/orders/")({
+  component: OrdersList,
+});
+
+const STATUSES = ["pending", "confirmed", "processing", "shipped", "completed", "cancelled"] as const;
+
+function OrdersList() {
+  const fetchOrders = useServerFn(listOrders);
+  const updateStatus = useServerFn(updateOrderStatus);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<string>("all");
+  const [source, setSource] = useState<string>("all");
+  const [courier, setCourier] = useState<string>("all");
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["orders", { search, status, source, courier }],
+    queryFn: () =>
+      fetchOrders({
+        data: {
+          search,
+          status: status === "all" ? null : (status as any),
+          source: source === "all" ? null : source,
+          courier: courier === "all" ? null : courier,
+          limit: 100,
+        },
+      }),
+  });
+
+  const selectedIds = useMemo(() => Object.keys(selected).filter((k) => selected[k]), [selected]);
+
+  const bulkMutate = useMutation({
+    mutationFn: (newStatus: string) =>
+      updateStatus({ data: { ids: selectedIds, status: newStatus as any } }),
+    onSuccess: () => {
+      toast.success(`Updated ${selectedIds.length} orders`);
+      setSelected({});
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Orders</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage every shipment in one place</p>
+        </div>
+        <Button asChild>
+          <Link to="/orders/new"><Plus className="size-4 mr-1" />New order</Link>
+        </Button>
+      </div>
+
+      <Card className="p-4 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search by order #, customer, phone, resi"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All status</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={source} onValueChange={setSource}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Source" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={courier} onValueChange={setCourier}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Courier" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All couriers</SelectItem>
+              {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {selectedIds.length > 0 && (
+          <div className="flex items-center gap-2 p-2 rounded-md bg-accent">
+            <span className="text-sm font-medium">{selectedIds.length} selected</span>
+            <Select onValueChange={(v) => bulkMutate.mutate(v)}>
+              <SelectTrigger className="w-[180px] h-8"><SelectValue placeholder="Set status…" /></SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate({ to: "/labels", search: { ids: selectedIds.join(",") } as any })}
+            >
+              <Printer className="size-4 mr-1" /> Print labels
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr className="text-left">
+                <th className="p-3 w-10"></th>
+                <th className="p-3 font-medium">Order</th>
+                <th className="p-3 font-medium">Customer</th>
+                <th className="p-3 font-medium">Status</th>
+                <th className="p-3 font-medium">Courier</th>
+                <th className="p-3 font-medium text-right">Total</th>
+                <th className="p-3 font-medium">Source</th>
+                <th className="p-3 font-medium">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}><td colSpan={8} className="p-3"><Skeleton className="h-8" /></td></tr>
+                ))
+              ) : (data ?? []).length === 0 ? (
+                <tr><td colSpan={8} className="p-10 text-center text-muted-foreground">No orders found</td></tr>
+              ) : (
+                data!.map((o) => (
+                  <tr
+                    key={o.id}
+                    className="border-t hover:bg-muted/30 cursor-pointer"
+                    onClick={() => navigate({ to: "/orders/$id", params: { id: o.id } })}
+                  >
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={!!selected[o.id]}
+                        onCheckedChange={(v) => setSelected((s) => ({ ...s, [o.id]: !!v }))}
+                      />
+                    </td>
+                    <td className="p-3">
+                      <div className="font-mono text-xs">{o.order_number}</div>
+                      {o.tracking_number && <div className="text-xs text-muted-foreground mt-0.5">{o.tracking_number}</div>}
+                    </td>
+                    <td className="p-3">
+                      <div className="font-medium">{o.customer_name}</div>
+                      <div className="text-xs text-muted-foreground">{o.phone} · {o.city}</div>
+                    </td>
+                    <td className="p-3">
+                      <Badge variant="secondary" className={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge>
+                    </td>
+                    <td className="p-3 text-xs">
+                      {o.courier ? `${COURIER_LABEL[o.courier] ?? o.courier} ${o.service ?? ""}` : "—"}
+                    </td>
+                    <td className="p-3 text-right font-medium tabular-nums">{formatIDR(o.total)}</td>
+                    <td className="p-3 text-xs">{o.source ?? "—"}</td>
+                    <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
+                      {format(new Date(o.created_at), "dd MMM HH:mm")}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
