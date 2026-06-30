@@ -25,7 +25,7 @@ function LabelsPage() {
   const [manualIds, setManualIds] = useState(search.ids ?? "");
   const ids = (search.ids ?? manualIds)
     .split(/[\s,]+/)
-    .map((s) => s.trim())
+    .map((s: string) => s.trim())
     .filter(Boolean);
 
   const ordersQ = useQuery({
