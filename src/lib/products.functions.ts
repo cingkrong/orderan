@@ -14,6 +14,20 @@ export const listProducts = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const getProduct = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("products")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Product not found");
+    return row;
+  });
+
 const productInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1),
