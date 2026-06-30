@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/customers")({
 
 function CustomersPage() {
   const fetchAll = useServerFn(listCustomers);
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({ queryKey: ["customers"], queryFn: () => fetchAll() });
   const [q, setQ] = useState("");
 
@@ -58,7 +59,11 @@ function CustomersPage() {
                 <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">Tidak ada pelanggan</td></tr>
               ) : (
                 filtered.map((c) => (
-                  <tr key={c.id} className="border-t hover:bg-muted/30">
+                  <tr
+                    key={c.id}
+                    className="border-t hover:bg-muted/30 cursor-pointer"
+                    onClick={() => navigate({ to: "/customers/$id", params: { id: c.id } })}
+                  >
                     <td className="p-3">
                       <div className="font-medium">{c.name}</div>
                       <div className="text-xs text-muted-foreground">{c.phone}</div>
