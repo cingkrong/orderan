@@ -30,6 +30,8 @@ const orderInput = z.object({
   district: z.string().nullable().optional(),
   postal_code: z.string().nullable().optional(),
   destination_city_id: z.string().nullable().optional(),
+  destination_subdistrict_id: z.string().nullable().optional(),
+  destination_label: z.string().nullable().optional(),
   courier: z.string().nullable().optional(),
   service: z.string().nullable().optional(),
   tracking_number: z.string().nullable().optional(),
