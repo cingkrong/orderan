@@ -64,11 +64,11 @@ export function ProductForm({ id }: { id?: string }) {
         },
       }),
     onSuccess: () => {
-      toast.success("Product saved");
+      toast.success("Produk disimpan");
       qc.invalidateQueries({ queryKey: ["products"] });
       navigate({ to: "/products" });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
 
   if (id && loadQ.isLoading) return <Skeleton className="h-96" />;
@@ -81,17 +81,17 @@ export function ProductForm({ id }: { id?: string }) {
         </Button>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {id ? "Edit product" : "New product"}
+            {id ? "Ubah produk" : "Produk baru"}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {id ? "Update product details" : "Add a product to your catalog"}
+            {id ? "Perbarui detail produk" : "Tambah produk ke katalog Anda"}
           </p>
         </div>
       </div>
 
       <Card className="p-5 space-y-4">
         <div>
-          <Label>Name</Label>
+          <Label>Nama</Label>
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
@@ -100,21 +100,21 @@ export function ProductForm({ id }: { id?: string }) {
             <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
           </div>
           <div>
-            <Label>Variant</Label>
+            <Label>Varian</Label>
             <Input value={form.variant} onChange={(e) => setForm({ ...form, variant: e.target.value })} />
           </div>
         </div>
         <div className="grid sm:grid-cols-3 gap-3">
           <div>
-            <Label>Price (Rp)</Label>
+            <Label>Harga (Rp)</Label>
             <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
           </div>
           <div>
-            <Label>Weight (g)</Label>
+            <Label>Berat (g)</Label>
             <Input type="number" value={form.weight_g} onChange={(e) => setForm({ ...form, weight_g: Number(e.target.value) })} />
           </div>
           <div>
-            <Label>Stock</Label>
+            <Label>Stok</Label>
             <Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
           </div>
         </div>
@@ -122,10 +122,10 @@ export function ProductForm({ id }: { id?: string }) {
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" asChild>
-          <Link to="/products">Cancel</Link>
+          <Link to="/products">Batal</Link>
         </Button>
         <Button onClick={() => save.mutate()} disabled={!form.name || save.isPending}>
-          {save.isPending ? "Saving…" : "Save product"}
+          {save.isPending ? "Menyimpan…" : "Simpan produk"}
         </Button>
       </div>
     </div>

@@ -20,6 +20,7 @@ import { formatIDR, STATUS_LABEL, STATUS_TONE, SOURCES, COURIER_LABEL, COURIERS 
 import { Plus, Search, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/orders/")({
   component: OrdersList,
@@ -58,11 +59,11 @@ function OrdersList() {
     mutationFn: (newStatus: string) =>
       updateStatus({ data: { ids: selectedIds, status: newStatus as any } }),
     onSuccess: () => {
-      toast.success(`Updated ${selectedIds.length} orders`);
+      toast.success(`${selectedIds.length} pesanan diperbarui`);
       setSelected({});
       qc.invalidateQueries({ queryKey: ["orders"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
 
   return (
@@ -73,7 +74,7 @@ function OrdersList() {
           <p className="text-muted-foreground text-sm mt-1">Manage every shipment in one place</p>
         </div>
         <Button asChild>
-          <Link to="/orders/new"><Plus className="size-4 mr-1" />New order</Link>
+          <Link to="/orders/new"><Plus className="size-4 mr-1" />Pesanan baru</Link>
         </Button>
       </div>
 
@@ -83,7 +84,7 @@ function OrdersList() {
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search by order #, customer, phone, resi"
+              placeholder="Cari berdasarkan no. pesanan, pelanggan, telepon, resi"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -98,14 +99,14 @@ function OrdersList() {
             </SelectContent>
           </Select>
           <Select value={source} onValueChange={setSource}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Source" /></SelectTrigger>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Sumber" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All sources</SelectItem>
               {SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={courier} onValueChange={setCourier}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Courier" /></SelectTrigger>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Kurir" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All couriers</SelectItem>
               {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
@@ -115,9 +116,9 @@ function OrdersList() {
 
         {selectedIds.length > 0 && (
           <div className="flex items-center gap-2 p-2 rounded-md bg-accent">
-            <span className="text-sm font-medium">{selectedIds.length} selected</span>
+            <span className="text-sm font-medium">{selectedIds.length} dipilih</span>
             <Select onValueChange={(v) => bulkMutate.mutate(v)}>
-              <SelectTrigger className="w-[180px] h-8"><SelectValue placeholder="Set status…" /></SelectTrigger>
+              <SelectTrigger className="w-[180px] h-8"><SelectValue placeholder="Atur status…" /></SelectTrigger>
               <SelectContent>
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
@@ -129,7 +130,7 @@ function OrdersList() {
               variant="outline"
               onClick={() => navigate({ to: "/labels", search: { ids: selectedIds.join(",") } as any })}
             >
-              <Printer className="size-4 mr-1" /> Print labels
+              <Printer className="size-4 mr-1" /> Cetak label
             </Button>
           </div>
         )}
@@ -141,13 +142,13 @@ function OrdersList() {
             <thead className="bg-muted/50">
               <tr className="text-left">
                 <th className="p-3 w-10"></th>
-                <th className="p-3 font-medium">Order</th>
-                <th className="p-3 font-medium">Customer</th>
+                <th className="p-3 font-medium">Pesanan</th>
+                <th className="p-3 font-medium">Pelanggan</th>
                 <th className="p-3 font-medium">Status</th>
-                <th className="p-3 font-medium">Courier</th>
+                <th className="p-3 font-medium">Kurir</th>
                 <th className="p-3 font-medium text-right">Total</th>
-                <th className="p-3 font-medium">Source</th>
-                <th className="p-3 font-medium">Created</th>
+                <th className="p-3 font-medium">Sumber</th>
+                <th className="p-3 font-medium">Dibuat</th>
               </tr>
             </thead>
             <tbody>
@@ -156,7 +157,7 @@ function OrdersList() {
                   <tr key={i}><td colSpan={8} className="p-3"><Skeleton className="h-8" /></td></tr>
                 ))
               ) : (data ?? []).length === 0 ? (
-                <tr><td colSpan={8} className="p-10 text-center text-muted-foreground">No orders found</td></tr>
+                <tr><td colSpan={8} className="p-10 text-center text-muted-foreground">Tidak ada pesanan</td></tr>
               ) : (
                 data!.map((o) => (
                   <tr
@@ -187,7 +188,7 @@ function OrdersList() {
                     <td className="p-3 text-right font-medium tabular-nums">{formatIDR(o.total)}</td>
                     <td className="p-3 text-xs">{o.source ?? "—"}</td>
                     <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(o.created_at), "dd MMM HH:mm")}
+                      {format(new Date(o.created_at), "dd MMM HH:mm", { locale: idLocale })}
                     </td>
                   </tr>
                 ))

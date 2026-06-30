@@ -53,10 +53,10 @@ function SettingsPage() {
         data: { ...form, logo_url: form.logo_url || null },
       }),
     onSuccess: () => {
-      toast.success("Settings saved");
+      toast.success("Pengaturan disimpan");
       qc.invalidateQueries({ queryKey: ["settings"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
 
   const [originQ, setOriginQ] = useState("");
@@ -79,12 +79,12 @@ function SettingsPage() {
       <Card className="p-5 space-y-4">
         <h2 className="font-semibold">Sender (printed on labels)</h2>
         <div className="grid sm:grid-cols-2 gap-3">
-          <div><Label>Business / sender name</Label><Input value={form.sender_name} onChange={(e) => setForm({ ...form, sender_name: e.target.value })} /></div>
-          <div><Label>Phone</Label><Input value={form.sender_phone} onChange={(e) => setForm({ ...form, sender_phone: e.target.value })} /></div>
-          <div><Label>City</Label><Input value={form.sender_city} onChange={(e) => setForm({ ...form, sender_city: e.target.value })} /></div>
-          <div><Label>Logo URL (optional)</Label><Input value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} placeholder="https://..." /></div>
+          <div><Label>Nama bisnis / pengirim</Label><Input value={form.sender_name} onChange={(e) => setForm({ ...form, sender_name: e.target.value })} /></div>
+          <div><Label>Telepon</Label><Input value={form.sender_phone} onChange={(e) => setForm({ ...form, sender_phone: e.target.value })} /></div>
+          <div><Label>Kota</Label><Input value={form.sender_city} onChange={(e) => setForm({ ...form, sender_city: e.target.value })} /></div>
+          <div><Label>URL Logo (opsional)</Label><Input value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} placeholder="https://..." /></div>
         </div>
-        <div><Label>Address</Label><Textarea rows={2} value={form.sender_address} onChange={(e) => setForm({ ...form, sender_address: e.target.value })} /></div>
+        <div><Label>Alamat</Label><Textarea rows={2} value={form.sender_address} onChange={(e) => setForm({ ...form, sender_address: e.target.value })} /></div>
       </Card>
 
       <Card className="p-5 space-y-4">
@@ -154,7 +154,7 @@ function SettingsPage() {
 
       <div className="flex justify-end">
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? "Saving…" : "Save settings"}
+          {save.isPending ? "Menyimpan…" : "Simpan pengaturan"}
         </Button>
       </div>
     </div>

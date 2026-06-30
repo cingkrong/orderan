@@ -41,7 +41,7 @@ function ShippingPage() {
     mutationFn: ({ id, value }: { id: string; value: string }) =>
       setTrack({ data: { id, tracking_number: value, markShipped: true } }),
     onSuccess: () => {
-      toast.success("Saved");
+      toast.success("Tersimpan");
       qc.invalidateQueries({ queryKey: ["shipping-orders"] });
       qc.invalidateQueries({ queryKey: ["orders"] });
     },
@@ -57,24 +57,24 @@ function ShippingPage() {
       </div>
       <Card className="p-4 flex items-center gap-2">
         <Select value={courier} onValueChange={setCourier}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Courier" /></SelectTrigger>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Kurir" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All couriers</SelectItem>
             {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">{queue.length} pending shipments</span>
+        <span className="text-sm text-muted-foreground">{queue.length} pengiriman tertunda</span>
       </Card>
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="p-3 font-medium">Order</th>
-                <th className="p-3 font-medium">Customer</th>
-                <th className="p-3 font-medium">Courier</th>
+                <th className="p-3 font-medium">Pesanan</th>
+                <th className="p-3 font-medium">Pelanggan</th>
+                <th className="p-3 font-medium">Kurir</th>
                 <th className="p-3 font-medium">Status</th>
-                <th className="p-3 font-medium">Tracking #</th>
+                <th className="p-3 font-medium">No. resi</th>
                 <th className="p-3 w-32"></th>
               </tr>
             </thead>
@@ -84,7 +84,7 @@ function ShippingPage() {
                   <tr key={i}><td colSpan={6} className="p-3"><Skeleton className="h-8" /></td></tr>
                 ))
               ) : queue.length === 0 ? (
-                <tr><td colSpan={6} className="p-10 text-center text-muted-foreground">All shipments handled 🎉</td></tr>
+                <tr><td colSpan={6} className="p-10 text-center text-muted-foreground">Semua pengiriman selesai 🎉</td></tr>
               ) : (
                 queue.map((o) => (
                   <tr key={o.id} className="border-t">
@@ -101,7 +101,7 @@ function ShippingPage() {
                     <td className="p-3"><Badge variant="secondary" className={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge></td>
                     <td className="p-3">
                       <Input
-                        placeholder="Input resi"
+                        placeholder="Masukkan resi"
                         value={pending[o.id] ?? o.tracking_number ?? ""}
                         onChange={(e) => setPending((p) => ({ ...p, [o.id]: e.target.value }))}
                       />

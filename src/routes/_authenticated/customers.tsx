@@ -34,7 +34,7 @@ function CustomersPage() {
       <Card className="p-4">
         <div className="relative">
           <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search by name or phone" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="pl-9" placeholder="Cari berdasarkan nama atau telepon" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </Card>
       <Card className="overflow-hidden">
@@ -42,11 +42,11 @@ function CustomersPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="p-3 font-medium">Customer</th>
-                <th className="p-3 font-medium">Tags</th>
-                <th className="p-3 font-medium text-right">Orders</th>
-                <th className="p-3 font-medium text-right">Spent</th>
-                <th className="p-3 font-medium">Last address</th>
+                <th className="p-3 font-medium">Pelanggan</th>
+                <th className="p-3 font-medium">Tag</th>
+                <th className="p-3 font-medium text-right">Pesanan</th>
+                <th className="p-3 font-medium text-right">Total belanja</th>
+                <th className="p-3 font-medium">Alamat terakhir</th>
               </tr>
             </thead>
             <tbody>
@@ -55,7 +55,7 @@ function CustomersPage() {
                   <tr key={i}><td colSpan={5} className="p-3"><Skeleton className="h-8" /></td></tr>
                 ))
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">No customers</td></tr>
+                <tr><td colSpan={5} className="p-10 text-center text-muted-foreground">Tidak ada pelanggan</td></tr>
               ) : (
                 filtered.map((c) => (
                   <tr key={c.id} className="border-t hover:bg-muted/30">

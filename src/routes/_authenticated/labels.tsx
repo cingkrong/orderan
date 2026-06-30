@@ -51,14 +51,14 @@ function LabelsPage() {
           <p className="text-muted-foreground text-sm mt-1">100 × 150 mm thermal · prints one per page</p>
         </div>
         <Button onClick={() => window.print()} disabled={!ordersQ.data?.orders.length}>
-          <Printer className="size-4 mr-1" /> Print {ordersQ.data?.orders.length ?? 0} label{(ordersQ.data?.orders.length ?? 0) === 1 ? "" : "s"}
+          <Printer className="size-4 mr-1" /> Cetak {ordersQ.data?.orders.length ?? 0} label
         </Button>
       </div>
 
       {ids.length === 0 && (
         <Card className="no-print p-5 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Paste order IDs (comma or space-separated), or select orders from the Orders page and click "Print labels".
+            Tempel ID pesanan (dipisah koma atau spasi), atau pilih pesanan dari halaman Pesanan lalu klik "Cetak label".
           </p>
           <Textarea rows={4} value={manualIds} onChange={(e) => setManualIds(e.target.value)} placeholder="uuid, uuid, uuid…" />
         </Card>
@@ -66,7 +66,7 @@ function LabelsPage() {
 
       {!s && (
         <Card className="no-print p-5 text-sm text-warning-foreground bg-warning/20">
-          Please fill sender info in Settings before printing.
+          Lengkapi info pengirim di Pengaturan sebelum mencetak.
         </Card>
       )}
 

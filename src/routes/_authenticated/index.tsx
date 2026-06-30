@@ -9,6 +9,7 @@ import { formatIDR, STATUS_LABEL, STATUS_TONE } from "@/lib/format";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ShoppingCart, Clock, Truck, CheckCircle2, DollarSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Dashboard,
@@ -30,12 +31,12 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-        <StatCard label="Orders today" value={data?.todayCount} icon={ShoppingCart} loading={isLoading} />
-        <StatCard label="Pending" value={data?.pending} icon={Clock} loading={isLoading} tone="warning" />
-        <StatCard label="Processing" value={data?.processing} icon={ShoppingCart} loading={isLoading} tone="info" />
-        <StatCard label="Shipped" value={data?.shipped} icon={Truck} loading={isLoading} tone="primary" />
+        <StatCard label="Pesanan hari ini" value={data?.todayCount} icon={ShoppingCart} loading={isLoading} />
+        <StatCard label="Tertunda" value={data?.pending} icon={Clock} loading={isLoading} tone="warning" />
+        <StatCard label="Diproses" value={data?.processing} icon={ShoppingCart} loading={isLoading} tone="info" />
+        <StatCard label="Dikirim" value={data?.shipped} icon={Truck} loading={isLoading} tone="primary" />
         <StatCard
-          label="Revenue today"
+          label="Pendapatan hari ini"
           value={data ? formatIDR(data.revenueToday) : undefined}
           icon={DollarSign}
           loading={isLoading}
@@ -53,7 +54,7 @@ function Dashboard() {
             {isLoading ? (
               <Skeleton className="h-full w-full" />
             ) : (data?.bySource?.length ?? 0) === 0 ? (
-              <Empty label="No orders yet" />
+              <Empty label="Belum ada pesanan" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.bySource ?? []}>
@@ -84,7 +85,7 @@ function Dashboard() {
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12" />)
               : (data?.recent ?? []).length === 0
-              ? <Empty label="No recent orders" />
+              ? <Empty label="Tidak ada pesanan terbaru" />
               : data!.recent.map((o) => (
                   <button
                     key={o.id}
@@ -99,7 +100,7 @@ function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
                       <span className="truncate">{formatIDR(o.total)}</span>
-                      <span>{formatDistanceToNow(new Date(o.created_at), { addSuffix: true })}</span>
+                      <span>{formatDistanceToNow(new Date(o.created_at), { addSuffix: true, locale: idLocale })}</span>
                     </div>
                   </button>
                 ))}

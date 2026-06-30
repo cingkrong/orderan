@@ -21,6 +21,7 @@ import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/forma
 import { Pencil, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/orders/$id")({
   component: OrderDetail,
@@ -48,7 +49,7 @@ function OrderDetail() {
   const statusMut = useMutation({
     mutationFn: (status: string) => updateStatus({ data: { ids: [id], status: status as any } }),
     onSuccess: () => {
-      toast.success("Status updated");
+      toast.success("Status diperbarui");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
     },
@@ -57,12 +58,12 @@ function OrderDetail() {
   const trackMut = useMutation({
     mutationFn: () => setTrack({ data: { id, tracking_number: tracking, markShipped: true } }),
     onSuccess: () => {
-      toast.success("Tracking saved & marked Shipped");
+      toast.success("Resi tersimpan & ditandai Dikirim");
       setTrackingState("");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
 
   if (isLoading || !data) return <Skeleton className="h-96" />;
@@ -79,13 +80,13 @@ function OrderDetail() {
             <Badge variant="secondary" className={STATUS_TONE[order.status]}>{STATUS_LABEL[order.status]}</Badge>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
-            Created {format(new Date(order.created_at), "dd MMM yyyy HH:mm")}
+            Dibuat {format(new Date(order.created_at), "dd MMM yyyy HH:mm", { locale: idLocale })}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()}><Printer className="size-4 mr-1" /> Print label</Button>
+          <Button variant="outline" onClick={() => window.print()}><Printer className="size-4 mr-1" /> Cetak label</Button>
           <Button variant="outline" asChild>
-            <Link to="/orders/$id/edit" params={{ id }}><Pencil className="size-4 mr-1" /> Edit</Link>
+            <Link to="/orders/$id/edit" params={{ id }}><Pencil className="size-4 mr-1" /> Ubah</Link>
           </Button>
         </div>
       </div>
@@ -120,7 +121,7 @@ function OrderDetail() {
             </table>
             <div className="border-t mt-2 pt-2 text-sm space-y-1">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{formatIDR(order.subtotal)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Shipping {order.service ? `(${order.service})` : ""}</span><span className="tabular-nums">{formatIDR(order.shipping_cost)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Ongkir {order.service ? `(${order.service})` : ""}</span><span className="tabular-nums">{formatIDR(order.shipping_cost)}</span></div>
               <div className="flex justify-between font-semibold text-base"><span>Total</span><span className="tabular-nums">{formatIDR(order.total)}</span></div>
             </div>
           </div>
@@ -136,7 +137,7 @@ function OrderDetail() {
               </SelectContent>
             </Select>
             <div className="text-xs text-muted-foreground pt-2 border-t">
-              Source: {order.source ?? "—"}{order.campaign ? ` · ${order.campaign}` : ""}{order.ref ? ` · ref: ${order.ref}` : ""}
+              Sumber: {order.source ?? "—"}{order.campaign ? ` · ${order.campaign}` : ""}{order.ref ? ` · ref: ${order.ref}` : ""}
             </div>
           </Card>
 
@@ -144,24 +145,24 @@ function OrderDetail() {
             <h2 className="font-semibold">Shipping</h2>
             <div className="text-sm space-y-1">
               <div>{order.courier ? COURIER_LABEL[order.courier] ?? order.courier : "—"} {order.service}</div>
-              {order.eta && <div className="text-muted-foreground text-xs">ETA: {order.eta} day</div>}
+              {order.eta && <div className="text-muted-foreground text-xs">Estimasi: {order.eta} hari</div>}
               {order.tracking_number ? (
                 <div className="font-mono text-xs bg-muted p-2 rounded">{order.tracking_number}</div>
               ) : (
                 <div className="space-y-2">
                   <Input
-                    placeholder="Input tracking #"
+                    placeholder="Masukkan no. resi"
                     value={tracking}
                     onChange={(e) => setTrackingState(e.target.value)}
                   />
                   <Button size="sm" onClick={() => trackMut.mutate()} disabled={!tracking || trackMut.isPending} className="w-full">
-                    Save resi & mark shipped
+                    Simpan resi & tandai dikirim
                   </Button>
                 </div>
               )}
             </div>
             <Button variant="outline" className="w-full" onClick={() => navigate({ to: "/labels", search: { ids: id } as any })}>
-              <Printer className="size-4 mr-1" /> Open label page
+              <Printer className="size-4 mr-1" /> Buka halaman label
             </Button>
           </Card>
         </div>

@@ -22,7 +22,7 @@ function ProductsPage() {
   const removeMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
-      toast.success("Deleted");
+      toast.success("Dihapus");
       qc.invalidateQueries({ queryKey: ["products"] });
     },
   });
@@ -36,7 +36,7 @@ function ProductsPage() {
         </div>
         <Button asChild>
           <Link to="/products/new">
-            <Plus className="size-4 mr-1" /> New product
+            <Plus className="size-4 mr-1" /> Produk baru
           </Link>
         </Button>
       </div>
@@ -46,11 +46,11 @@ function ProductsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="p-3 font-medium">Product</th>
+                <th className="p-3 font-medium">Produk</th>
                 <th className="p-3 font-medium">SKU</th>
-                <th className="p-3 font-medium text-right">Price</th>
-                <th className="p-3 font-medium text-right">Weight</th>
-                <th className="p-3 font-medium text-right">Stock</th>
+                <th className="p-3 font-medium text-right">Harga</th>
+                <th className="p-3 font-medium text-right">Berat</th>
+                <th className="p-3 font-medium text-right">Stok</th>
                 <th className="p-3 w-20"></th>
               </tr>
             </thead>
@@ -60,7 +60,7 @@ function ProductsPage() {
                   <tr key={i}><td colSpan={6} className="p-3"><Skeleton className="h-8" /></td></tr>
                 ))
               ) : (data ?? []).length === 0 ? (
-                <tr><td colSpan={6} className="p-10 text-center text-muted-foreground">No products yet</td></tr>
+                <tr><td colSpan={6} className="p-10 text-center text-muted-foreground">Belum ada produk</td></tr>
               ) : (
                 data!.map((p) => (
                   <tr key={p.id} className="border-t">
@@ -82,7 +82,7 @@ function ProductsPage() {
                         size="icon"
                         variant="ghost"
                         onClick={() => {
-                          if (confirm(`Delete ${p.name}?`)) removeMut.mutate(p.id);
+                          if (confirm(`Hapus ${p.name}?`)) removeMut.mutate(p.id);
                         }}
                       >
                         <Trash2 className="size-4" />

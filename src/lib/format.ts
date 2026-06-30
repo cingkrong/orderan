@@ -18,12 +18,12 @@ export const formatWeight = (g: number | null | undefined) => {
 };
 
 export const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  processing: "Processing",
-  shipped: "Shipped",
-  completed: "Completed",
-  cancelled: "Cancelled",
+  pending: "Tertunda",
+  confirmed: "Dikonfirmasi",
+  processing: "Diproses",
+  shipped: "Dikirim",
+  completed: "Selesai",
+  cancelled: "Dibatalkan",
 };
 
 export const STATUS_TONE: Record<string, string> = {
