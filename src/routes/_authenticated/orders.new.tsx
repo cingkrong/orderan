@@ -133,6 +133,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
           district: f.district || (c.last_address as any)?.district || "",
           postal_code: f.postal_code || (c.last_address as any)?.postal_code || "",
           destination_city_id: f.destination_city_id || (c.last_address as any)?.destination_city_id || "",
+          destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
+          destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
         }));
         toast.info(`Loaded ${c.name} from previous orders`);
       }
