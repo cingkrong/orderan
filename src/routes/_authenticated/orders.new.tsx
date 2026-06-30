@@ -58,6 +58,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
     district: "",
     postal_code: "",
     destination_city_id: "",
+    destination_subdistrict_id: "",
+    destination_label: "",
     courier: "jne",
     service: "",
     tracking_number: "",
