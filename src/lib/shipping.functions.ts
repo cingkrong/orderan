@@ -45,10 +45,13 @@ async function rajaongkir(
     throw new Error(`RajaOngkir mengembalikan respons non-JSON (HTTP ${res.status})`);
   }
   const code = json.meta?.code ?? res.status;
+  const msg = json.meta?.message ?? "";
+  // V2 returns 400 with "... not found" when search has zero results — treat as empty
+  if (code === 400 && /not found/i.test(msg)) {
+    return { meta: json.meta, data: [] };
+  }
   if (!res.ok || (code !== 200 && code !== 201)) {
-    throw new Error(
-      json.meta?.message || `RajaOngkir error (${code}) ${json.meta?.status ?? ""}`.trim(),
-    );
+    throw new Error(msg || `RajaOngkir error (${code}) ${json.meta?.status ?? ""}`.trim());
   }
   return json;
 }
