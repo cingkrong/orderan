@@ -30,12 +30,12 @@ export const Route = createFileRoute("/_authenticated")({
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 const NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/shipping", label: "Shipping", icon: Truck },
-  { to: "/products", label: "Products", icon: Package },
-  { to: "/customers", label: "Customers", icon: Users },
-  { to: "/labels", label: "Labels", icon: Printer },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/orders", label: "Pesanan", icon: ShoppingCart },
+  { to: "/shipping", label: "Pengiriman", icon: Truck },
+  { to: "/products", label: "Produk", icon: Package },
+  { to: "/customers", label: "Pelanggan", icon: Users },
+  { to: "/labels", label: "Label", icon: Printer },
+  { to: "/settings", label: "Pengaturan", icon: Settings },
 ];
 
 function ProtectedLayout() {
@@ -82,7 +82,7 @@ function ProtectedLayout() {
             to="/orders/new"
             className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-primary text-sidebar-primary-foreground text-sm font-medium hover:opacity-90"
           >
-            <Plus className="size-4" /> New order
+            <Plus className="size-4" /> Pesanan baru
           </Link>
         </div>
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
@@ -114,7 +114,7 @@ function ProtectedLayout() {
             onClick={signOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
-            <LogOut className="size-4" /> Sign out
+            <LogOut className="size-4" /> Keluar
           </button>
         </div>
       </aside>

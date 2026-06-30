@@ -39,14 +39,14 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created — you're signed in");
+        toast.success("Akun dibuat — Anda sudah masuk");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
       navigate({ to: "/" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Authentication failed");
+      toast.error(err instanceof Error ? err.message : "Autentikasi gagal");
     } finally {
       setLoading(false);
     }
@@ -63,17 +63,17 @@ function AuthPage() {
         </div>
         <Card className="p-6">
           <h1 className="text-2xl font-semibold tracking-tight">
-            {mode === "signin" ? "Sign in" : "Create admin account"}
+            {mode === "signin" ? "Masuk" : "Buat akun admin"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "signin"
-              ? "Access your order management console."
-              : "First account becomes the admin."}
+              ? "Akses konsol manajemen pesanan Anda."
+              : "Akun pertama akan menjadi admin."}
           </p>
           <form onSubmit={submit} className="space-y-4 mt-6">
             {mode === "signup" && (
               <div className="space-y-2">
-                <Label htmlFor="name">Full name</Label>
+                <Label htmlFor="name">Nama lengkap</Label>
                 <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
               </div>
             )}
@@ -89,7 +89,7 @@ function AuthPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Kata sandi</Label>
               <Input
                 id="password"
                 type="password"
@@ -101,7 +101,7 @@ function AuthPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
+              {loading ? "Mohon tunggu..." : mode === "signin" ? "Masuk" : "Create account"}
             </Button>
           </form>
           <button
@@ -109,7 +109,7 @@ function AuthPage() {
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             className="mt-4 text-sm text-muted-foreground hover:text-foreground w-full text-center"
           >
-            {mode === "signin" ? "Need an account? Create one" : "Have an account? Sign in"}
+            {mode === "signin" ? "Belum punya akun? Buat sekarang" : "Sudah punya akun? Masuk"}
           </button>
         </Card>
       </div>

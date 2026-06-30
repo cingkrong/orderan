@@ -136,7 +136,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
           destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
         }));
-        toast.info(`Loaded ${c.name} from previous orders`);
+        toast.info(`Data ${c.name} dimuat dari pesanan sebelumnya`);
       }
     } catch {}
   }
@@ -168,7 +168,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
       setServices(r.services);
       if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : "Gagal");
     } finally {
       setLoadingCost(false);
     }
@@ -177,18 +177,18 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const mut = useMutation({
     mutationFn: (payload: OrderInput) => save({ data: payload }),
     onSuccess: ({ id }) => {
-      toast.success(form.id ? "Order updated" : "Order created");
+      toast.success(form.id ? "Pesanan diperbarui" : "Pesanan dibuat");
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       navigate({ to: "/orders/$id", params: { id } });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
 
   function submit() {
-    if (form.items.length === 0) return toast.error("Add at least one product");
+    if (form.items.length === 0) return toast.error("Tambahkan minimal satu produk");
     const parsed = z.string().min(3).safeParse(form.customer_name);
-    if (!parsed.success) return toast.error("Customer name required");
+    if (!parsed.success) return toast.error("Nama pelanggan wajib diisi");
     mut.mutate({ ...form, shipping_cost: Number(form.shipping_cost) || 0 });
   }
 
@@ -216,7 +216,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
     <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          {form.id ? `Edit ${form.id ? "order" : ""}` : "New order"}
+          {form.id ? `Ubah pesanan` : "Pesanan baru"}
         </h1>
         <p className="text-muted-foreground text-sm mt-1">Fast entry — phone autofills, courier auto-calculates.</p>
       </div>
@@ -226,7 +226,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <h2 className="font-semibold">Customer</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label>Phone</Label>
+              <Label>Telepon</Label>
               <Input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -235,12 +235,12 @@ function OrderForm({ existingId }: { existingId?: string }) {
               />
             </div>
             <div>
-              <Label>Customer name</Label>
+              <Label>Nama pelanggan</Label>
               <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
             </div>
           </div>
           <div>
-            <Label>Full address</Label>
+            <Label>Alamat lengkap</Label>
             <Textarea
               rows={2}
               value={form.full_address}
@@ -320,10 +320,10 @@ function OrderForm({ existingId }: { existingId?: string }) {
               )}
             </div>
             <div>
-              <Label>District / Postal code</Label>
+              <Label>Kecamatan / Kode pos</Label>
               <div className="grid grid-cols-2 gap-2">
-                <Input value={form.district ?? ""} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="District" />
-                <Input value={form.postal_code ?? ""} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} placeholder="Postal" />
+                <Input value={form.district ?? ""} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="Kecamatan" />
+                <Input value={form.postal_code ?? ""} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} placeholder="Kode pos" />
               </div>
             </div>
           </div>
@@ -332,20 +332,20 @@ function OrderForm({ existingId }: { existingId?: string }) {
         <Card className="p-5 space-y-3">
           <h2 className="font-semibold">Order channel</h2>
           <div>
-            <Label>Source</Label>
+            <Label>Sumber</Label>
             <Select value={form.source ?? ""} onValueChange={(v) => setForm({ ...form, source: v })}>
-              <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Sumber" /></SelectTrigger>
               <SelectContent>
                 {SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Campaign</Label>
+            <Label>Kampanye</Label>
             <Input value={form.campaign ?? ""} onChange={(e) => setForm({ ...form, campaign: e.target.value })} />
           </div>
           <div>
-            <Label>Ref / affiliate</Label>
+            <Label>Ref / afiliasi</Label>
             <Input value={form.ref ?? ""} onChange={(e) => setForm({ ...form, ref: e.target.value })} />
           </div>
         </Card>
@@ -355,37 +355,37 @@ function OrderForm({ existingId }: { existingId?: string }) {
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Products</h2>
           <Select onValueChange={addItem}>
-            <SelectTrigger className="w-[260px]"><SelectValue placeholder="Add product…" /></SelectTrigger>
+            <SelectTrigger className="w-[260px]"><SelectValue placeholder="Tambah produk…" /></SelectTrigger>
             <SelectContent>
               {(productsQ.data ?? []).map((p) => (
                 <SelectItem key={p.id} value={p.id}>{p.name}{p.variant ? ` · ${p.variant}` : ""}</SelectItem>
               ))}
-              <SelectItem value="__custom">+ Custom item</SelectItem>
+              <SelectItem value="__custom">+ Item custom</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">No items yet</p>}
+          {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Belum ada item</p>}
           {form.items.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-12 sm:col-span-4">
-                <Label className="text-xs">Name</Label>
+                <Label className="text-xs">Nama</Label>
                 <Input value={it.name} onChange={(e) => updateItem(setForm, idx, { name: e.target.value })} />
               </div>
               <div className="col-span-6 sm:col-span-2">
-                <Label className="text-xs">Variant</Label>
+                <Label className="text-xs">Varian</Label>
                 <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
               </div>
               <div className="col-span-3 sm:col-span-1">
-                <Label className="text-xs">Qty</Label>
+                <Label className="text-xs">Jumlah</Label>
                 <Input type="number" min={1} value={it.qty} onChange={(e) => updateItem(setForm, idx, { qty: Number(e.target.value) })} />
               </div>
               <div className="col-span-3 sm:col-span-2">
-                <Label className="text-xs">Price</Label>
+                <Label className="text-xs">Harga</Label>
                 <Input type="number" value={it.price} onChange={(e) => updateItem(setForm, idx, { price: Number(e.target.value) })} />
               </div>
               <div className="col-span-4 sm:col-span-2">
-                <Label className="text-xs">Weight (g)</Label>
+                <Label className="text-xs">Berat (g)</Label>
                 <Input type="number" value={it.weight_g} onChange={(e) => updateItem(setForm, idx, { weight_g: Number(e.target.value) })} />
               </div>
               <div className="col-span-2 sm:col-span-1 flex justify-end">
@@ -396,16 +396,16 @@ function OrderForm({ existingId }: { existingId?: string }) {
             </div>
           ))}
         </div>
-        <Button variant="outline" size="sm" onClick={() => addItem()}><Plus className="size-4 mr-1" />Add custom item</Button>
+        <Button variant="outline" size="sm" onClick={() => addItem()}><Plus className="size-4 mr-1" />Tambah item custom</Button>
       </Card>
 
       <Card className="p-5 space-y-3">
         <h2 className="font-semibold">Shipping</h2>
         <div className="grid sm:grid-cols-4 gap-3">
           <div>
-            <Label>Courier</Label>
+            <Label>Kurir</Label>
             <Select value={form.courier ?? ""} onValueChange={(v) => setForm({ ...form, courier: v, service: "", shipping_cost: 0, eta: "" })}>
-              <SelectTrigger><SelectValue placeholder="Courier" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Kurir" /></SelectTrigger>
               <SelectContent>
                 {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
               </SelectContent>
@@ -414,11 +414,11 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <div className="sm:col-span-2 flex items-end">
             <Button onClick={calcShipping} disabled={loadingCost} className="w-full">
               {loadingCost ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Truck className="size-4 mr-1" />}
-              Calculate ({Math.round(weight)}g)
+              Hitung ({Math.round(weight)}g)
             </Button>
           </div>
           <div>
-            <Label>Insurance</Label>
+            <Label>Asuransi</Label>
             <div className="h-9 flex items-center">
               <Switch checked={form.insurance} onCheckedChange={(v) => setForm({ ...form, insurance: v })} />
             </div>
@@ -435,27 +435,27 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 }`}
               >
                 <div className="font-semibold">{s.service} <span className="text-xs text-muted-foreground">({s.description})</span></div>
-                <div className="text-sm">{formatIDR(s.value)} · {s.etd} day</div>
+                <div className="text-sm">{formatIDR(s.value)} · {s.etd} hari</div>
               </button>
             ))}
           </div>
         )}
         <div className="grid sm:grid-cols-3 gap-3">
           <div>
-            <Label>Shipping cost (Rp)</Label>
+            <Label>Ongkir (Rp)</Label>
             <Input type="number" value={form.shipping_cost} onChange={(e) => setForm({ ...form, shipping_cost: Number(e.target.value) })} />
           </div>
           <div>
-            <Label>Tracking # (resi)</Label>
+            <Label>No. resi</Label>
             <Input value={form.tracking_number ?? ""} onChange={(e) => setForm({ ...form, tracking_number: e.target.value })} />
           </div>
           <div>
-            <Label>Routing code</Label>
+            <Label>Kode routing</Label>
             <Input value={form.routing_code ?? ""} onChange={(e) => setForm({ ...form, routing_code: e.target.value })} />
           </div>
         </div>
         <div>
-          <Label>Note</Label>
+          <Label>Catatan</Label>
           <Textarea rows={2} value={form.note ?? ""} onChange={(e) => setForm({ ...form, note: e.target.value })} />
         </div>
       </Card>
@@ -463,13 +463,13 @@ function OrderForm({ existingId }: { existingId?: string }) {
       <Card className="p-5 flex items-center justify-between flex-wrap gap-4">
         <div className="space-y-1 text-sm">
           <div className="flex gap-6"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatIDR(subtotal)}</span></div>
-          <div className="flex gap-6"><span className="text-muted-foreground">Shipping</span><span className="font-mono">{formatIDR(Number(form.shipping_cost) || 0)}</span></div>
+          <div className="flex gap-6"><span className="text-muted-foreground">Ongkir</span><span className="font-mono">{formatIDR(Number(form.shipping_cost) || 0)}</span></div>
           <div className="flex gap-6 text-base font-semibold"><span>Total</span><span className="font-mono">{formatIDR(total)}</span></div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate({ to: "/orders" })}>Cancel</Button>
+          <Button variant="outline" onClick={() => navigate({ to: "/orders" })}>Batal</Button>
           <Button onClick={submit} disabled={mut.isPending}>
-            {mut.isPending ? "Saving..." : form.id ? "Save changes" : "Create order"}
+            {mut.isPending ? "Menyimpan..." : form.id ? "Simpan perubahan" : "Buat pesanan"}
           </Button>
         </div>
       </Card>
