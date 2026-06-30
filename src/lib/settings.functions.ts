@@ -19,8 +19,8 @@ const settingsSchema = z.object({
   sender_phone: z.string(),
   sender_city: z.string(),
   sender_address: z.string(),
-  origin_city_id: z.string(),
-  origin_type: z.enum(["city", "subdistrict"]),
+  origin_subdistrict_id: z.string(),
+  origin_label: z.string(),
   logo_url: z.string().nullable(),
 });
 
