@@ -154,20 +154,19 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const [loadingCost, setLoadingCost] = useState(false);
 
   async function calcShipping() {
-    if (!form.destination_city_id) return toast.error("Pick destination city first");
-    if (!weight) return toast.error("Add products first");
-    if (!form.courier) return toast.error("Pick a courier");
+    if (!form.destination_subdistrict_id) return toast.error("Pilih tujuan dulu");
+    if (!weight) return toast.error("Tambah produk dulu");
     setLoadingCost(true);
     try {
       const r = await fetchCost({
         data: {
-          destination_city_id: form.destination_city_id,
+          destination_subdistrict_id: form.destination_subdistrict_id,
           weight_g: weight,
-          courier: form.courier,
+          courier: form.courier || "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana",
         },
       });
       setServices(r.services);
-      if (r.services.length === 0) toast.warning("No services available");
+      if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally {
