@@ -3,19 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getSettings, updateSettings } from "@/lib/settings.functions";
-import { syncCities } from "@/lib/shipping.functions";
+import { searchDestinations, type Destination } from "@/lib/shipping.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
@@ -26,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 function SettingsPage() {
   const fetch = useServerFn(getSettings);
   const update = useServerFn(updateSettings);
-  const sync = useServerFn(syncCities);
+  const searchDest = useServerFn(searchDestinations);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["settings"], queryFn: () => fetch() });
 
@@ -35,8 +28,8 @@ function SettingsPage() {
     sender_phone: "",
     sender_city: "",
     sender_address: "",
-    origin_city_id: "",
-    origin_type: "city" as "city" | "subdistrict",
+    origin_subdistrict_id: "",
+    origin_label: "",
     logo_url: "",
   });
 
@@ -47,8 +40,8 @@ function SettingsPage() {
         sender_phone: data.sender_phone,
         sender_city: data.sender_city,
         sender_address: data.sender_address,
-        origin_city_id: data.origin_city_id,
-        origin_type: (data.origin_type as any) ?? "city",
+        origin_subdistrict_id: data.origin_subdistrict_id ?? "",
+        origin_label: data.origin_label ?? "",
         logo_url: data.logo_url ?? "",
       });
     }
@@ -66,10 +59,12 @@ function SettingsPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  const syncMut = useMutation({
-    mutationFn: () => sync(),
-    onSuccess: (r) => toast.success(`Cities ready (${r.total ?? 0} total)`),
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  const [originQ, setOriginQ] = useState("");
+  const originResults = useQuery({
+    queryKey: ["destinations", "origin", originQ],
+    queryFn: () => searchDest({ data: { q: originQ, limit: 15 } }),
+    enabled: originQ.trim().length >= 3 && !form.origin_subdistrict_id,
+    staleTime: 60_000,
   });
 
   if (isLoading) return <Skeleton className="h-96" />;
@@ -93,29 +88,68 @@ function SettingsPage() {
       </Card>
 
       <Card className="p-5 space-y-4">
-        <h2 className="font-semibold">RajaOngkir origin</h2>
+        <h2 className="font-semibold">Asal pengiriman (RajaOngkir V2)</h2>
         <p className="text-sm text-muted-foreground">
-          The warehouse city used to calculate shipping. Click the button below once to load RajaOngkir's city list, then enter your city ID.
+          Cari kelurahan asal gudang. Hasil pencarian memakai RajaOngkir API V2 (subdistrict-level).
         </p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div>
-            <Label>Origin city ID</Label>
-            <Input value={form.origin_city_id} onChange={(e) => setForm({ ...form, origin_city_id: e.target.value })} placeholder="e.g. 152" />
-          </div>
-          <div>
-            <Label>Type</Label>
-            <Select value={form.origin_type} onValueChange={(v) => setForm({ ...form, origin_type: v as any })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="city">City</SelectItem>
-                <SelectItem value="subdistrict">Subdistrict</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <Label>Asal gudang</Label>
+          {form.origin_subdistrict_id ? (
+            <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+              <div>
+                <div className="font-medium">{form.origin_label}</div>
+                <div className="text-xs text-muted-foreground">ID: {form.origin_subdistrict_id}</div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setForm((f) => ({ ...f, origin_subdistrict_id: "", origin_label: "" }))}
+              >
+                Ganti
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Input
+                placeholder="Ketik nama kelurahan/kecamatan/kota (min. 3 huruf)…"
+                value={originQ}
+                onChange={(e) => setOriginQ(e.target.value)}
+                className="rounded-none border-0 border-b focus-visible:ring-0"
+              />
+              <div className="max-h-72 overflow-auto">
+                {(originResults.data ?? []).map((d: Destination) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, origin_subdistrict_id: d.id, origin_label: d.label }));
+                      setOriginQ("");
+                    }}
+                  >
+                    <div className="font-medium">{d.subdistrict_name}, {d.district_name}</div>
+                    <div className="text-xs text-muted-foreground">{d.city_name} · {d.province_name} · {d.zip_code}</div>
+                  </button>
+                ))}
+                {originQ.trim().length >= 3 && !originResults.isLoading && (originResults.data?.length ?? 0) === 0 && (
+                  <div className="p-3 text-sm text-muted-foreground">Tidak ada hasil</div>
+                )}
+                {originQ.trim().length < 3 && (
+                  <div className="p-3 text-sm text-muted-foreground">Ketik minimal 3 huruf…</div>
+                )}
+                {originResults.isLoading && (
+                  <div className="p-3 text-sm text-muted-foreground">Mencari…</div>
+                )}
+                {originResults.error && (
+                  <div className="p-3 text-sm text-destructive">
+                    {originResults.error instanceof Error ? originResults.error.message : "Gagal mencari"}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        <Button variant="outline" onClick={() => syncMut.mutate()} disabled={syncMut.isPending}>
-          {syncMut.isPending ? "Syncing…" : "Sync RajaOngkir city list"}
-        </Button>
       </Card>
 
       <div className="flex justify-end">
