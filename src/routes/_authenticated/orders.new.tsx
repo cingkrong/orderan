@@ -37,7 +37,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const save = useServerFn(saveOrder);
   const fetchProducts = useServerFn(listProducts);
   const fetchCustomer = useServerFn(getCustomerByPhone);
-  const fetchCities = useServerFn(searchCities);
+  const fetchCities = useServerFn(searchDestinations);
   const fetchCost = useServerFn(getShippingCost);
   const fetchOrder = useServerFn(getOrder);
 
