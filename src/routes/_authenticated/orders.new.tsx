@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Trash2, Truck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -245,24 +245,38 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <Label>City (search RajaOngkir)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start font-normal">
-                    {form.city ? `${form.city}${form.province ? ` · ${form.province}` : ""}` : "Pick city…"}
+              {form.destination_city_id ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                  <div>
+                    <div className="font-medium">{form.city}</div>
+                    {form.province && (
+                      <div className="text-xs text-muted-foreground">{form.province}</div>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setForm((f) => ({ ...f, destination_city_id: "", city: "", province: "" }))
+                    }
+                  >
+                    Ganti
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 w-[320px]" align="start">
+                </div>
+              ) : (
+                <div className="rounded-md border">
                   <Input
-                    autoFocus
                     placeholder="Search city…"
                     value={cityQ}
                     onChange={(e) => setCityQ(e.target.value)}
-                    className="rounded-none border-0 border-b"
+                    className="rounded-none border-0 border-b focus-visible:ring-0"
                   />
                   <div className="max-h-64 overflow-auto">
                     {(citiesQuery.data ?? []).map((c) => (
                       <button
                         key={c.city_id}
+                        type="button"
                         className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
                         onClick={() =>
                           setForm((f) => ({
@@ -281,9 +295,12 @@ function OrderForm({ existingId }: { existingId?: string }) {
                     {citiesQuery.data?.length === 0 && (
                       <div className="p-3 text-sm text-muted-foreground">No results — try syncing cities in Settings</div>
                     )}
+                    {!citiesQuery.data && (
+                      <div className="p-3 text-sm text-muted-foreground">Type to search…</div>
+                    )}
                   </div>
-                </PopoverContent>
-              </Popover>
+                </div>
+              )}
             </div>
             <div>
               <Label>District / Postal code</Label>
