@@ -16,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/customers")({
 
 function CustomersPage() {
   const fetchAll = useServerFn(listCustomers);
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({ queryKey: ["customers"], queryFn: () => fetchAll() });
   const [q, setQ] = useState("");
 
