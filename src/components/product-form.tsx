@@ -238,3 +238,148 @@ export function ProductForm({ id }: { id?: string }) {
     </div>
   );
 }
+
+function VariantRow({
+  variant,
+  onChange,
+  onSetDefault,
+  onRemove,
+}: {
+  variant: VariantForm;
+  onChange: (patch: Partial<VariantForm>) => void;
+  onSetDefault: () => void;
+  onRemove: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const margin = variant.price > 0 ? ((variant.price - variant.cost) / variant.price) * 100 : 0;
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran gambar maks 5 MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+      if (error) throw error;
+      // Remove old file if any
+      if (variant.image_url) {
+        await supabase.storage.from("product-images").remove([variant.image_url]);
+      }
+      onChange({ image_url: path });
+      toast.success("Gambar diunggah");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal unggah");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removeImage() {
+    if (!variant.image_url) return;
+    await supabase.storage.from("product-images").remove([variant.image_url]);
+    onChange({ image_url: null });
+  }
+
+  return (
+    <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          size="icon"
+          variant={variant.is_default ? "default" : "ghost"}
+          onClick={onSetDefault}
+          title="Jadikan default"
+          className="h-8 w-8"
+        >
+          <Star className={`size-4 ${variant.is_default ? "fill-current" : ""}`} />
+        </Button>
+        <Input
+          value={variant.label}
+          onChange={(e) => onChange({ label: e.target.value })}
+          placeholder="cth. Merah / L"
+          className="font-medium"
+        />
+        <Button type="button" size="icon" variant="ghost" onClick={onRemove} className="h-8 w-8">
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative shrink-0">
+          <div className="relative h-24 w-24 rounded-md overflow-hidden border bg-background">
+            <StorageImage path={variant.image_url} alt={variant.label} className="h-full w-full object-cover" />
+            {variant.image_url && !uploading && (
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute top-1 right-1 rounded-full bg-background/90 border p-0.5 hover:bg-background"
+                title="Hapus gambar"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2 w-24"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Upload className="size-3 mr-1" />}
+            {variant.image_url ? "Ganti" : "Unggah"}
+          </Button>
+        </div>
+
+        <div className="flex-1 grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <div>
+            <Label className="text-xs">SKU</Label>
+            <Input value={variant.sku} onChange={(e) => onChange({ sku: e.target.value })} />
+          </div>
+          <div>
+            <Label className="text-xs">Harga jual (Rp)</Label>
+            <Input type="number" value={variant.price} onChange={(e) => onChange({ price: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label className="text-xs">Modal / HPP (Rp)</Label>
+            <Input type="number" value={variant.cost} onChange={(e) => onChange({ cost: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label className="text-xs">Berat (g)</Label>
+            <Input type="number" value={variant.weight_g} onChange={(e) => onChange({ weight_g: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label className="text-xs">Stok</Label>
+            <Input type="number" value={variant.stock} onChange={(e) => onChange({ stock: Number(e.target.value) })} />
+          </div>
+        </div>
+      </div>
+
+      {variant.price > 0 && variant.cost > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Margin {margin.toFixed(1)}% · Profit/unit Rp {(variant.price - variant.cost).toLocaleString("id-ID")}
+        </p>
+      )}
+    </div>
+  );
+}
+
