@@ -13,6 +13,7 @@ export type LabelData = {
   service?: string | null;
   tracking_number?: string | null;
   weight_g: number;
+  shipping_cost?: number | null;
   insurance: boolean;
   routing_code?: string | null;
   note?: string | null;
@@ -72,6 +73,11 @@ export function ShippingLabel({ data }: { data: LabelData }) {
         </div>
         <div className="text-right">
           <div className="font-bold" style={{ fontSize: "12pt", lineHeight: 1 }}>{courierLine || "—"}</div>
+          {typeof data.shipping_cost === "number" && data.shipping_cost > 0 && (
+            <div className="font-bold" style={{ fontSize: "9pt" }}>
+              Ongkir: {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(data.shipping_cost)}
+            </div>
+          )}
           {data.insurance && (
             <div className="mt-0.5 inline-block border border-black px-1 text-[8pt] font-semibold">ASURANSI</div>
           )}
