@@ -77,7 +77,7 @@ function ShippingPage() {
                 <th className="p-3 font-medium">Kurir</th>
                 <th className="p-3 font-medium">Status</th>
                 <th className="p-3 font-medium">No. resi</th>
-                <th className="p-3 w-32"></th>
+                <th className="p-3 w-56"></th>
               </tr>
             </thead>
             <tbody>
