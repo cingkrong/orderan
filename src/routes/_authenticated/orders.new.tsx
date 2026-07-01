@@ -114,6 +114,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
         dropship_phone: (order as any).dropship_phone ?? "",
         items: items.map((i) => ({
           product_id: i.product_id,
+          variant_id: (i as any).variant_id ?? null,
           name: i.name,
           variant: i.variant,
           qty: i.qty,
@@ -209,22 +210,40 @@ function OrderForm({ existingId }: { existingId?: string }) {
   }
 
   function addItem(productId?: string) {
-    const p = productsQ.data?.find((x) => x.id === productId);
+    const p = productId ? productsQ.data?.find((x: any) => x.id === productId) : undefined;
+    const variants: any[] = (p as any)?.variants ?? [];
+    const def = variants.find((v) => v.is_default) ?? variants[0];
     setForm((f) => ({
       ...f,
       items: [
         ...f.items,
         {
           product_id: p?.id ?? null,
+          variant_id: def?.id ?? null,
           name: p?.name ?? "",
-          variant: p?.variant ?? "",
+          variant: def?.label ?? "",
           qty: 1,
-          price: p ? Number(p.price) : 0,
-          cost: p ? Number((p as any).cost ?? 0) : 0,
-          weight_g: p?.weight_g ?? 0,
+          price: def ? Number(def.price) : p ? Number(p.price) : 0,
+          cost: def ? Number(def.cost) : p ? Number((p as any).cost ?? 0) : 0,
+          weight_g: def ? Number(def.weight_g) : p?.weight_g ?? 0,
         },
       ],
     }));
+  }
+
+  function pickVariant(idx: number, variantId: string) {
+    const item = form.items[idx];
+    if (!item?.product_id) return;
+    const p = productsQ.data?.find((x: any) => x.id === item.product_id) as any;
+    const v = (p?.variants ?? []).find((x: any) => x.id === variantId);
+    if (!v) return;
+    updateItem(setForm, idx, {
+      variant_id: v.id,
+      variant: v.label,
+      price: Number(v.price),
+      cost: Number(v.cost),
+      weight_g: Number(v.weight_g),
+    });
   }
 
   if (existingId && existingQ.isLoading) return <Skeleton className="h-96" />;
