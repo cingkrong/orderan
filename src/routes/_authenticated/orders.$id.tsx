@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShippingLabel } from "@/components/shipping-label";
+import { OrderHistoryCard } from "@/components/history-cards";
 import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/format";
 import { Pencil, Printer } from "lucide-react";
 import { toast } from "sonner";
@@ -225,8 +226,11 @@ function OrderDetail() {
               <Printer className="size-4 mr-1" /> Buka halaman label
             </Button>
           </Card>
+
+          <OrderHistoryCard orderId={id} />
         </div>
       </div>
+
 
       {/* Print-only label */}
       {s && (
