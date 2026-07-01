@@ -188,7 +188,7 @@ export function ProductForm({ id }: { id?: string }) {
       const variants = form.variants.map((v, idx) => ({
         id: v.id,
         label: v.label.trim() || `Variasi ${idx + 1}`,
-        sku: v.sku || null,
+        sku: (v.sku && v.sku.trim()) || generateSku(form.name, v.color, v.size, idx),
         color: v.color || null,
         size: v.size || null,
         image_url: v.image_url,
