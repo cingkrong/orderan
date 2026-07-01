@@ -1,15 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
-import { getOrdersByIds } from "@/lib/orders.functions";
+import { getOrdersByIds, markLabelPrinted } from "@/lib/orders.functions";
 import { getSettings } from "@/lib/settings.functions";
 import { ShippingLabel } from "@/components/shipping-label";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Printer } from "lucide-react";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/labels")({
   validateSearch: (search: Record<string, unknown>) =>
