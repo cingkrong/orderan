@@ -81,6 +81,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
 
   const productsQ = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts() });
   const warehousesQ = useQuery({ queryKey: ["warehouses"], queryFn: () => fetchWarehouses() });
+  const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => fetchSettings() });
   const existingQ = useQuery({
     queryKey: ["order", existingId],
     queryFn: () => fetchOrder({ data: { id: existingId! } }),
