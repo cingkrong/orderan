@@ -126,8 +126,13 @@ function OrderForm({ existingId }: { existingId?: string }) {
   }, [existingQ.data]);
 
   const subtotal = useMemo(() => form.items.reduce((s, i) => s + i.price * i.qty, 0), [form.items]);
+  const totalCogs = useMemo(() => form.items.reduce((s, i) => s + (i.cost || 0) * i.qty, 0), [form.items]);
   const weight = useMemo(() => form.items.reduce((s, i) => s + i.weight_g * i.qty, 0), [form.items]);
-  const total = subtotal + (Number(form.shipping_cost) || 0);
+  const discount = Number(form.discount) || 0;
+  const marketplaceFee = Number(form.marketplace_fee) || 0;
+  const shippingCost = Number(form.shipping_cost) || 0;
+  const total = subtotal - discount + shippingCost;
+  const estProfit = subtotal - discount - totalCogs - marketplaceFee;
 
   // Phone -> customer autofill
   async function tryAutofill(phone: string) {
