@@ -92,6 +92,57 @@ export type Database = {
         }
         Relationships: []
       }
+      order_history: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          from_value: string | null
+          id: string
+          meta: Json | null
+          note: string | null
+          order_id: string
+          to_value: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          from_value?: string | null
+          id?: string
+          meta?: Json | null
+          note?: string | null
+          order_id: string
+          to_value?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          from_value?: string | null
+          id?: string
+          meta?: Json | null
+          note?: string | null
+          order_id?: string
+          to_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_pnl"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           cost: number
@@ -546,6 +597,77 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delta: number
+          id: string
+          note: string | null
+          order_id: string | null
+          product_id: string | null
+          reason: string
+          stock_after: number | null
+          stock_before: number | null
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delta: number
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          reason: string
+          stock_after?: number | null
+          stock_before?: number | null
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delta?: number
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          reason?: string
+          stock_after?: number | null
+          stock_before?: number | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_pnl"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -641,6 +763,16 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_variant_stock: {
+        Args: {
+          _delta: number
+          _note: string
+          _order_id: string
+          _reason: string
+          _variant_id: string
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
