@@ -43,6 +43,8 @@ const variantInput = z.object({
   id: z.string().uuid().optional(),
   label: z.string().min(1),
   sku: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  size: z.string().nullable().optional(),
   price: z.number().min(0),
   cost: z.number().min(0).default(0),
   weight_g: z.number().int().min(0),
@@ -51,6 +53,7 @@ const variantInput = z.object({
   sort_order: z.number().int().default(0),
   image_url: z.string().nullable().optional(),
 });
+
 
 
 const productInput = z.object({
