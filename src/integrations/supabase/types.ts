@@ -103,6 +103,7 @@ export type Database = {
           product_id: string | null
           qty: number
           variant: string | null
+          variant_id: string | null
           weight_g: number
         }
         Insert: {
@@ -115,6 +116,7 @@ export type Database = {
           product_id?: string | null
           qty?: number
           variant?: string | null
+          variant_id?: string | null
           weight_g?: number
         }
         Update: {
@@ -127,6 +129,7 @@ export type Database = {
           product_id?: string | null
           qty?: number
           variant?: string | null
+          variant_id?: string | null
           weight_g?: number
         }
         Relationships: [
@@ -149,6 +152,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -280,6 +290,59 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          is_default: boolean
+          label: string
+          price: number
+          product_id: string
+          sku: string | null
+          sort_order: number
+          stock: number
+          updated_at: string
+          weight_g: number
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          price?: number
+          product_id: string
+          sku?: string | null
+          sort_order?: number
+          stock?: number
+          updated_at?: string
+          weight_g?: number
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          price?: number
+          product_id?: string
+          sku?: string | null
+          sort_order?: number
+          stock?: number
+          updated_at?: string
+          weight_g?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
