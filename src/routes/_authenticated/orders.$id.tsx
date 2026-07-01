@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { getOrder, updateOrderStatus, setTracking } from "@/lib/orders.functions";
+import { getOrder, updateOrderStatus, setTracking, markLabelPrinted } from "@/lib/orders.functions";
 import { getSettings } from "@/lib/settings.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { ShippingLabel } from "@/components/shipping-label";
 import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/format";
 import { Pencil, Printer } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/orders/$id")({
@@ -37,6 +37,18 @@ function OrderDetail() {
   const updateStatus = useServerFn(updateOrderStatus);
   const setTrack = useServerFn(setTracking);
   const fetchSettings = useServerFn(getSettings);
+  const markPrinted = useServerFn(markLabelPrinted);
+
+  async function handlePrint() {
+    try {
+      await markPrinted({ data: { ids: [id] } });
+      qc.invalidateQueries({ queryKey: ["order", id] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    } catch {
+      /* non-blocking */
+    }
+    window.print();
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ["order", id],
@@ -75,19 +87,33 @@ function OrderDetail() {
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-mono">{order.order_number}</h1>
             <Badge variant="secondary" className={STATUS_TONE[order.status]}>{STATUS_LABEL[order.status]}</Badge>
+            {((order as any).label_print_count ?? 0) > 0 && (
+              <Badge variant="outline">
+                Label dicetak {(order as any).label_print_count}×
+                {(order as any).label_printed_at && (
+                  <span className="ml-1 text-muted-foreground">
+                    · {formatDistanceToNow(new Date((order as any).label_printed_at), { addSuffix: true, locale: idLocale })}
+                  </span>
+                )}
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground text-sm mt-1">
             Dibuat {format(new Date(order.created_at), "dd MMM yyyy HH:mm", { locale: idLocale })}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()}><Printer className="size-4 mr-1" /> Cetak label</Button>
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="size-4 mr-1" />
+            {((order as any).label_print_count ?? 0) > 0 ? "Cetak ulang label" : "Cetak label"}
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/orders/$id/edit" params={{ id }}><Pencil className="size-4 mr-1" /> Ubah</Link>
           </Button>
+
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { COURIERS, COURIER_LABEL, STATUS_LABEL, STATUS_TONE } from "@/lib/format";
+import { Printer } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/shipping")({
@@ -26,6 +27,7 @@ function ShippingPage() {
   const fetchOrders = useServerFn(listOrders);
   const setTrack = useServerFn(setTracking);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [courier, setCourier] = useState<string>("all");
   const [pending, setPending] = useState<Record<string, string>>({});
 
@@ -75,7 +77,7 @@ function ShippingPage() {
                 <th className="p-3 font-medium">Kurir</th>
                 <th className="p-3 font-medium">Status</th>
                 <th className="p-3 font-medium">No. resi</th>
-                <th className="p-3 w-32"></th>
+                <th className="p-3 w-56"></th>
               </tr>
             </thead>
             <tbody>
@@ -92,6 +94,13 @@ function ShippingPage() {
                       <Link to="/orders/$id" params={{ id: o.id }} className="font-mono text-xs hover:underline">
                         {o.order_number}
                       </Link>
+                      {((o as any).label_print_count ?? 0) > 0 && (
+                        <div className="mt-1">
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+                            Label ✓ {(o as any).label_print_count}×
+                          </Badge>
+                        </div>
+                      )}
                     </td>
                     <td className="p-3">
                       <div>{o.customer_name}</div>
@@ -107,13 +116,23 @@ function ShippingPage() {
                       />
                     </td>
                     <td className="p-3">
-                      <Button
-                        size="sm"
-                        disabled={!pending[o.id] || mut.isPending}
-                        onClick={() => mut.mutate({ id: o.id, value: pending[o.id] })}
-                      >
-                        Save & Ship
-                      </Button>
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate({ to: "/labels", search: { ids: o.id } as any })}
+                        >
+                          <Printer className="size-4 mr-1" />
+                          {((o as any).label_print_count ?? 0) > 0 ? "Ulang" : "Label"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={!pending[o.id] || mut.isPending}
+                          onClick={() => mut.mutate({ id: o.id, value: pending[o.id] })}
+                        >
+                          Simpan
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))

@@ -234,6 +234,32 @@ export const setTracking = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const markLabelPrinted = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ ids: z.array(z.string().uuid()).min(1) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: rows, error: fErr } = await context.supabase
+      .from("orders")
+      .select("id, label_print_count")
+      .in("id", data.ids);
+    if (fErr) throw new Error(fErr.message);
+    const now = new Date().toISOString();
+    await Promise.all(
+      (rows ?? []).map((r: { id: string; label_print_count: number | null }) =>
+        context.supabase
+          .from("orders")
+          .update({
+            label_print_count: (r.label_print_count ?? 0) + 1,
+            label_printed_at: now,
+          })
+          .eq("id", r.id),
+      ),
+    );
+    return { ok: true };
+  });
+
 // ---------- Dashboard ----------
 export const dashboardStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

@@ -174,6 +174,11 @@ function OrdersList() {
                     <td className="p-3">
                       <div className="font-mono text-xs">{o.order_number}</div>
                       {o.tracking_number && <div className="text-xs text-muted-foreground mt-0.5">{o.tracking_number}</div>}
+                      {((o as any).label_print_count ?? 0) > 0 && (
+                        <Badge variant="outline" className="mt-1 text-[10px] px-1 py-0 h-4">
+                          Label ✓ {(o as any).label_print_count}×
+                        </Badge>
+                      )}
                     </td>
                     <td className="p-3">
                       <div className="font-medium">{o.customer_name}</div>
