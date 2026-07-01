@@ -9,12 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { COURIERS, COURIER_LABEL, formatIDR } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
+
+type CustomCourier = { name: string; price: number; description?: string; etd?: string };
 
 function SettingsPage() {
   const fetch = useServerFn(getSettings);
@@ -31,6 +36,8 @@ function SettingsPage() {
     origin_subdistrict_id: "",
     origin_label: "",
     logo_url: "",
+    active_couriers: [...COURIERS] as string[],
+    custom_couriers: [] as CustomCourier[],
   });
 
   useEffect(() => {
@@ -43,6 +50,8 @@ function SettingsPage() {
         origin_subdistrict_id: data.origin_subdistrict_id ?? "",
         origin_label: data.origin_label ?? "",
         logo_url: data.logo_url ?? "",
+        active_couriers: (data as any).active_couriers ?? [...COURIERS],
+        custom_couriers: (data as any).custom_couriers ?? [],
       });
     }
   }, [data]);
@@ -67,17 +76,42 @@ function SettingsPage() {
     staleTime: 60_000,
   });
 
+  function toggleCourier(code: string, on: boolean) {
+    setForm((f) => ({
+      ...f,
+      active_couriers: on
+        ? Array.from(new Set([...f.active_couriers, code]))
+        : f.active_couriers.filter((c) => c !== code),
+    }));
+  }
+
+  function addCustom() {
+    setForm((f) => ({
+      ...f,
+      custom_couriers: [...f.custom_couriers, { name: "", price: 0, description: "", etd: "-" }],
+    }));
+  }
+  function updateCustom(idx: number, patch: Partial<CustomCourier>) {
+    setForm((f) => ({
+      ...f,
+      custom_couriers: f.custom_couriers.map((c, i) => (i === idx ? { ...c, ...patch } : c)),
+    }));
+  }
+  function removeCustom(idx: number) {
+    setForm((f) => ({ ...f, custom_couriers: f.custom_couriers.filter((_, i) => i !== idx) }));
+  }
+
   if (isLoading) return <Skeleton className="h-96" />;
 
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">Sender info on labels & RajaOngkir origin</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pengaturan</h1>
+        <p className="text-muted-foreground text-sm mt-1">Info pengirim, gudang, & pilihan ekspedisi</p>
       </div>
 
       <Card className="p-5 space-y-4">
-        <h2 className="font-semibold">Sender (printed on labels)</h2>
+        <h2 className="font-semibold">Pengirim (dicetak pada label)</h2>
         <div className="grid sm:grid-cols-2 gap-3">
           <div><Label>Nama bisnis / pengirim</Label><Input value={form.sender_name} onChange={(e) => setForm({ ...form, sender_name: e.target.value })} /></div>
           <div><Label>Telepon</Label><Input value={form.sender_phone} onChange={(e) => setForm({ ...form, sender_phone: e.target.value })} /></div>
@@ -100,12 +134,8 @@ function SettingsPage() {
                 <div className="font-medium">{form.origin_label}</div>
                 <div className="text-xs text-muted-foreground">ID: {form.origin_subdistrict_id}</div>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setForm((f) => ({ ...f, origin_subdistrict_id: "", origin_label: "" }))}
-              >
+              <Button type="button" size="sm" variant="ghost"
+                onClick={() => setForm((f) => ({ ...f, origin_subdistrict_id: "", origin_label: "" }))}>
                 Ganti
               </Button>
             </div>
@@ -119,15 +149,8 @@ function SettingsPage() {
               />
               <div className="max-h-72 overflow-auto">
                 {(originResults.data ?? []).map((d: Destination) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
-                    onClick={() => {
-                      setForm((f) => ({ ...f, origin_subdistrict_id: d.id, origin_label: d.label }));
-                      setOriginQ("");
-                    }}
-                  >
+                  <button key={d.id} type="button" className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
+                    onClick={() => { setForm((f) => ({ ...f, origin_subdistrict_id: d.id, origin_label: d.label })); setOriginQ(""); }}>
                     <div className="font-medium">{d.subdistrict_name}, {d.district_name}</div>
                     <div className="text-xs text-muted-foreground">{d.city_name} · {d.province_name} · {d.zip_code}</div>
                   </button>
@@ -138,17 +161,64 @@ function SettingsPage() {
                 {originQ.trim().length < 3 && (
                   <div className="p-3 text-sm text-muted-foreground">Ketik minimal 3 huruf…</div>
                 )}
-                {originResults.isLoading && (
-                  <div className="p-3 text-sm text-muted-foreground">Mencari…</div>
-                )}
-                {originResults.error && (
-                  <div className="p-3 text-sm text-destructive">
-                    {originResults.error instanceof Error ? originResults.error.message : "Gagal mencari"}
-                  </div>
-                )}
               </div>
             </div>
           )}
+        </div>
+      </Card>
+
+      <Card className="p-5 space-y-4">
+        <h2 className="font-semibold">Ekspedisi Aktif</h2>
+        <p className="text-sm text-muted-foreground">Centang kurir yang akan ditampilkan saat pengecekan ongkir.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {COURIERS.map((c) => {
+            const on = form.active_couriers.includes(c);
+            return (
+              <label key={c} className="flex items-center gap-2 rounded-md border p-2 cursor-pointer hover:bg-accent">
+                <Checkbox checked={on} onCheckedChange={(v) => toggleCourier(c, !!v)} />
+                <span className="text-sm">{COURIER_LABEL[c]}</span>
+              </label>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold">Ekspedisi Custom</h2>
+            <p className="text-sm text-muted-foreground">Kurir manual (mis. ojek, kurir toko) dengan tarif tetap.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={addCustom}><Plus className="size-4 mr-1" />Tambah</Button>
+        </div>
+        {form.custom_couriers.length === 0 && (
+          <p className="text-sm text-muted-foreground py-4 text-center">Belum ada ekspedisi custom</p>
+        )}
+        <div className="space-y-2">
+          {form.custom_couriers.map((c, i) => (
+            <div key={i} className="grid grid-cols-12 gap-2 items-end border rounded-md p-3">
+              <div className="col-span-12 sm:col-span-4">
+                <Label className="text-xs">Nama</Label>
+                <Input value={c.name} placeholder="mis. Kurir Toko" onChange={(e) => updateCustom(i, { name: e.target.value })} />
+              </div>
+              <div className="col-span-6 sm:col-span-3">
+                <Label className="text-xs">Harga (Rp)</Label>
+                <Input type="number" value={c.price} onChange={(e) => updateCustom(i, { price: Number(e.target.value) })} />
+                <p className="text-xs text-muted-foreground mt-1">{formatIDR(c.price)}</p>
+              </div>
+              <div className="col-span-6 sm:col-span-2">
+                <Label className="text-xs">Estimasi (hari)</Label>
+                <Input value={c.etd ?? ""} onChange={(e) => updateCustom(i, { etd: e.target.value })} placeholder="1-2" />
+              </div>
+              <div className="col-span-10 sm:col-span-2">
+                <Label className="text-xs">Keterangan</Label>
+                <Input value={c.description ?? ""} onChange={(e) => updateCustom(i, { description: e.target.value })} placeholder="Same-day" />
+              </div>
+              <div className="col-span-2 sm:col-span-1 flex justify-end">
+                <Button variant="ghost" size="icon" onClick={() => removeCustom(i)}><Trash2 className="size-4" /></Button>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 
