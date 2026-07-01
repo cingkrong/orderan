@@ -48,7 +48,9 @@ function ProductsPage() {
               <tr>
                 <th className="p-3 font-medium">Produk</th>
                 <th className="p-3 font-medium">SKU</th>
+                <th className="p-3 font-medium text-right">Modal</th>
                 <th className="p-3 font-medium text-right">Harga</th>
+                <th className="p-3 font-medium text-right">Margin</th>
                 <th className="p-3 font-medium text-right">Berat</th>
                 <th className="p-3 font-medium text-right">Stok</th>
                 <th className="p-3 w-20"></th>
@@ -57,39 +59,48 @@ function ProductsPage() {
             <tbody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i}><td colSpan={6} className="p-3"><Skeleton className="h-8" /></td></tr>
+                  <tr key={i}><td colSpan={8} className="p-3"><Skeleton className="h-8" /></td></tr>
                 ))
               ) : (data ?? []).length === 0 ? (
-                <tr><td colSpan={6} className="p-10 text-center text-muted-foreground">Belum ada produk</td></tr>
+                <tr><td colSpan={8} className="p-10 text-center text-muted-foreground">Belum ada produk</td></tr>
               ) : (
-                data!.map((p) => (
-                  <tr key={p.id} className="border-t">
-                    <td className="p-3">
-                      <div className="font-medium">{p.name}</div>
-                      {p.variant && <div className="text-xs text-muted-foreground">{p.variant}</div>}
-                    </td>
-                    <td className="p-3 font-mono text-xs">{p.sku ?? "—"}</td>
-                    <td className="p-3 text-right tabular-nums">{formatIDR(p.price)}</td>
-                    <td className="p-3 text-right text-muted-foreground">{formatWeight(p.weight_g)}</td>
-                    <td className="p-3 text-right tabular-nums">{p.stock}</td>
-                    <td className="p-3 flex gap-1 justify-end">
-                      <Button asChild size="icon" variant="ghost">
-                        <Link to="/products/$id/edit" params={{ id: p.id }}>
-                          <Pencil className="size-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          if (confirm(`Hapus ${p.name}?`)) removeMut.mutate(p.id);
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                data!.map((p) => {
+                  const price = Number(p.price);
+                  const cost = Number((p as any).cost ?? 0);
+                  const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
+                  return (
+                    <tr key={p.id} className="border-t">
+                      <td className="p-3">
+                        <div className="font-medium">{p.name}</div>
+                        {p.variant && <div className="text-xs text-muted-foreground">{p.variant}</div>}
+                      </td>
+                      <td className="p-3 font-mono text-xs">{p.sku ?? "—"}</td>
+                      <td className="p-3 text-right tabular-nums text-muted-foreground">{formatIDR(cost)}</td>
+                      <td className="p-3 text-right tabular-nums">{formatIDR(price)}</td>
+                      <td className={`p-3 text-right tabular-nums ${margin >= 0 ? "text-success" : "text-destructive"}`}>
+                        {cost > 0 ? `${margin.toFixed(1)}%` : "—"}
+                      </td>
+                      <td className="p-3 text-right text-muted-foreground">{formatWeight(p.weight_g)}</td>
+                      <td className="p-3 text-right tabular-nums">{p.stock}</td>
+                      <td className="p-3 flex gap-1 justify-end">
+                        <Button asChild size="icon" variant="ghost">
+                          <Link to="/products/$id/edit" params={{ id: p.id }}>
+                            <Pencil className="size-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            if (confirm(`Hapus ${p.name}?`)) removeMut.mutate(p.id);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

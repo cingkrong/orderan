@@ -68,6 +68,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
     campaign: "",
     ref: "",
     shipping_cost: 0,
+    discount: 0,
+    marketplace_fee: 0,
     eta: "",
     insurance: false,
     routing_code: "",
@@ -101,6 +103,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
         campaign: order.campaign ?? "",
         ref: order.ref ?? "",
         shipping_cost: Number(order.shipping_cost ?? 0),
+        discount: Number((order as any).discount ?? 0),
+        marketplace_fee: Number((order as any).marketplace_fee ?? 0),
         eta: order.eta ?? "",
         insurance: order.insurance,
         routing_code: order.routing_code ?? "",
@@ -114,6 +118,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           variant: i.variant,
           qty: i.qty,
           price: Number(i.price),
+          cost: Number((i as any).cost ?? 0),
           weight_g: i.weight_g,
         })),
       });
@@ -121,8 +126,13 @@ function OrderForm({ existingId }: { existingId?: string }) {
   }, [existingQ.data]);
 
   const subtotal = useMemo(() => form.items.reduce((s, i) => s + i.price * i.qty, 0), [form.items]);
+  const totalCogs = useMemo(() => form.items.reduce((s, i) => s + (i.cost || 0) * i.qty, 0), [form.items]);
   const weight = useMemo(() => form.items.reduce((s, i) => s + i.weight_g * i.qty, 0), [form.items]);
-  const total = subtotal + (Number(form.shipping_cost) || 0);
+  const discount = Number(form.discount) || 0;
+  const marketplaceFee = Number(form.marketplace_fee) || 0;
+  const shippingCost = Number(form.shipping_cost) || 0;
+  const total = subtotal - discount + shippingCost;
+  const estProfit = subtotal - discount - totalCogs - marketplaceFee;
 
   // Phone -> customer autofill
   async function tryAutofill(phone: string) {
@@ -210,6 +220,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           variant: p?.variant ?? "",
           qty: 1,
           price: p ? Number(p.price) : 0,
+          cost: p ? Number((p as any).cost ?? 0) : 0,
           weight_g: p?.weight_g ?? 0,
         },
       ],
@@ -407,7 +418,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Belum ada item</p>}
           {form.items.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-12 sm:col-span-4">
+              <div className="col-span-12 sm:col-span-3">
                 <Label className="text-xs">Nama</Label>
                 <Input value={it.name} onChange={(e) => updateItem(setForm, idx, { name: e.target.value })} />
               </div>
@@ -416,14 +427,18 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
               </div>
               <div className="col-span-3 sm:col-span-1">
-                <Label className="text-xs">Jumlah</Label>
+                <Label className="text-xs">Qty</Label>
                 <Input type="number" min={1} value={it.qty} onChange={(e) => updateItem(setForm, idx, { qty: Number(e.target.value) })} />
               </div>
               <div className="col-span-3 sm:col-span-2">
-                <Label className="text-xs">Harga</Label>
+                <Label className="text-xs">Modal</Label>
+                <Input type="number" value={it.cost} onChange={(e) => updateItem(setForm, idx, { cost: Number(e.target.value) })} />
+              </div>
+              <div className="col-span-6 sm:col-span-2">
+                <Label className="text-xs">Harga jual</Label>
                 <Input type="number" value={it.price} onChange={(e) => updateItem(setForm, idx, { price: Number(e.target.value) })} />
               </div>
-              <div className="col-span-4 sm:col-span-2">
+              <div className="col-span-4 sm:col-span-1">
                 <Label className="text-xs">Berat (g)</Label>
                 <Input type="number" value={it.weight_g} onChange={(e) => updateItem(setForm, idx, { weight_g: Number(e.target.value) })} />
               </div>
@@ -431,6 +446,9 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}>
                   <Trash2 className="size-4" />
                 </Button>
+              </div>
+              <div className="col-span-12 text-xs text-muted-foreground pl-1">
+                Profit item: <span className="font-mono">{formatIDR((it.price - (it.cost || 0)) * it.qty)}</span>
               </div>
             </div>
           ))}
@@ -499,13 +517,33 @@ function OrderForm({ existingId }: { existingId?: string }) {
         </div>
       </Card>
 
-      <Card className="p-5 flex items-center justify-between flex-wrap gap-4">
-        <div className="space-y-1 text-sm">
-          <div className="flex gap-6"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatIDR(subtotal)}</span></div>
-          <div className="flex gap-6"><span className="text-muted-foreground">Ongkir</span><span className="font-mono">{formatIDR(Number(form.shipping_cost) || 0)}</span></div>
-          <div className="flex gap-6 text-base font-semibold"><span>Total</span><span className="font-mono">{formatIDR(total)}</span></div>
+      <Card className="p-5 space-y-4">
+        <h2 className="font-semibold">Ringkasan & Profit</h2>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <Label>Diskon / Voucher (Rp)</Label>
+            <Input type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label>Fee marketplace / COD (Rp)</Label>
+            <Input type="number" value={form.marketplace_fee} onChange={(e) => setForm({ ...form, marketplace_fee: Number(e.target.value) })} />
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="grid md:grid-cols-2 gap-4 items-start">
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatIDR(subtotal)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className="font-mono">- {formatIDR(discount)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span className="font-mono">{formatIDR(shippingCost)}</span></div>
+            <div className="flex justify-between text-base font-semibold border-t pt-1"><span>Total tagihan</span><span className="font-mono">{formatIDR(total)}</span></div>
+          </div>
+          <div className="space-y-1 text-sm rounded-md border p-3 bg-muted/30">
+            <div className="flex justify-between"><span className="text-muted-foreground">Revenue (Subtotal − Diskon)</span><span className="font-mono">{formatIDR(subtotal - discount)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">HPP (Modal)</span><span className="font-mono">- {formatIDR(totalCogs)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Fee marketplace</span><span className="font-mono">- {formatIDR(marketplaceFee)}</span></div>
+            <div className={`flex justify-between text-base font-semibold border-t pt-1 ${estProfit >= 0 ? "text-success" : "text-destructive"}`}><span>Estimasi profit</span><span className="font-mono">{formatIDR(estProfit)}</span></div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => navigate({ to: "/orders" })}>Batal</Button>
           <Button onClick={submit} disabled={mut.isPending}>
             {mut.isPending ? "Menyimpan..." : form.id ? "Simpan perubahan" : "Buat pesanan"}

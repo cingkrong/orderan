@@ -1,35 +1,72 @@
-## Masalah 1 — Tombol "Produk baru" & "Ubah" tidak membuka form
-Penyebab: `src/routes/_authenticated/products.tsx` adalah route daftar sekaligus induk dari `products.new` & `products.$id.edit`, tapi tidak merender `<Outlet />`. Akibatnya rute anak match tapi form tak pernah tampil.
+# Rencana: Fitur Pencatatan Profit & Laba Rugi
 
-**Fix:**
-- Rename `src/routes/_authenticated/products.tsx` → `products.index.tsx` (isi daftar tetap). Ini menghapus konflik layout — route anak jadi sibling murni, form tampil normal.
+## 1. Skema Database (migrasi)
 
-## Masalah 2 — Penanda label sudah dicetak (bisa cetak ulang)
+**`products`** — tambah:
+- `cost` numeric(12,2) NOT NULL default 0 — harga modal (HPP) per unit
 
-### Database (migrasi)
-Tambah kolom di `orders`:
-- `label_printed_at` (timestamptz, nullable) — waktu terakhir cetak
-- `label_print_count` (int, default 0) — jumlah cetak
+**`order_items`** — tambah:
+- `cost` numeric(12,2) NOT NULL default 0 — snapshot HPP saat order dibuat (agar riwayat P&L tetap akurat bila cost produk berubah)
 
-### Backend
-`src/lib/orders.functions.ts` — server fn baru `markLabelPrinted({ ids: string[] })` yang meng-`update` `label_print_count = label_print_count + 1` dan `label_printed_at = now()` untuk semua id.
+**`orders`** — tambah:
+- `discount` numeric(12,2) NOT NULL default 0 — diskon/voucher per pesanan (mengurangi revenue)
+- `marketplace_fee` numeric(12,2) NOT NULL default 0 — fee Shopee/Tokopedia/COD per pesanan
+- Update trigger perhitungan `total`: `subtotal - discount + shipping_cost` (biaya kurir tetap pass-through)
+- Kolom generated / view untuk `gross_profit = subtotal - discount - sum(cost*qty) - marketplace_fee`
 
-### Halaman Label (`src/routes/_authenticated/labels.tsx`)
-- Bungkus `window.print()` supaya sebelum panggil print, jalankan `markLabelPrinted` untuk semua `ids` yang di-render, lalu invalidate query `orders` & `order`.
-- Tampilkan ringkasan kecil (no-print): "X dari Y label sudah pernah dicetak" dengan badge di tiap kartu preview kalau `label_print_count > 0`.
+**Tabel baru `expenses`** — pengeluaran operasional & iklan:
+- `id`, `date` (date), `category` (enum: `ads`, `operational`, `salary`, `rent`, `packaging`, `other`), `subcategory` (text, mis. "FB Ads", "TikTok Ads"), `source` (text nullable — untuk match ROAS ke `orders.source`), `amount` numeric, `note` text, `created_by`, timestamps
+- RLS: staff read, admin insert/update/delete (atau staff manage — sesuai standar existing)
+- GRANT SELECT/INSERT/UPDATE/DELETE ke authenticated + ALL ke service_role
 
-### Detail Pesanan (`src/routes/_authenticated/orders.$id.tsx`)
-- Tombol "Cetak label" panggil `markLabelPrinted({ ids: [id] })` sebelum `window.print()`.
-- Tampilkan badge "Dicetak N×" + waktu terakhir (format `date-fns` locale id) di header kalau `label_print_count > 0`. Tombol tetap boleh dipakai untuk cetak ulang (label berubah jadi "Cetak ulang label").
+**View `order_pnl`** (SECURITY INVOKER) — agregasi per order:
+- `order_id`, `created_at`, `source`, `revenue` (subtotal - discount), `cogs` (sum item cost*qty), `marketplace_fee`, `gross_profit`
 
-### Daftar Pesanan (`src/routes/_authenticated/orders.index.tsx`)
-- Kolom / badge kecil "Label ✓ N×" pada baris yang sudah pernah dicetak.
-- Tombol bulk "Cetak label" tetap seperti sekarang (navigasi ke `/labels?ids=...`); penandaan otomatis terjadi di halaman label.
+## 2. Server Functions
 
-### Halaman Pengiriman (`src/routes/_authenticated/shipping.tsx`)
-- Badge status cetak yang sama di setiap baris antrian.
-- Tombol per baris "Cetak label" / "Cetak ulang" (teks berubah sesuai `label_print_count`), navigasi ke `/labels?ids=<id>`.
+**`products.functions.ts`** — schema `productInput` + kolom `cost`.
 
-## Catatan
-- Sesuai jawaban: penandaan **otomatis saat tombol Cetak ditekan** (bukan manual). User bisa cetak ulang kapan saja — counter naik terus, tidak ada block.
-- Perubahan hanya menambah kolom & satu server fn; struktur label & order lain tidak berubah.
+**`orders.functions.ts`**:
+- `itemSchema` + `cost` (default dari produk terpilih, bisa di-override)
+- `orderInput` + `discount`, `marketplace_fee`
+- `saveOrder`: hitung `total = subtotal - discount + shipping_cost`; simpan `cost` per item
+
+**`expenses.functions.ts` (baru)**:
+- `listExpenses({ from, to, category? })`
+- `upsertExpense`, `deleteExpense`
+
+**`reports.functions.ts` (baru)**:
+- `pnlSummary({ from, to })` — Revenue, Diskon, COGS, Fee marketplace, Gross Profit, Total Biaya (per kategori), Net Profit
+- `pnlTrend({ from, to, bucket: 'day'|'month' })` — array {date, revenue, profit}
+- `pnlByProduct({ from, to })` — {name, qty_sold, revenue, cogs, gross_profit, margin_pct}
+- `pnlBySource({ from, to })` — {source, orders, revenue, gross_profit, ad_spend, roas, net_profit}
+
+## 3. Halaman UI
+
+**Produk** — form input `cost` (Harga Modal) + tampilkan margin di daftar produk.
+
+**Order baru / edit** — di tabel item:
+- Kolom Modal (auto dari produk, bisa diubah), Harga Jual, Qty, Subtotal, Profit item
+- Ringkasan bawah: Subtotal, **Diskon** (input), **Fee Marketplace** (input), Ongkir, Total; badge "Estimasi profit" (subtotal - diskon - COGS - fee).
+
+**Detail Order** — tampilkan breakdown: Revenue, HPP, Fee, Diskon, Gross Profit.
+
+**Menu baru: `/expenses` — Pengeluaran**
+- Filter tanggal + kategori, tabel + total per kategori
+- Form inline (route `/expenses/new`, `/expenses/:id/edit`) sesuai preferensi no-popup
+
+**Menu baru: `/reports` — Laba Rugi**
+- Filter periode (preset: hari ini / 7d / 30d / bulan ini / custom range)
+- **Kartu ringkasan**: Revenue, HPP, Gross Profit, Total Biaya, **Net Profit**, Margin %
+- **Chart tren** (Recharts LineChart): revenue vs net profit per hari/bulan
+- **Tabel breakdown per Produk**: qty, revenue, COGS, gross profit, margin %
+- **Tabel breakdown per Source/Campaign**: orders, revenue, gross profit, biaya iklan (join `expenses.category='ads'` by source), **ROAS**, net profit
+- Tombol export CSV per tabel
+
+**Sidebar** — tambah item "Pengeluaran" & "Laporan L/R" (ikon Wallet & TrendingUp).
+
+## 4. Catatan
+- Ongkir pass-through: `shipping_cost` tidak masuk perhitungan profit.
+- Semua form baru mengikuti pola no-popup (halaman terpisah / inline).
+- HPP disimpan snapshot per item agar laporan historis tidak berubah saat cost produk di-update.
+- Menggunakan tokens theme existing; tidak menambahkan warna hardcode.
