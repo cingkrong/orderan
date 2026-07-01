@@ -8,6 +8,7 @@ import { listProducts } from "@/lib/products.functions";
 import { getCustomerByPhone } from "@/lib/customers.functions";
 import { searchDestinations, getShippingCost, type Destination } from "@/lib/shipping.functions";
 import { listWarehouses } from "@/lib/warehouses.functions";
+import { getSettings, updateSettings } from "@/lib/settings.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
