@@ -87,7 +87,7 @@ export const pnlSummary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => periodInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const cogsMap: Record<string, number> = {};
     for (const it of items) cogsMap[it.order_id] = (cogsMap[it.order_id] ?? 0) + num(it.cost) * it.qty;
 
@@ -130,7 +130,7 @@ export const pnlTrend = createServerFn({ method: "POST" })
     periodInput.extend({ bucket: z.enum(["day", "month"]).default("day") }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const cogsMap: Record<string, number> = {};
     for (const it of items) cogsMap[it.order_id] = (cogsMap[it.order_id] ?? 0) + num(it.cost) * it.qty;
 
@@ -163,7 +163,7 @@ export const pnlByProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => periodInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { items } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { items } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const agg: Record<string, { name: string; qty: number; revenue: number; cogs: number }> = {};
     for (const it of items) {
       const k = it.product_id ?? it.name;
@@ -185,7 +185,7 @@ export const pnlBySource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => periodInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const cogsMap: Record<string, number> = {};
     for (const it of items) cogsMap[it.order_id] = (cogsMap[it.order_id] ?? 0) + num(it.cost) * it.qty;
 
