@@ -69,8 +69,6 @@ export function ProductForm({ id }: { id?: string }) {
               id: v.id,
               label: v.label,
               sku: v.sku ?? "",
-              color: v.color ?? "",
-              size: v.size ?? "",
               price: Number(v.price),
               cost: Number(v.cost ?? 0),
               weight_g: v.weight_g,
@@ -82,8 +80,6 @@ export function ProductForm({ id }: { id?: string }) {
               {
                 label: loadQ.data.variant || "Default",
                 sku: loadQ.data.sku ?? "",
-                color: "",
-                size: "",
                 price: Number(loadQ.data.price),
                 cost: Number((loadQ.data as any).cost ?? 0),
                 weight_g: loadQ.data.weight_g,
