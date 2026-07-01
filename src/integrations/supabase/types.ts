@@ -124,6 +124,8 @@ export type Database = {
           id: string
           insurance: boolean
           is_dropship: boolean
+          label_print_count: number
+          label_printed_at: string | null
           note: string | null
           order_number: string | null
           phone: string
@@ -160,6 +162,8 @@ export type Database = {
           id?: string
           insurance?: boolean
           is_dropship?: boolean
+          label_print_count?: number
+          label_printed_at?: string | null
           note?: string | null
           order_number?: string | null
           phone: string
@@ -196,6 +200,8 @@ export type Database = {
           id?: string
           insurance?: boolean
           is_dropship?: boolean
+          label_print_count?: number
+          label_printed_at?: string | null
           note?: string | null
           order_number?: string | null
           phone?: string
