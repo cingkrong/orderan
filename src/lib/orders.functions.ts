@@ -38,6 +38,7 @@ const orderInput = z.object({
   service: z.string().nullable().optional(),
   tracking_number: z.string().nullable().optional(),
   status: orderStatus.default("pending"),
+  payment_status: z.enum(["unpaid", "paid", "partial", "refunded"]).default("unpaid"),
   source: z.string().nullable().optional(),
   campaign: z.string().nullable().optional(),
   ref: z.string().nullable().optional(),
@@ -51,6 +52,9 @@ const orderInput = z.object({
   is_dropship: z.boolean().default(false),
   dropship_name: z.string().nullable().optional(),
   dropship_phone: z.string().nullable().optional(),
+  warehouse_id: z.string().uuid().nullable().optional(),
+  recipient_name: z.string().nullable().optional(),
+  recipient_phone: z.string().nullable().optional(),
   items: z.array(itemSchema).min(1),
 });
 

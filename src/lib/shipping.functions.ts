@@ -109,21 +109,26 @@ export const getShippingCost = createServerFn({ method: "POST" })
         destination_subdistrict_id: z.string().min(1),
         weight_g: z.number().int().min(1),
         courier: z.string().min(1).default(DEFAULT_COURIERS),
+        origin_subdistrict_id: z.string().nullable().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { data: settings, error: serr } = await context.supabase
-      .from("settings")
-      .select("origin_subdistrict_id")
-      .eq("id", 1)
-      .maybeSingle();
-    if (serr) throw new Error(serr.message);
-    if (!settings?.origin_subdistrict_id) {
-      throw new Error("Set warehouse origin di Settings terlebih dahulu");
+    let origin = data.origin_subdistrict_id ?? "";
+    if (!origin) {
+      const { data: settings, error: serr } = await context.supabase
+        .from("settings")
+        .select("origin_subdistrict_id")
+        .eq("id", 1)
+        .maybeSingle();
+      if (serr) throw new Error(serr.message);
+      origin = settings?.origin_subdistrict_id ?? "";
+    }
+    if (!origin) {
+      throw new Error("Pilih gudang asal atau set origin di Pengaturan");
     }
     const body = new URLSearchParams({
-      origin: settings.origin_subdistrict_id,
+      origin,
       destination: data.destination_subdistrict_id,
       weight: String(Math.max(1, data.weight_g)),
       courier: data.courier,
