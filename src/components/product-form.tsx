@@ -35,8 +35,6 @@ type ProductFormState = {
 const emptyVariant = (): VariantForm => ({
   label: "Default",
   sku: "",
-  color: "",
-  size: "",
   price: 0,
   cost: 0,
   weight_g: 0,
