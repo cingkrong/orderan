@@ -431,6 +431,8 @@ export type Database = {
       }
       settings: {
         Row: {
+          active_couriers: string[]
+          custom_couriers: Json
           id: number
           logo_url: string | null
           origin_city_id: string
@@ -444,6 +446,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_couriers?: string[]
+          custom_couriers?: Json
           id?: number
           logo_url?: string | null
           origin_city_id?: string
@@ -457,6 +461,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_couriers?: string[]
+          custom_couriers?: Json
           id?: number
           logo_url?: string | null
           origin_city_id?: string
@@ -468,6 +474,39 @@ export type Database = {
           sender_name?: string
           sender_phone?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      shipping_rate_cache: {
+        Row: {
+          couriers: string
+          created_at: string
+          destination_subdistrict_id: string
+          fetched_at: string
+          id: string
+          origin_subdistrict_id: string
+          services: Json
+          weight_bucket: number
+        }
+        Insert: {
+          couriers: string
+          created_at?: string
+          destination_subdistrict_id: string
+          fetched_at?: string
+          id?: string
+          origin_subdistrict_id: string
+          services: Json
+          weight_bucket: number
+        }
+        Update: {
+          couriers?: string
+          created_at?: string
+          destination_subdistrict_id?: string
+          fetched_at?: string
+          id?: string
+          origin_subdistrict_id?: string
+          services?: Json
+          weight_bucket?: number
         }
         Relationships: []
       }

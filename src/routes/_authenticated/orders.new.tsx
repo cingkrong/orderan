@@ -185,12 +185,13 @@ function OrderForm({ existingId }: { existingId?: string }) {
   });
 
   // Shipping cost
-  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; etd: string }>>([]);
+  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; etd: string; custom?: boolean }>>([]);
   const [loadingCost, setLoadingCost] = useState(false);
+  const [costCached, setCostCached] = useState(false);
 
-  async function calcShipping() {
-    if (!form.destination_subdistrict_id) return toast.error("Pilih tujuan dulu");
-    if (!weight) return toast.error("Tambah produk dulu");
+  async function calcShipping(force = false) {
+    if (!form.destination_subdistrict_id) return;
+    if (!weight) return;
     const wh = warehousesQ.data?.find((w: any) => w.id === form.warehouse_id) as any;
     setLoadingCost(true);
     try {
@@ -198,18 +199,29 @@ function OrderForm({ existingId }: { existingId?: string }) {
         data: {
           destination_subdistrict_id: form.destination_subdistrict_id,
           weight_g: weight,
-          courier: form.courier || "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana",
+          courier: "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana",
           origin_subdistrict_id: wh?.origin_subdistrict_id ?? null,
+          force_refresh: force,
         },
       });
       setServices(r.services);
-      if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
+      setCostCached(!!r.cached);
+      if (force) toast.success("Ongkir diperbarui");
+      else if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal");
     } finally {
       setLoadingCost(false);
     }
   }
+
+  // Auto-calculate when destination + weight + warehouse are set (debounced)
+  useEffect(() => {
+    if (!form.destination_subdistrict_id || !weight || !form.warehouse_id) return;
+    const t = setTimeout(() => { void calcShipping(false); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.destination_subdistrict_id, weight, form.warehouse_id]);
 
   const mut = useMutation({
     mutationFn: (payload: OrderInput) => save({ data: payload }),
@@ -505,7 +517,11 @@ function OrderForm({ existingId }: { existingId?: string }) {
             <h2 className="font-semibold mb-4">Pelanggan</h2>
             <div className="space-y-3">
               <div>
-                <Label>Telepon<span className="text-destructive">*</span></Label>
+                <Label>Nama pemesan<span className="text-destructive">*</span></Label>
+                <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Telepon pemesan<span className="text-destructive">*</span></Label>
                 <Input
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -513,10 +529,24 @@ function OrderForm({ existingId }: { existingId?: string }) {
                   placeholder="0812..."
                 />
               </div>
-              <div>
-                <Label>Nama pemesan<span className="text-destructive">*</span></Label>
-                <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
+
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Switch id="same" checked={sameRecipient} onCheckedChange={setSameRecipient} />
+                <Label htmlFor="same" className="cursor-pointer">Penerima sama dengan pemesan</Label>
               </div>
+
+              {!sameRecipient && (
+                <div className="space-y-3 rounded-md border p-3 bg-muted/30">
+                  <div>
+                    <Label>Nama penerima<span className="text-destructive">*</span></Label>
+                    <Input value={form.recipient_name ?? ""} onChange={(e) => setForm({ ...form, recipient_name: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Telepon penerima</Label>
+                    <Input value={form.recipient_phone ?? ""} onChange={(e) => setForm({ ...form, recipient_phone: e.target.value })} />
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -544,23 +574,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <Card className="p-5">
             <h2 className="font-semibold mb-4">Pengiriman</h2>
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Switch id="same" checked={sameRecipient} onCheckedChange={setSameRecipient} />
-                <Label htmlFor="same" className="cursor-pointer">Penerima sama dengan pemesan</Label>
-              </div>
 
-              {!sameRecipient && (
-                <div className="space-y-3 rounded-md border p-3 bg-muted/30">
-                  <div>
-                    <Label>Nama penerima<span className="text-destructive">*</span></Label>
-                    <Input value={form.recipient_name ?? ""} onChange={(e) => setForm({ ...form, recipient_name: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Telepon penerima</Label>
-                    <Input value={form.recipient_phone ?? ""} onChange={(e) => setForm({ ...form, recipient_phone: e.target.value })} />
-                  </div>
-                </div>
-              )}
 
               <div>
                 <Label>Alamat lengkap<span className="text-destructive">*</span></Label>
@@ -642,41 +656,61 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
 
               <div>
-                <Label>Kurir</Label>
-                <div className="flex gap-2">
-                  <Select value={form.courier ?? ""} onValueChange={(v) => setForm({ ...form, courier: v, service: "", shipping_cost: 0, eta: "" })}>
-                    <SelectTrigger><SelectValue placeholder="Pilih kurir" /></SelectTrigger>
-                    <SelectContent>
-                      {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" onClick={calcShipping} disabled={loadingCost}>
-                    {loadingCost ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />}
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="mb-0">Pilih Ekspedisi</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void calcShipping(true)}
+                    disabled={loadingCost || !form.destination_subdistrict_id || !weight}
+                    className="h-7 text-xs"
+                  >
+                    {loadingCost ? <Loader2 className="size-3 animate-spin mr-1" /> : <Truck className="size-3 mr-1" />}
+                    {costCached ? "Perbarui" : "Refresh"}
                   </Button>
                 </div>
+                {!form.destination_subdistrict_id && (
+                  <p className="text-xs text-muted-foreground">Pilih tujuan dulu untuk menghitung ongkir</p>
+                )}
+                {form.destination_subdistrict_id && !weight && (
+                  <p className="text-xs text-muted-foreground">Tambah produk dulu (berat = 0)</p>
+                )}
+                {loadingCost && services.length === 0 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="size-3 animate-spin" /> Menghitung ongkir…</p>
+                )}
+                {costCached && services.length > 0 && (
+                  <p className="text-xs text-muted-foreground mb-1">Dari cache · klik Perbarui untuk cek ulang</p>
+                )}
+                {services.length > 0 && (
+                  <div className="space-y-1 max-h-64 overflow-auto">
+                    {services.map((s) => (
+                      <button
+                        key={s.service}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, service: s.service, courier: s.custom ? "custom" : (f.courier || "jne"), shipping_cost: s.value, eta: s.etd }))}
+                        className={`w-full text-left border rounded-md p-2 hover:bg-accent transition text-sm ${
+                          form.service === s.service ? "border-primary bg-primary/5" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">
+                            {s.service} {s.custom && <span className="text-[10px] bg-warning/20 text-warning-foreground px-1 rounded ml-1">CUSTOM</span>}
+                          </div>
+                          <div className="font-mono text-sm">{formatIDR(s.value)}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{s.description}{s.etd ? ` · ${s.etd} hari` : ""}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {services.length > 0 && (
-                <div className="space-y-1 max-h-52 overflow-auto">
-                  {services.map((s) => (
-                    <button
-                      key={s.service}
-                      onClick={() => setForm((f) => ({ ...f, service: s.service, shipping_cost: s.value, eta: s.etd }))}
-                      className={`w-full text-left border rounded-md p-2 hover:bg-accent transition text-sm ${
-                        form.service === s.service ? "border-primary bg-primary/5" : ""
-                      }`}
-                    >
-                      <div className="font-medium">{s.service} <span className="text-xs text-muted-foreground">({s.description})</span></div>
-                      <div className="text-xs">{formatIDR(s.value)} · {s.etd} hari</div>
-                    </button>
-                  ))}
-                </div>
-              )}
 
               <div>
-                <Label>Ongkir (Rp)</Label>
+                <Label>Ongkir final (Rp)</Label>
                 <Input type="number" value={form.shipping_cost} onChange={(e) => setForm({ ...form, shipping_cost: Number(e.target.value) })} />
               </div>
+
 
               <div>
                 <Label>No. Resi</Label>

@@ -36,11 +36,14 @@ export const STATUS_TONE: Record<string, string> = {
 };
 
 export const SOURCES = ["WA", "Shopee", "FB Ads", "TikTok", "Affiliate", "Other"] as const;
-export const COURIERS = ["jne", "jnt", "sicepat", "pos", "tiki"] as const;
+export const COURIERS = ["jne", "jnt", "sicepat", "pos", "tiki", "anteraja", "ide", "wahana"] as const;
 export const COURIER_LABEL: Record<string, string> = {
   jne: "JNE",
   jnt: "J&T",
   sicepat: "SiCepat",
   pos: "POS Indonesia",
   tiki: "TIKI",
+  anteraja: "AnterAja",
+  ide: "ID Express",
+  wahana: "Wahana",
 };

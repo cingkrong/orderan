@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const RO_BASE = "https://rajaongkir.komerce.id/api/v1";
 const DEFAULT_COURIERS = "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana";
+const CACHE_TTL_HOURS = 24;
 
 async function rajaongkir(
   path: string,
@@ -46,7 +47,6 @@ async function rajaongkir(
   }
   const code = json.meta?.code ?? res.status;
   const msg = json.meta?.message ?? "";
-  // V2 returns 400 with "... not found" when search has zero results — treat as empty
   if (code === 400 && /not found/i.test(msg)) {
     return { meta: json.meta, data: [] };
   }
@@ -101,6 +101,21 @@ export const searchDestinations = createServerFn({ method: "POST" })
     return rows.map(toDestination);
   });
 
+export type ShippingService = {
+  service: string;
+  courier_code: string;
+  courier_name: string;
+  description: string;
+  value: number;
+  etd: string;
+  custom?: boolean;
+};
+
+// bucket weight to 100g so nearby weights hit the same cache row
+function bucketWeight(w: number) {
+  return Math.max(1, Math.ceil(Math.max(1, w) / 100) * 100);
+}
+
 export const getShippingCost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -110,46 +125,110 @@ export const getShippingCost = createServerFn({ method: "POST" })
         weight_g: z.number().int().min(1),
         courier: z.string().min(1).default(DEFAULT_COURIERS),
         origin_subdistrict_id: z.string().nullable().optional(),
+        force_refresh: z.boolean().default(false),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    let origin = data.origin_subdistrict_id ?? "";
-    if (!origin) {
-      const { data: settings, error: serr } = await context.supabase
-        .from("settings")
-        .select("origin_subdistrict_id")
-        .eq("id", 1)
+    // Load settings once for origin fallback + active/custom couriers
+    const { data: settings } = await context.supabase
+      .from("settings")
+      .select("origin_subdistrict_id, active_couriers, custom_couriers")
+      .eq("id", 1)
+      .maybeSingle();
+
+    const origin = data.origin_subdistrict_id || settings?.origin_subdistrict_id || "";
+    if (!origin) throw new Error("Pilih gudang asal atau set origin di Pengaturan");
+
+    const active: string[] = Array.isArray(settings?.active_couriers) && settings!.active_couriers.length > 0
+      ? settings!.active_couriers
+      : DEFAULT_COURIERS.split(":");
+    // Intersect requested courier list with active
+    const requested = data.courier.split(":").map((c) => c.trim().toLowerCase()).filter(Boolean);
+    const courierList = requested.filter((c) => active.includes(c));
+    const couriers = (courierList.length > 0 ? courierList : active).join(":");
+
+    const bucket = bucketWeight(data.weight_g);
+    const cacheKey = { origin, dest: data.destination_subdistrict_id, bucket, couriers };
+
+    // Try cache
+    let services: ShippingService[] = [];
+    let cached = false;
+    if (!data.force_refresh) {
+      const { data: hit } = await context.supabase
+        .from("shipping_rate_cache")
+        .select("services, fetched_at")
+        .eq("origin_subdistrict_id", cacheKey.origin)
+        .eq("destination_subdistrict_id", cacheKey.dest)
+        .eq("weight_bucket", cacheKey.bucket)
+        .eq("couriers", cacheKey.couriers)
         .maybeSingle();
-      if (serr) throw new Error(serr.message);
-      origin = settings?.origin_subdistrict_id ?? "";
+      if (hit && hit.fetched_at) {
+        const ageMs = Date.now() - new Date(hit.fetched_at).getTime();
+        if (ageMs < CACHE_TTL_HOURS * 3600_000) {
+          services = (hit.services as ShippingService[]) ?? [];
+          cached = true;
+        }
+      }
     }
-    if (!origin) {
-      throw new Error("Pilih gudang asal atau set origin di Pengaturan");
+
+    if (!cached) {
+      const body = new URLSearchParams({
+        origin,
+        destination: data.destination_subdistrict_id,
+        weight: String(Math.max(1, data.weight_g)),
+        courier: couriers,
+      }).toString();
+      const r = await rajaongkir("/calculate/domestic-cost", { method: "POST", body });
+      const rows = Array.isArray(r.data) ? (r.data as Array<Record<string, unknown>>) : [];
+      services = rows.map((row) => {
+        const code = String(row.code ?? row.courier ?? "").toLowerCase();
+        const name = String(row.name ?? row.courier_name ?? code.toUpperCase());
+        const service = String(row.service ?? "");
+        const description = String(row.description ?? "");
+        const value = Number(row.cost ?? 0);
+        const etd = String(row.etd ?? "");
+        return {
+          service: `${code.toUpperCase()} ${service}`.trim(),
+          courier_code: code,
+          courier_name: name,
+          description: description || service,
+          value,
+          etd,
+        };
+      });
+      // Persist cache (upsert)
+      await context.supabase
+        .from("shipping_rate_cache")
+        .upsert(
+          {
+            origin_subdistrict_id: cacheKey.origin,
+            destination_subdistrict_id: cacheKey.dest,
+            weight_bucket: cacheKey.bucket,
+            couriers: cacheKey.couriers,
+            services,
+            fetched_at: new Date().toISOString(),
+          },
+          { onConflict: "origin_subdistrict_id,destination_subdistrict_id,weight_bucket,couriers" },
+        );
     }
-    const body = new URLSearchParams({
-      origin,
-      destination: data.destination_subdistrict_id,
-      weight: String(Math.max(1, data.weight_g)),
-      courier: data.courier,
-    }).toString();
-    const r = await rajaongkir("/calculate/domestic-cost", { method: "POST", body });
-    const rows = Array.isArray(r.data) ? (r.data as Array<Record<string, unknown>>) : [];
-    const services = rows.map((row) => {
-      const code = String(row.code ?? row.courier ?? "").toLowerCase();
-      const name = String(row.name ?? row.courier_name ?? code.toUpperCase());
-      const service = String(row.service ?? "");
-      const description = String(row.description ?? "");
-      const value = Number(row.cost ?? 0);
-      const etd = String(row.etd ?? "");
-      return {
-        service: `${code.toUpperCase()} ${service}`.trim(),
-        courier_code: code,
+
+    // Append custom couriers from settings (always available, no API cost)
+    const customs = Array.isArray(settings?.custom_couriers) ? (settings!.custom_couriers as Array<any>) : [];
+    for (const c of customs) {
+      const name = String(c?.name ?? "").trim();
+      const price = Number(c?.price ?? 0);
+      if (!name || price < 0) continue;
+      services.push({
+        service: name,
+        courier_code: "custom",
         courier_name: name,
-        description: description || service,
-        value,
-        etd,
-      };
-    });
-    return { services };
+        description: c?.description ?? "Custom",
+        value: price,
+        etd: c?.etd ?? "-",
+        custom: true,
+      });
+    }
+
+    return { services, cached };
   });
