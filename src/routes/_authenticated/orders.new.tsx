@@ -93,6 +93,17 @@ function OrderForm({ existingId }: { existingId?: string }) {
 
   const [form, setForm] = useState<OrderInput>(emptyForm);
   const [sameRecipient, setSameRecipient] = useState(true);
+  const quickCreate = useServerFn(quickCreateProduct);
+  const { unit: weightUnit, toDisplay: wDisplay, toGrams: wGrams } = useWeightUnit();
+
+  // Per-item flags for "Item custom → Simpan ke katalog"
+  type SaveCatalogEntry = { enabled: boolean; useColor: boolean; useSize: boolean; color: string; size: string };
+  const [saveCatalog, setSaveCatalog] = useState<Record<number, SaveCatalogEntry>>({});
+  const getSaveEntry = (idx: number): SaveCatalogEntry =>
+    saveCatalog[idx] ?? { enabled: false, useColor: false, useSize: false, color: "", size: "" };
+  const patchSaveEntry = (idx: number, patch: Partial<SaveCatalogEntry>) =>
+    setSaveCatalog((s) => ({ ...s, [idx]: { ...getSaveEntry(idx), ...patch } }));
+
 
   // Set default warehouse on load
   useEffect(() => {
