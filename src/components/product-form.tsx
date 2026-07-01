@@ -156,6 +156,8 @@ export function ProductForm({ id }: { id?: string }) {
           weight_g: f.variants[0]?.weight_g ?? 0,
           stock: 0,
           is_default: false,
+          image_url: null,
+
         },
       ],
     }));
