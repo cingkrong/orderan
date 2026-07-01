@@ -469,14 +469,18 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <SelectContent>
                   {(productsQ.data ?? []).map((p: any) => {
                     const vc = (p.variants ?? []).length;
+                    const inStock = productHasStock(p);
+                    const totalStock = (p.variants ?? []).reduce((s: number, v: any) => s + Number(v.stock ?? 0), 0);
                     return (
-                      <SelectItem key={p.id} value={p.id}>
+                      <SelectItem key={p.id} value={p.id} disabled={!inStock}>
                         {p.name}{vc > 1 ? ` · ${vc} variasi` : ""}
+                        {!inStock ? " · Stok habis" : isPreorder(p) ? " · PO" : ` · stok ${totalStock}`}
                       </SelectItem>
                     );
                   })}
                 </SelectContent>
               </Select>
+
               <div className="relative flex-1 min-w-[220px]">
                 <ScanBarcode className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
