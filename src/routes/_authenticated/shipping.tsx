@@ -94,6 +94,13 @@ function ShippingPage() {
                       <Link to="/orders/$id" params={{ id: o.id }} className="font-mono text-xs hover:underline">
                         {o.order_number}
                       </Link>
+                      {((o as any).label_print_count ?? 0) > 0 && (
+                        <div className="mt-1">
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+                            Label ✓ {(o as any).label_print_count}×
+                          </Badge>
+                        </div>
+                      )}
                     </td>
                     <td className="p-3">
                       <div>{o.customer_name}</div>
@@ -109,13 +116,23 @@ function ShippingPage() {
                       />
                     </td>
                     <td className="p-3">
-                      <Button
-                        size="sm"
-                        disabled={!pending[o.id] || mut.isPending}
-                        onClick={() => mut.mutate({ id: o.id, value: pending[o.id] })}
-                      >
-                        Save & Ship
-                      </Button>
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate({ to: "/labels", search: { ids: o.id } as any })}
+                        >
+                          <Printer className="size-4 mr-1" />
+                          {((o as any).label_print_count ?? 0) > 0 ? "Ulang" : "Label"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={!pending[o.id] || mut.isPending}
+                          onClick={() => mut.mutate({ id: o.id, value: pending[o.id] })}
+                        >
+                          Simpan
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
