@@ -109,6 +109,9 @@ export function ProductForm({ id }: { id?: string }) {
         id: v.id,
         label: v.label.trim() || `Variasi ${idx + 1}`,
         sku: v.sku || null,
+        color: v.color || null,
+        size: v.size || null,
+        image_url: v.image_url,
         price: Number(v.price) || 0,
         cost: Number(v.cost) || 0,
         weight_g: Number(v.weight_g) || 0,
@@ -116,6 +119,7 @@ export function ProductForm({ id }: { id?: string }) {
         is_default: v.is_default,
         sort_order: idx,
       }));
+
       const def = variants.find((v) => v.is_default) ?? variants[0];
       return upsert({
         data: {
