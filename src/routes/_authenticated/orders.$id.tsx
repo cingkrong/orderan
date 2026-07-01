@@ -225,8 +225,11 @@ function OrderDetail() {
               <Printer className="size-4 mr-1" /> Buka halaman label
             </Button>
           </Card>
+
+          <OrderHistoryCard orderId={id} />
         </div>
       </div>
+
 
       {/* Print-only label */}
       {s && (
