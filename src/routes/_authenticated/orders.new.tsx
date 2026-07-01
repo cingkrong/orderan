@@ -620,15 +620,82 @@ function OrderForm({ existingId }: { existingId?: string }) {
                       <Input type="number" value={it.price} onChange={(e) => updateItem(idx, { price: Number(e.target.value) })} />
                     </div>
                     <div className="col-span-4 sm:col-span-1">
-                      <Label className="text-xs">Berat (g)</Label>
-                      <Input type="number" value={it.weight_g} onChange={(e) => updateItem(idx, { weight_g: Number(e.target.value) })} />
+                      <Label className="text-xs">Berat ({weightUnit})</Label>
+                      <Input
+                        type="number"
+                        step={weightUnit === "kg" ? "0.001" : "1"}
+                        value={wDisplay(it.weight_g)}
+                        onChange={(e) => updateItem(idx, { weight_g: wGrams(Number(e.target.value)) })}
+                      />
                     </div>
                     <div className="col-span-2 sm:col-span-1 flex justify-end">
                       <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
                         <Trash2 className="size-4" />
                       </Button>
                     </div>
+                    {!it.product_id && (() => {
+                      const entry = getSaveEntry(idx);
+                      return (
+                        <div className="col-span-12 rounded-md border border-dashed bg-muted/30 p-3 space-y-2">
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={entry.enabled}
+                              onCheckedChange={(v) => patchSaveEntry(idx, { enabled: !!v })}
+                            />
+                            <span>Simpan sebagai produk baru ke katalog</span>
+                          </label>
+                          {entry.enabled && (
+                            <div className="pl-6 space-y-2">
+                              <div className="flex flex-wrap gap-4 text-sm">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <Checkbox
+                                    checked={entry.useColor}
+                                    onCheckedChange={(v) => patchSaveEntry(idx, { useColor: !!v })}
+                                  />
+                                  <span>Tambah warna</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <Checkbox
+                                    checked={entry.useSize}
+                                    onCheckedChange={(v) => patchSaveEntry(idx, { useSize: !!v })}
+                                  />
+                                  <span>Tambah ukuran</span>
+                                </label>
+                              </div>
+                              {(entry.useColor || entry.useSize) && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {entry.useColor && (
+                                    <div>
+                                      <Label className="text-xs">Warna</Label>
+                                      <Input
+                                        value={entry.color}
+                                        placeholder="cth. Merah"
+                                        onChange={(e) => patchSaveEntry(idx, { color: e.target.value })}
+                                      />
+                                    </div>
+                                  )}
+                                  {entry.useSize && (
+                                    <div>
+                                      <Label className="text-xs">Ukuran</Label>
+                                      <Input
+                                        value={entry.size}
+                                        placeholder="cth. XL"
+                                        onChange={(e) => patchSaveEntry(idx, { size: e.target.value })}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Nama, harga, modal, dan berat item akan tersimpan otomatis. Stok awal = qty pada baris ini.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
+
                 );
               })}
             </div>
