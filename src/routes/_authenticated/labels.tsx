@@ -100,38 +100,49 @@ function LabelsPage() {
       )}
 
       <div className="label-sheet flex flex-wrap gap-4 justify-center">
-        {(ordersQ.data?.orders ?? []).map((o) => (
-          <ShippingLabel
-            key={o.id}
-            data={{
-              order_number: o.order_number ?? "",
-              customer_name: o.customer_name,
-              phone: o.phone,
-              full_address: o.full_address,
-              city: o.city,
-              postal_code: o.postal_code,
-              courier: o.courier,
-              service: o.service,
-              tracking_number: o.tracking_number,
-              weight_g: o.weight_g,
-              insurance: o.insurance,
-              routing_code: o.routing_code,
-              note: o.note,
-              items: itemsByOrder.get(o.id) ?? [],
-              is_dropship: (o as any).is_dropship ?? false,
-              dropship_name: (o as any).dropship_name,
-              dropship_phone: (o as any).dropship_phone,
-              sender: {
-                name: s?.sender_name ?? "",
-                phone: s?.sender_phone ?? "",
-                city: s?.sender_city ?? "",
-                address: s?.sender_address ?? "",
-                logo_url: s?.logo_url ?? null,
-              },
-            }}
-          />
-        ))}
+        {orders.map((o) => {
+          const count = (o as any).label_print_count ?? 0;
+          const printedAt = (o as any).label_printed_at;
+          return (
+            <div key={o.id} className="relative">
+              {count > 0 && (
+                <Badge variant="secondary" className="no-print absolute -top-2 -right-2 z-10">
+                  Dicetak {count}× {printedAt && `· ${format(new Date(printedAt), "dd MMM HH:mm", { locale: idLocale })}`}
+                </Badge>
+              )}
+              <ShippingLabel
+                data={{
+                  order_number: o.order_number ?? "",
+                  customer_name: o.customer_name,
+                  phone: o.phone,
+                  full_address: o.full_address,
+                  city: o.city,
+                  postal_code: o.postal_code,
+                  courier: o.courier,
+                  service: o.service,
+                  tracking_number: o.tracking_number,
+                  weight_g: o.weight_g,
+                  insurance: o.insurance,
+                  routing_code: o.routing_code,
+                  note: o.note,
+                  items: itemsByOrder.get(o.id) ?? [],
+                  is_dropship: (o as any).is_dropship ?? false,
+                  dropship_name: (o as any).dropship_name,
+                  dropship_phone: (o as any).dropship_phone,
+                  sender: {
+                    name: s?.sender_name ?? "",
+                    phone: s?.sender_phone ?? "",
+                    city: s?.sender_city ?? "",
+                    address: s?.sender_address ?? "",
+                    logo_url: s?.logo_url ?? null,
+                  },
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
+
     </div>
   );
 }
