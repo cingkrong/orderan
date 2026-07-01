@@ -5,12 +5,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const periodInput = z.object({
   from: z.string(),
   to: z.string(),
+  statuses: z.array(z.string()).optional(),
+  paymentStatuses: z.array(z.string()).optional(),
 });
 
 type OrderRow = {
   id: string;
   created_at: string;
   status: string;
+  payment_status: string | null;
   source: string | null;
   campaign: string | null;
   subtotal: number | string;
@@ -40,16 +43,21 @@ async function loadPeriod(
   supabase: { from: (t: string) => any },
   from: string,
   to: string,
+  statuses?: string[],
+  paymentStatuses?: string[],
 ): Promise<{ orders: OrderRow[]; items: ItemRow[]; expenses: ExpenseRow[] }> {
   const fromISO = `${from}T00:00:00.000Z`;
   const toISO = `${to}T23:59:59.999Z`;
 
-  const { data: orders, error: oe } = await supabase
+  let q = supabase
     .from("orders")
-    .select("id, created_at, status, source, campaign, subtotal, discount, marketplace_fee, shipping_cost, total")
+    .select("id, created_at, status, payment_status, source, campaign, subtotal, discount, marketplace_fee, shipping_cost, total")
     .gte("created_at", fromISO)
-    .lte("created_at", toISO)
-    .neq("status", "cancelled");
+    .lte("created_at", toISO);
+  if (statuses && statuses.length > 0) q = q.in("status", statuses);
+  else q = q.neq("status", "cancelled");
+  if (paymentStatuses && paymentStatuses.length > 0) q = q.in("payment_status", paymentStatuses);
+  const { data: orders, error: oe } = await q;
   if (oe) throw new Error(oe.message);
 
   const ids = (orders ?? []).map((o: OrderRow) => o.id);
@@ -79,7 +87,7 @@ export const pnlSummary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => periodInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const cogsMap: Record<string, number> = {};
     for (const it of items) cogsMap[it.order_id] = (cogsMap[it.order_id] ?? 0) + num(it.cost) * it.qty;
 
@@ -122,7 +130,7 @@ export const pnlTrend = createServerFn({ method: "POST" })
     periodInput.extend({ bucket: z.enum(["day", "month"]).default("day") }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const cogsMap: Record<string, number> = {};
     for (const it of items) cogsMap[it.order_id] = (cogsMap[it.order_id] ?? 0) + num(it.cost) * it.qty;
 
@@ -155,7 +163,7 @@ export const pnlByProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => periodInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { items } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { items } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const agg: Record<string, { name: string; qty: number; revenue: number; cogs: number }> = {};
     for (const it of items) {
       const k = it.product_id ?? it.name;
@@ -177,7 +185,7 @@ export const pnlBySource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => periodInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to);
+    const { orders, items, expenses } = await loadPeriod(context.supabase as any, data.from, data.to, data.statuses, data.paymentStatuses);
     const cogsMap: Record<string, number> = {};
     for (const it of items) cogsMap[it.order_id] = (cogsMap[it.order_id] ?? 0) + num(it.cost) * it.qty;
 
@@ -212,3 +220,57 @@ export const pnlBySource = createServerFn({ method: "POST" })
       })
       .sort((a, b) => b.net_profit - a.net_profit);
   });
+
+// Breakdown by status — always ignores the statuses filter, but honors date range
+// and paymentStatuses. Useful to see "pending / processing / shipped / delivered / cancelled"
+// side-by-side (e.g. omzet tertunda vs terkonfirmasi).
+export const revenueBreakdown = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => periodInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const fromISO = `${data.from}T00:00:00.000Z`;
+    const toISO = `${data.to}T23:59:59.999Z`;
+
+    let q = (context.supabase as any)
+      .from("orders")
+      .select("id, status, payment_status, subtotal, discount, marketplace_fee")
+      .gte("created_at", fromISO)
+      .lte("created_at", toISO);
+    if (data.paymentStatuses && data.paymentStatuses.length > 0) {
+      q = q.in("payment_status", data.paymentStatuses);
+    }
+    const { data: orders, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const ids = (orders ?? []).map((o: any) => o.id);
+    let items: ItemRow[] = [];
+    if (ids.length) {
+      const { data: it, error: ie } = await (context.supabase as any)
+        .from("order_items")
+        .select("order_id, product_id, name, qty, price, cost")
+        .in("order_id", ids);
+      if (ie) throw new Error(ie.message);
+      items = it ?? [];
+    }
+    const cogsMap: Record<string, number> = {};
+    for (const it of items) cogsMap[it.order_id] = (cogsMap[it.order_id] ?? 0) + num(it.cost) * it.qty;
+
+    const agg: Record<string, { status: string; orders: number; revenue: number; cogs: number; fee: number }> = {};
+    for (const o of orders ?? []) {
+      const key = String(o.status ?? "unknown");
+      const cur = (agg[key] ??= { status: key, orders: 0, revenue: 0, cogs: 0, fee: 0 });
+      cur.orders += 1;
+      cur.revenue += num(o.subtotal) - num(o.discount);
+      cur.cogs += cogsMap[o.id] ?? 0;
+      cur.fee += num(o.marketplace_fee);
+    }
+    return Object.values(agg)
+      .map((r) => ({
+        status: r.status,
+        orders: r.orders,
+        revenue: r.revenue,
+        gross_profit: r.revenue - r.cogs - r.fee,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+  });
+
