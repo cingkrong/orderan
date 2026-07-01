@@ -13,6 +13,7 @@ const orderStatus = z.enum([
 
 const itemSchema = z.object({
   product_id: z.string().uuid().nullable().optional(),
+  variant_id: z.string().uuid().nullable().optional(),
   name: z.string().min(1),
   variant: z.string().nullable().optional(),
   qty: z.number().int().min(1),
@@ -186,10 +187,12 @@ export const saveOrder = createServerFn({ method: "POST" })
     const itemRows = items.map((it) => ({
       order_id: orderId!,
       product_id: it.product_id ?? null,
+      variant_id: it.variant_id ?? null,
       name: it.name,
       variant: it.variant ?? null,
       qty: it.qty,
       price: it.price,
+      cost: it.cost ?? 0,
       weight_g: it.weight_g,
     }));
     const { error: ierr } = await context.supabase.from("order_items").insert(itemRows);

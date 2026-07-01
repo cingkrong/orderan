@@ -114,6 +114,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
         dropship_phone: (order as any).dropship_phone ?? "",
         items: items.map((i) => ({
           product_id: i.product_id,
+          variant_id: (i as any).variant_id ?? null,
           name: i.name,
           variant: i.variant,
           qty: i.qty,
@@ -209,22 +210,40 @@ function OrderForm({ existingId }: { existingId?: string }) {
   }
 
   function addItem(productId?: string) {
-    const p = productsQ.data?.find((x) => x.id === productId);
+    const p = productId ? productsQ.data?.find((x: any) => x.id === productId) : undefined;
+    const variants: any[] = (p as any)?.variants ?? [];
+    const def = variants.find((v) => v.is_default) ?? variants[0];
     setForm((f) => ({
       ...f,
       items: [
         ...f.items,
         {
           product_id: p?.id ?? null,
+          variant_id: def?.id ?? null,
           name: p?.name ?? "",
-          variant: p?.variant ?? "",
+          variant: def?.label ?? "",
           qty: 1,
-          price: p ? Number(p.price) : 0,
-          cost: p ? Number((p as any).cost ?? 0) : 0,
-          weight_g: p?.weight_g ?? 0,
+          price: def ? Number(def.price) : p ? Number(p.price) : 0,
+          cost: def ? Number(def.cost) : p ? Number((p as any).cost ?? 0) : 0,
+          weight_g: def ? Number(def.weight_g) : p?.weight_g ?? 0,
         },
       ],
     }));
+  }
+
+  function pickVariant(idx: number, variantId: string) {
+    const item = form.items[idx];
+    if (!item?.product_id) return;
+    const p = productsQ.data?.find((x: any) => x.id === item.product_id) as any;
+    const v = (p?.variants ?? []).find((x: any) => x.id === variantId);
+    if (!v) return;
+    updateItem(setForm, idx, {
+      variant_id: v.id,
+      variant: v.label,
+      price: Number(v.price),
+      cost: Number(v.cost),
+      weight_g: Number(v.weight_g),
+    });
   }
 
   if (existingId && existingQ.isLoading) return <Skeleton className="h-96" />;
@@ -407,16 +426,26 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <Select onValueChange={addItem}>
             <SelectTrigger className="w-[260px]"><SelectValue placeholder="Tambah produk…" /></SelectTrigger>
             <SelectContent>
-              {(productsQ.data ?? []).map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}{p.variant ? ` · ${p.variant}` : ""}</SelectItem>
-              ))}
+              {(productsQ.data ?? []).map((p: any) => {
+                const vc = (p.variants ?? []).length;
+                return (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{vc > 1 ? ` · ${vc} variasi` : ""}
+                  </SelectItem>
+                );
+              })}
               <SelectItem value="__custom">+ Item custom</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
           {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Belum ada item</p>}
-          {form.items.map((it, idx) => (
+          {form.items.map((it, idx) => {
+            const product = it.product_id
+              ? (productsQ.data as any[] | undefined)?.find((x) => x.id === it.product_id)
+              : null;
+            const variants: any[] = product?.variants ?? [];
+            return (
             <div key={idx} className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-12 sm:col-span-3">
                 <Label className="text-xs">Nama</Label>
@@ -424,7 +453,20 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
               <div className="col-span-6 sm:col-span-2">
                 <Label className="text-xs">Varian</Label>
-                <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
+                {variants.length > 0 ? (
+                  <Select value={it.variant_id ?? ""} onValueChange={(v) => pickVariant(idx, v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih varian" /></SelectTrigger>
+                    <SelectContent>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.label} · {formatIDR(Number(v.price))}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
+                )}
               </div>
               <div className="col-span-3 sm:col-span-1">
                 <Label className="text-xs">Qty</Label>
@@ -451,7 +493,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 Profit item: <span className="font-mono">{formatIDR((it.price - (it.cost || 0)) * it.qty)}</span>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         <Button variant="outline" size="sm" onClick={() => addItem()}><Plus className="size-4 mr-1" />Tambah item custom</Button>
       </Card>
