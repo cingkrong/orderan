@@ -133,7 +133,9 @@ export const upsertProduct = createServerFn({ method: "POST" })
       stock: v.stock,
       is_default: v.is_default,
       sort_order: v.sort_order ?? idx,
+      image_url: v.image_url || null,
     }));
+
     const { error: upErr } = await context.supabase
       .from("product_variants")
       .upsert(rows);
