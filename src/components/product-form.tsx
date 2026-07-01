@@ -372,6 +372,15 @@ function VariantRow({
             <Input value={variant.sku} onChange={(e) => onChange({ sku: e.target.value })} />
           </div>
           <div>
+            <Label className="text-xs">Warna</Label>
+            <Input value={variant.color} onChange={(e) => onChange({ color: e.target.value })} placeholder="cth. Merah" />
+          </div>
+          <div>
+            <Label className="text-xs">Ukuran</Label>
+            <Input value={variant.size} onChange={(e) => onChange({ size: e.target.value })} placeholder="cth. L" />
+          </div>
+
+          <div>
             <Label className="text-xs">Harga jual (Rp)</Label>
             <Input type="number" value={variant.price} onChange={(e) => onChange({ price: Number(e.target.value) })} />
           </div>
