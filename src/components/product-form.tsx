@@ -93,6 +93,24 @@ const CATEGORIES = [
   "Lainnya",
 ];
 
+function slugPart(s: string, len = 4) {
+  return (s || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "")
+    .slice(0, len);
+}
+
+function generateSku(name: string, color: string, size: string, idx: number) {
+  const base = slugPart(name, 5) || "PRD";
+  const parts = [base];
+  const c = slugPart(color, 3);
+  const sz = slugPart(size, 3);
+  if (c) parts.push(c);
+  if (sz) parts.push(sz);
+  parts.push(String(idx + 1).padStart(2, "0"));
+  return parts.join("-");
+}
+
 function FormSection({
   title,
   hint,
@@ -170,7 +188,7 @@ export function ProductForm({ id }: { id?: string }) {
       const variants = form.variants.map((v, idx) => ({
         id: v.id,
         label: v.label.trim() || `Variasi ${idx + 1}`,
-        sku: v.sku || null,
+        sku: (v.sku && v.sku.trim()) || generateSku(form.name, v.color, v.size, idx),
         color: v.color || null,
         size: v.size || null,
         image_url: v.image_url,
@@ -374,6 +392,8 @@ export function ProductForm({ id }: { id?: string }) {
                 <VariantRow
                   key={v.id ?? `new-${idx}`}
                   variant={v}
+                  index={idx}
+                  productName={form.name}
                   onChange={(patch) => updateVariant(idx, patch)}
                   onSetDefault={() => setDefault(idx)}
                   onDuplicate={() => duplicateVariant(idx)}
@@ -545,12 +565,16 @@ export function ProductForm({ id }: { id?: string }) {
 
 function VariantRow({
   variant,
+  index,
+  productName,
   onChange,
   onSetDefault,
   onDuplicate,
   onRemove,
 }: {
   variant: VariantForm;
+  index: number;
+  productName: string;
   onChange: (patch: Partial<VariantForm>) => void;
   onSetDefault: () => void;
   onDuplicate: () => void;
@@ -681,7 +705,13 @@ function VariantRow({
             </Label>
             <Input
               value={variant.sku}
+              placeholder={generateSku(productName, variant.color, variant.size, index)}
               onChange={(e) => onChange({ sku: e.target.value })}
+              onBlur={() => {
+                if (!variant.sku.trim()) {
+                  onChange({ sku: generateSku(productName, variant.color, variant.size, index) });
+                }
+              }}
             />
           </div>
           <div>
