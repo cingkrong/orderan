@@ -244,6 +244,7 @@ function OrderDetail() {
                 service: order.service,
                 tracking_number: order.tracking_number,
                 weight_g: order.weight_g,
+                shipping_cost: (order as any).shipping_cost,
                 insurance: order.insurance,
                 routing_code: order.routing_code,
                 note: order.note,
