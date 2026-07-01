@@ -308,18 +308,60 @@ function OrderForm({ existingId }: { existingId?: string }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
 
-  function submit() {
+  async function submit() {
     if (form.items.length === 0) return toast.error("Tambahkan minimal satu produk");
     const parsed = z.string().min(3).safeParse(form.customer_name);
     if (!parsed.success) return toast.error("Nama pelanggan wajib diisi");
+
+    // Save any "Item custom → Simpan ke katalog" flagged items to the product catalog first.
+    let items = form.items;
+    try {
+      const nextItems = await Promise.all(
+        items.map(async (it, idx) => {
+          const entry = getSaveEntry(idx);
+          if (!entry.enabled || it.product_id) return it;
+          if (!it.name || !it.name.trim() || it.name === "Item custom") {
+            throw new Error(`Isi nama item baris ke-${idx + 1} sebelum menyimpan ke katalog`);
+          }
+          const color = entry.useColor ? entry.color.trim() : "";
+          const size = entry.useSize ? entry.size.trim() : "";
+          const res = await quickCreate({
+            data: {
+              name: it.name.trim(),
+              price: Number(it.price) || 0,
+              cost: Number(it.cost) || 0,
+              weight_g: Number(it.weight_g) || 0,
+              stock: Number(it.qty) || 0,
+              color: color || null,
+              size: size || null,
+            },
+          });
+          const variantLbl = [color, size].filter(Boolean).join(" / ") || "Default";
+          return { ...it, product_id: res.product_id, variant_id: res.variant_id, variant: variantLbl };
+        }),
+      );
+      items = nextItems;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan produk baru");
+      return;
+    }
+
+    if (items !== form.items) {
+      setForm((f) => ({ ...f, items }));
+      setSaveCatalog({});
+      qc.invalidateQueries({ queryKey: ["products"] });
+    }
+
     const payload: OrderInput = {
       ...form,
+      items,
       shipping_cost: Number(form.shipping_cost) || 0,
       recipient_name: sameRecipient ? "" : form.recipient_name,
       recipient_phone: sameRecipient ? "" : form.recipient_phone,
     };
     mut.mutate(payload);
   }
+
 
   // ---- item helpers ----
   function variantLabel(v: any): string {
