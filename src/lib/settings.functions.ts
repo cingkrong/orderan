@@ -31,7 +31,9 @@ const settingsSchema = z.object({
   logo_url: z.string().nullable(),
   active_couriers: z.array(z.string()).default([]),
   custom_couriers: z.array(customCourierSchema).default([]),
+  weight_unit: z.enum(["g", "kg"]).default("g"),
 });
+
 
 export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

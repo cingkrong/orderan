@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { saveOrder, getOrder, type OrderInput } from "@/lib/orders.functions";
-import { listProducts } from "@/lib/products.functions";
+import { listProducts, quickCreateProduct } from "@/lib/products.functions";
 import { getCustomerByPhone } from "@/lib/customers.functions";
 import { searchDestinations, getShippingCost, type Destination } from "@/lib/shipping.functions";
 import { listWarehouses } from "@/lib/warehouses.functions";
@@ -15,6 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useWeightUnit } from "@/hooks/use-weight-unit";
+
 import {
   Select,
   SelectContent,
@@ -90,6 +93,17 @@ function OrderForm({ existingId }: { existingId?: string }) {
 
   const [form, setForm] = useState<OrderInput>(emptyForm);
   const [sameRecipient, setSameRecipient] = useState(true);
+  const quickCreate = useServerFn(quickCreateProduct);
+  const { unit: weightUnit, toDisplay: wDisplay, toGrams: wGrams } = useWeightUnit();
+
+  // Per-item flags for "Item custom → Simpan ke katalog"
+  type SaveCatalogEntry = { enabled: boolean; useColor: boolean; useSize: boolean; color: string; size: string };
+  const [saveCatalog, setSaveCatalog] = useState<Record<number, SaveCatalogEntry>>({});
+  const getSaveEntry = (idx: number): SaveCatalogEntry =>
+    saveCatalog[idx] ?? { enabled: false, useColor: false, useSize: false, color: "", size: "" };
+  const patchSaveEntry = (idx: number, patch: Partial<SaveCatalogEntry>) =>
+    setSaveCatalog((s) => ({ ...s, [idx]: { ...getSaveEntry(idx), ...patch } }));
+
 
   // Set default warehouse on load
   useEffect(() => {
@@ -294,18 +308,60 @@ function OrderForm({ existingId }: { existingId?: string }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
 
-  function submit() {
+  async function submit() {
     if (form.items.length === 0) return toast.error("Tambahkan minimal satu produk");
     const parsed = z.string().min(3).safeParse(form.customer_name);
     if (!parsed.success) return toast.error("Nama pelanggan wajib diisi");
+
+    // Save any "Item custom → Simpan ke katalog" flagged items to the product catalog first.
+    let items = form.items;
+    try {
+      const nextItems = await Promise.all(
+        items.map(async (it, idx) => {
+          const entry = getSaveEntry(idx);
+          if (!entry.enabled || it.product_id) return it;
+          if (!it.name || !it.name.trim() || it.name === "Item custom") {
+            throw new Error(`Isi nama item baris ke-${idx + 1} sebelum menyimpan ke katalog`);
+          }
+          const color = entry.useColor ? entry.color.trim() : "";
+          const size = entry.useSize ? entry.size.trim() : "";
+          const res = await quickCreate({
+            data: {
+              name: it.name.trim(),
+              price: Number(it.price) || 0,
+              cost: Number(it.cost) || 0,
+              weight_g: Number(it.weight_g) || 0,
+              stock: Number(it.qty) || 0,
+              color: color || null,
+              size: size || null,
+            },
+          });
+          const variantLbl = [color, size].filter(Boolean).join(" / ") || "Default";
+          return { ...it, product_id: res.product_id, variant_id: res.variant_id, variant: variantLbl };
+        }),
+      );
+      items = nextItems;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan produk baru");
+      return;
+    }
+
+    if (items !== form.items) {
+      setForm((f) => ({ ...f, items }));
+      setSaveCatalog({});
+      qc.invalidateQueries({ queryKey: ["products"] });
+    }
+
     const payload: OrderInput = {
       ...form,
+      items,
       shipping_cost: Number(form.shipping_cost) || 0,
       recipient_name: sameRecipient ? "" : form.recipient_name,
       recipient_phone: sameRecipient ? "" : form.recipient_phone,
     };
     mut.mutate(payload);
   }
+
 
   // ---- item helpers ----
   function variantLabel(v: any): string {
@@ -564,15 +620,82 @@ function OrderForm({ existingId }: { existingId?: string }) {
                       <Input type="number" value={it.price} onChange={(e) => updateItem(idx, { price: Number(e.target.value) })} />
                     </div>
                     <div className="col-span-4 sm:col-span-1">
-                      <Label className="text-xs">Berat (g)</Label>
-                      <Input type="number" value={it.weight_g} onChange={(e) => updateItem(idx, { weight_g: Number(e.target.value) })} />
+                      <Label className="text-xs">Berat ({weightUnit})</Label>
+                      <Input
+                        type="number"
+                        step={weightUnit === "kg" ? "0.001" : "1"}
+                        value={wDisplay(it.weight_g)}
+                        onChange={(e) => updateItem(idx, { weight_g: wGrams(Number(e.target.value)) })}
+                      />
                     </div>
                     <div className="col-span-2 sm:col-span-1 flex justify-end">
                       <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
                         <Trash2 className="size-4" />
                       </Button>
                     </div>
+                    {!it.product_id && (() => {
+                      const entry = getSaveEntry(idx);
+                      return (
+                        <div className="col-span-12 rounded-md border border-dashed bg-muted/30 p-3 space-y-2">
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={entry.enabled}
+                              onCheckedChange={(v) => patchSaveEntry(idx, { enabled: !!v })}
+                            />
+                            <span>Simpan sebagai produk baru ke katalog</span>
+                          </label>
+                          {entry.enabled && (
+                            <div className="pl-6 space-y-2">
+                              <div className="flex flex-wrap gap-4 text-sm">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <Checkbox
+                                    checked={entry.useColor}
+                                    onCheckedChange={(v) => patchSaveEntry(idx, { useColor: !!v })}
+                                  />
+                                  <span>Tambah warna</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <Checkbox
+                                    checked={entry.useSize}
+                                    onCheckedChange={(v) => patchSaveEntry(idx, { useSize: !!v })}
+                                  />
+                                  <span>Tambah ukuran</span>
+                                </label>
+                              </div>
+                              {(entry.useColor || entry.useSize) && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {entry.useColor && (
+                                    <div>
+                                      <Label className="text-xs">Warna</Label>
+                                      <Input
+                                        value={entry.color}
+                                        placeholder="cth. Merah"
+                                        onChange={(e) => patchSaveEntry(idx, { color: e.target.value })}
+                                      />
+                                    </div>
+                                  )}
+                                  {entry.useSize && (
+                                    <div>
+                                      <Label className="text-xs">Ukuran</Label>
+                                      <Input
+                                        value={entry.size}
+                                        placeholder="cth. XL"
+                                        onChange={(e) => patchSaveEntry(idx, { size: e.target.value })}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Nama, harga, modal, dan berat item akan tersimpan otomatis. Stok awal = qty pada baris ini.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
+
                 );
               })}
             </div>

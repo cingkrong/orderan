@@ -22,6 +22,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Trash2, Star, Upload, X, Loader2, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { useWeightUnit } from "@/hooks/use-weight-unit";
+
 
 type VariantForm = {
   id?: string;
@@ -582,6 +584,8 @@ function VariantRow({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { unit, toDisplay, toGrams } = useWeightUnit();
+
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -691,14 +695,16 @@ function VariantRow({
             <div className="relative">
               <Input
                 type="number"
-                value={variant.weight_g}
-                onChange={(e) => onChange({ weight_g: Number(e.target.value) })}
+                step={unit === "kg" ? "0.001" : "1"}
+                value={toDisplay(variant.weight_g)}
+                onChange={(e) => onChange({ weight_g: toGrams(Number(e.target.value)) })}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                Gram
+                {unit === "kg" ? "Kg" : "Gram"}
               </span>
             </div>
           </div>
+
           <div>
             <Label className="text-xs">
               SKU<span className="text-destructive">*</span>

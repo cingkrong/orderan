@@ -138,9 +138,11 @@ export const upsertProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    // Upsert current
-    const rows = variants.map((v, idx) => ({
-      ...(v.id ? { id: v.id } : {}),
+    // Split into inserts (no id → let DB generate) vs updates (has id).
+    // NOTE: mixing rows with/without id in a single .upsert() causes PostgREST
+    // to send `id: null` for rows lacking the key, overriding the DB default
+    // gen_random_uuid() and violating the NOT NULL constraint.
+    const commonRow = (v: any, idx: number) => ({
       product_id: productId!,
       label: v.label,
       sku: v.sku || null,
@@ -154,14 +156,27 @@ export const upsertProduct = createServerFn({ method: "POST" })
       is_default: v.is_default,
       sort_order: v.sort_order ?? idx,
       image_url: v.image_url || null,
-    }));
+    });
 
+    const toInsert = variants
+      .map((v, idx) => ({ v, idx }))
+      .filter(({ v }) => !v.id)
+      .map(({ v, idx }) => commonRow(v, idx));
 
+    const toUpdate = variants
+      .map((v, idx) => ({ v, idx }))
+      .filter(({ v }) => !!v.id)
+      .map(({ v, idx }) => ({ id: v.id!, ...commonRow(v, idx) }));
 
-    const { error: upErr } = await context.supabase
-      .from("product_variants")
-      .upsert(rows);
-    if (upErr) throw new Error(upErr.message);
+    if (toInsert.length > 0) {
+      const { error } = await context.supabase.from("product_variants").insert(toInsert);
+      if (error) throw new Error(error.message);
+    }
+    if (toUpdate.length > 0) {
+      const { error } = await context.supabase.from("product_variants").upsert(toUpdate);
+      if (error) throw new Error(error.message);
+    }
+
 
     return { ok: true, id: productId };
   });
@@ -174,3 +189,60 @@ export const deleteProduct = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Quick-create product from the order form (Item custom → simpan ke katalog).
+// Creates one product with a single variant (optional color/size).
+export const quickCreateProduct = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      name: z.string().min(1),
+      category: z.string().nullable().optional(),
+      price: z.number().min(0),
+      cost: z.number().min(0).default(0),
+      weight_g: z.number().int().min(0),
+      stock: z.number().int().default(0),
+      color: z.string().nullable().optional(),
+      size: z.string().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const labelParts = [data.color, data.size].filter((x) => x && String(x).trim());
+    const variantLabel = labelParts.length ? labelParts.join(" / ") : "Default";
+    const { data: prod, error: pErr } = await context.supabase
+      .from("products")
+      .insert({
+        name: data.name,
+        category: data.category || null,
+        product_type: "stock",
+        price: data.price,
+        cost: data.cost,
+        weight_g: data.weight_g,
+        stock: data.stock,
+        variant: variantLabel,
+      })
+      .select("id")
+      .single();
+    if (pErr) throw new Error(pErr.message);
+
+    const { data: variant, error: vErr } = await context.supabase
+      .from("product_variants")
+      .insert({
+        product_id: prod.id,
+        label: variantLabel,
+        color: data.color || null,
+        size: data.size || null,
+        price: data.price,
+        cost: data.cost,
+        weight_g: data.weight_g,
+        stock: data.stock,
+        is_default: true,
+        sort_order: 0,
+      })
+      .select("id")
+      .single();
+    if (vErr) throw new Error(vErr.message);
+
+    return { product_id: prod.id, variant_id: variant.id };
+  });
+
