@@ -17,6 +17,7 @@ const itemSchema = z.object({
   variant: z.string().nullable().optional(),
   qty: z.number().int().min(1),
   price: z.number().min(0),
+  cost: z.number().min(0).default(0),
   weight_g: z.number().int().min(0),
 });
 
@@ -40,6 +41,8 @@ const orderInput = z.object({
   campaign: z.string().nullable().optional(),
   ref: z.string().nullable().optional(),
   shipping_cost: z.number().min(0).default(0),
+  discount: z.number().min(0).default(0),
+  marketplace_fee: z.number().min(0).default(0),
   eta: z.string().nullable().optional(),
   insurance: z.boolean().default(false),
   routing_code: z.string().nullable().optional(),
