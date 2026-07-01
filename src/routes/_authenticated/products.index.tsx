@@ -9,7 +9,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatIDR, formatWeight } from "@/lib/format";
 
-export const Route = createFileRoute("/_authenticated/products")({
+export const Route = createFileRoute("/_authenticated/products/")({
   component: ProductsPage,
 });
 
