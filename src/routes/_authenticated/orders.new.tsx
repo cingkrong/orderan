@@ -185,12 +185,13 @@ function OrderForm({ existingId }: { existingId?: string }) {
   });
 
   // Shipping cost
-  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; etd: string }>>([]);
+  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; etd: string; custom?: boolean }>>([]);
   const [loadingCost, setLoadingCost] = useState(false);
+  const [costCached, setCostCached] = useState(false);
 
-  async function calcShipping() {
-    if (!form.destination_subdistrict_id) return toast.error("Pilih tujuan dulu");
-    if (!weight) return toast.error("Tambah produk dulu");
+  async function calcShipping(force = false) {
+    if (!form.destination_subdistrict_id) return;
+    if (!weight) return;
     const wh = warehousesQ.data?.find((w: any) => w.id === form.warehouse_id) as any;
     setLoadingCost(true);
     try {
@@ -198,18 +199,29 @@ function OrderForm({ existingId }: { existingId?: string }) {
         data: {
           destination_subdistrict_id: form.destination_subdistrict_id,
           weight_g: weight,
-          courier: form.courier || "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana",
+          courier: "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana",
           origin_subdistrict_id: wh?.origin_subdistrict_id ?? null,
+          force_refresh: force,
         },
       });
       setServices(r.services);
-      if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
+      setCostCached(!!r.cached);
+      if (force) toast.success("Ongkir diperbarui");
+      else if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal");
     } finally {
       setLoadingCost(false);
     }
   }
+
+  // Auto-calculate when destination + weight + warehouse are set (debounced)
+  useEffect(() => {
+    if (!form.destination_subdistrict_id || !weight || !form.warehouse_id) return;
+    const t = setTimeout(() => { void calcShipping(false); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.destination_subdistrict_id, weight, form.warehouse_id]);
 
   const mut = useMutation({
     mutationFn: (payload: OrderInput) => save({ data: payload }),
