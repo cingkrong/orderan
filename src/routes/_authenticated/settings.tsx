@@ -38,6 +38,7 @@ function SettingsPage() {
     logo_url: "",
     active_couriers: [...COURIERS] as string[],
     custom_couriers: [] as CustomCourier[],
+    weight_unit: "g" as "g" | "kg",
   });
 
   useEffect(() => {
@@ -52,9 +53,11 @@ function SettingsPage() {
         logo_url: data.logo_url ?? "",
         active_couriers: (data as any).active_couriers ?? [...COURIERS],
         custom_couriers: (data as any).custom_couriers ?? [],
+        weight_unit: ((data as any).weight_unit === "kg" ? "kg" : "g"),
       });
     }
   }, [data]);
+
 
   const save = useMutation({
     mutationFn: () =>
