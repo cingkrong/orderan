@@ -73,6 +73,7 @@ export function ProductForm({ id }: { id?: string }) {
               weight_g: v.weight_g,
               stock: v.stock,
               is_default: !!v.is_default,
+              image_url: v.image_url ?? null,
             }))
           : [
               {
@@ -83,8 +84,10 @@ export function ProductForm({ id }: { id?: string }) {
                 weight_g: loadQ.data.weight_g,
                 stock: loadQ.data.stock,
                 is_default: true,
+                image_url: null,
               },
             ];
+
       if (!variants.some((v) => v.is_default)) variants[0].is_default = true;
       setForm({ id: loadQ.data.id, name: loadQ.data.name, variants });
     }
