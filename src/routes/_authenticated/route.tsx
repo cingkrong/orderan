@@ -79,8 +79,8 @@ function ProtectedLayout() {
             <Package className="size-5" />
           </div>
           <div>
-            <div className="font-bold leading-none">OMS</div>
-            <div className="text-xs text-sidebar-foreground/60 mt-0.5">Order Console</div>
+            <div className="font-bold leading-none">MAULARIS</div>
+            <div className="text-xs text-sidebar-foreground/60 mt-0.5">Catat Orderan</div>
           </div>
         </div>
         <div className="px-3 py-3">
@@ -135,7 +135,7 @@ function ProtectedLayout() {
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)}>
             <Menu className="size-5" />
           </Button>
-          <span className="font-semibold">OMS</span>
+          <span className="font-semibold">MAULARIS</span>
         </header>
         <main className="flex-1 p-4 md:p-8 max-w-[1400px] w-full mx-auto">
           <Outlet />
