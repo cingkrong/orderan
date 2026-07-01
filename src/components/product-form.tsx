@@ -18,6 +18,8 @@ type VariantForm = {
   id?: string;
   label: string;
   sku: string;
+  color: string;
+  size: string;
   price: number;
   cost: number;
   weight_g: number;
@@ -35,6 +37,8 @@ type ProductFormState = {
 const emptyVariant = (): VariantForm => ({
   label: "Default",
   sku: "",
+  color: "",
+  size: "",
   price: 0,
   cost: 0,
   weight_g: 0,
@@ -42,6 +46,7 @@ const emptyVariant = (): VariantForm => ({
   is_default: true,
   image_url: null,
 });
+
 
 const empty: ProductFormState = { name: "", variants: [emptyVariant()] };
 
@@ -68,6 +73,8 @@ export function ProductForm({ id }: { id?: string }) {
               id: v.id,
               label: v.label,
               sku: v.sku ?? "",
+              color: v.color ?? "",
+              size: v.size ?? "",
               price: Number(v.price),
               cost: Number(v.cost ?? 0),
               weight_g: v.weight_g,
@@ -79,6 +86,8 @@ export function ProductForm({ id }: { id?: string }) {
               {
                 label: loadQ.data.variant || "Default",
                 sku: loadQ.data.sku ?? "",
+                color: "",
+                size: "",
                 price: Number(loadQ.data.price),
                 cost: Number((loadQ.data as any).cost ?? 0),
                 weight_g: loadQ.data.weight_g,
@@ -87,6 +96,7 @@ export function ProductForm({ id }: { id?: string }) {
                 image_url: null,
               },
             ];
+
 
       if (!variants.some((v) => v.is_default)) variants[0].is_default = true;
       setForm({ id: loadQ.data.id, name: loadQ.data.name, variants });
@@ -99,6 +109,9 @@ export function ProductForm({ id }: { id?: string }) {
         id: v.id,
         label: v.label.trim() || `Variasi ${idx + 1}`,
         sku: v.sku || null,
+        color: v.color || null,
+        size: v.size || null,
+        image_url: v.image_url,
         price: Number(v.price) || 0,
         cost: Number(v.cost) || 0,
         weight_g: Number(v.weight_g) || 0,
@@ -106,6 +119,7 @@ export function ProductForm({ id }: { id?: string }) {
         is_default: v.is_default,
         sort_order: idx,
       }));
+
       const def = variants.find((v) => v.is_default) ?? variants[0];
       return upsert({
         data: {
@@ -151,14 +165,16 @@ export function ProductForm({ id }: { id?: string }) {
         {
           label: `Variasi ${f.variants.length + 1}`,
           sku: "",
+          color: "",
+          size: "",
           price: f.variants[0]?.price ?? 0,
           cost: f.variants[0]?.cost ?? 0,
           weight_g: f.variants[0]?.weight_g ?? 0,
           stock: 0,
           is_default: false,
           image_url: null,
-
         },
+
       ],
     }));
   }
@@ -355,6 +371,15 @@ function VariantRow({
             <Label className="text-xs">SKU</Label>
             <Input value={variant.sku} onChange={(e) => onChange({ sku: e.target.value })} />
           </div>
+          <div>
+            <Label className="text-xs">Warna</Label>
+            <Input value={variant.color} onChange={(e) => onChange({ color: e.target.value })} placeholder="cth. Merah" />
+          </div>
+          <div>
+            <Label className="text-xs">Ukuran</Label>
+            <Input value={variant.size} onChange={(e) => onChange({ size: e.target.value })} placeholder="cth. L" />
+          </div>
+
           <div>
             <Label className="text-xs">Harga jual (Rp)</Label>
             <Input type="number" value={variant.price} onChange={(e) => onChange({ price: Number(e.target.value) })} />

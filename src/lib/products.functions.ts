@@ -43,6 +43,8 @@ const variantInput = z.object({
   id: z.string().uuid().optional(),
   label: z.string().min(1),
   sku: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  size: z.string().nullable().optional(),
   price: z.number().min(0),
   cost: z.number().min(0).default(0),
   weight_g: z.number().int().min(0),
@@ -51,6 +53,7 @@ const variantInput = z.object({
   sort_order: z.number().int().default(0),
   image_url: z.string().nullable().optional(),
 });
+
 
 
 const productInput = z.object({
@@ -127,6 +130,8 @@ export const upsertProduct = createServerFn({ method: "POST" })
       product_id: productId!,
       label: v.label,
       sku: v.sku || null,
+      color: v.color || null,
+      size: v.size || null,
       price: v.price,
       cost: v.cost,
       weight_g: v.weight_g,
@@ -135,6 +140,7 @@ export const upsertProduct = createServerFn({ method: "POST" })
       sort_order: v.sort_order ?? idx,
       image_url: v.image_url || null,
     }));
+
 
     const { error: upErr } = await context.supabase
       .from("product_variants")
