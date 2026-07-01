@@ -5,6 +5,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const periodInput = z.object({
   from: z.string(),
   to: z.string(),
+  statuses: z.array(z.string()).optional(),
+  paymentStatuses: z.array(z.string()).optional(),
 });
 
 type OrderRow = {
