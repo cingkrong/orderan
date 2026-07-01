@@ -132,7 +132,7 @@ function ReportsPage() {
                 <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }}
-                  formatter={(v: number) => formatIDR(v)}
+                  formatter={(v) => formatIDR(Number(v))}
                 />
                 <Legend />
                 <Line type="monotone" dataKey="revenue" name="Revenue" stroke="var(--primary)" strokeWidth={2} dot={false} />
