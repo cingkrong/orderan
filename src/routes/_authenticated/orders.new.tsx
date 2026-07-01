@@ -517,9 +517,15 @@ function OrderForm({ existingId }: { existingId?: string }) {
                         <Select value={it.variant_id ?? ""} onValueChange={(v) => pickVariant(idx, v)}>
                           <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
                           <SelectContent>
-                            {variants.map((v) => (
-                              <SelectItem key={v.id} value={v.id}>{variantLabel(v)} · {formatIDR(Number(v.price))}</SelectItem>
-                            ))}
+                            {variants.map((v) => {
+                              const ok = variantInStock(product, v);
+                              return (
+                                <SelectItem key={v.id} value={v.id} disabled={!ok}>
+                                  {variantLabel(v)} · {formatIDR(Number(v.price))}
+                                  {!ok ? " · habis" : isPreorder(product) ? " · PO" : ` · stok ${v.stock}`}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       ) : (
@@ -528,7 +534,26 @@ function OrderForm({ existingId }: { existingId?: string }) {
                     </div>
                     <div className="col-span-3 sm:col-span-1">
                       <Label className="text-xs">Qty</Label>
-                      <Input type="number" min={1} value={it.qty} onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })} />
+                      <Input
+                        type="number"
+                        min={1}
+                        max={product && !isPreorder(product) ? (() => {
+                          const v = variants.find((x: any) => x.id === it.variant_id);
+                          return v ? Number(v.stock) : undefined;
+                        })() : undefined}
+                        value={it.qty}
+                        onChange={(e) => {
+                          const q = Number(e.target.value);
+                          const v = variants.find((x: any) => x.id === it.variant_id);
+                          if (product && !isPreorder(product) && v && q > Number(v.stock)) {
+                            toast.error(`Stok tersisa ${v.stock}`);
+                            updateItem(idx, { qty: Number(v.stock) });
+                            return;
+                          }
+                          updateItem(idx, { qty: q });
+                        }}
+                      />
+
                     </div>
                     <div className="col-span-3 sm:col-span-2">
                       <Label className="text-xs">Modal</Label>
