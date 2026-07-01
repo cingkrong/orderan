@@ -1,69 +1,33 @@
+## 1. Custom jasa kirim di halaman pemesanan (prioritas)
 
-## Tujuan
+Di `src/routes/_authenticated/orders.new.tsx`, di dalam card Pengiriman (di bawah daftar `services`), tambahkan panel kecil "Jasa kirim custom":
 
-Satu produk (misal "Kaos Polos") bisa punya banyak variasi (S / M / L / XL, atau Merah / Biru), masing-masing dengan **SKU, harga jual, HPP, berat, dan stok sendiri**. Saat membuat pesanan, staff memilih produk → lalu memilih variasi.
+- Dua input inline: **Nama Ekspedisi** (text, contoh: "Gojek", "Grab", "Kurir Toko") dan **Ongkir (Rp)** (number).
+- Tombol **"Gunakan"** → langsung set `form.courier = "custom"`, `form.service = <nama>`, `form.shipping_cost = <nilai>`, `form.eta = "-"`, dan menyorot pilihan aktif seperti item di list.
+- Tombol kecil **"Simpan sebagai preset"** (opsional, checkbox "simpan ke pengaturan") → panggil `updateSettings` untuk append ke `settings.custom_couriers` supaya muncul otomatis di order berikutnya lewat `getShippingCost`.
+- Tidak perlu popup / modal — semua inline, mengikuti aturan proyek.
 
-## Perubahan Database
+Tidak ada perubahan skema DB (kolom `orders.courier`, `service`, `shipping_cost` sudah menampung ini; `settings.custom_couriers` sudah ada).
 
-Menambah tabel baru `product_variants`:
-- `product_id` (FK ke `products`)
-- `label` (mis. "Merah / L")
-- `sku`, `price`, `cost`, `weight_g`, `stock`
-- `is_default` (boolean), `sort_order`
-- RLS & GRANT mengikuti pola tabel lain (staff/admin only)
+## 2. Laporan Omzet & Profit dengan filter status
 
-Perubahan pada `order_items`:
-- Tambah kolom `variant_id` (FK ke `product_variants`, nullable untuk data lama)
-- Kolom `variant` (text) tetap ada sebagai snapshot label
+Masalah saat ini: `src/lib/reports.functions.ts` memfilter `.neq("status", "cancelled")` sehingga pesanan `pending` sudah dihitung sebagai omzet & profit, padahal user ingin **pending = belum masuk perhitungan**.
 
-Migrasi data lama:
-- Untuk setiap produk existing → buat 1 baris `product_variants` "default" yang menyalin `sku/price/cost/weight_g/stock` dari products. Data pesanan lama tidak diubah (tetap pakai snapshot lama).
-- Kolom `sku/price/cost/weight_g/stock` di `products` dipertahankan sebagai *fallback / default template* untuk produk single-variant, tapi UI akan pakai tabel variants sebagai sumber utama.
+Perubahan:
 
-## Perubahan Server Functions
+**a. Server (`src/lib/reports.functions.ts`)**
+- Tambah input opsional `statuses: string[]` (default: `["processing","shipped","delivered"]` — mengecualikan `pending` dan `cancelled`).
+- Tambah input opsional `paymentStatuses: string[]` (default: semua) untuk memisahkan omzet "Lunas" vs "Belum Lunas".
+- Terapkan filter di `loadPeriod` (`.in("status", …)` bila diberikan).
+- Tambah handler baru `revenueBreakdown` yang mengembalikan agregat per status: `{ status, orders, revenue, grossProfit, netProfit }` supaya user bisa lihat "omzet tertunda" terpisah.
 
-- `products.functions.ts`
-  - `listProducts` → ikut-sertakan array `variants`.
-  - `getProduct` → sertakan variants.
-  - `upsertProduct` → terima array variants; lakukan diff upsert/delete transaksional. Minimal 1 variasi wajib.
-- `orders.functions.ts`
-  - `itemSchema` tambah `variant_id` opsional; saat resolve item, ambil harga/HPP/berat default dari variant (bisa dioverride).
+**b. UI (`src/routes/_authenticated/reports.tsx`)**
+- Tambah row filter di atas: date range (sudah ada) + **multi-select status pesanan** (Tertunda / Diproses / Dikirim / Selesai / Batal) + **filter status pembayaran** (Semua / Lunas / Belum Lunas).
+- Tambah card baru **"Ringkasan per Status"** (tabel) memakai `revenueBreakdown` — menampilkan omzet & profit tertunda vs terkonfirmasi secara berdampingan.
+- Semua chart & summary yang sudah ada ikut memakai filter tersebut.
 
-## Perubahan UI
+## Technical notes
 
-### Form Produk (`components/product-form.tsx`)
-- Info dasar: Nama, Kategori, Deskripsi.
-- Section **"Variasi"** inline (bukan popup):
-  - Tabel/list dengan baris: Label, SKU, Harga, HPP, Berat (g), Stok, tombol hapus.
-  - Tombol "Tambah variasi".
-  - Preview margin per variasi.
-- Bila produk hanya butuh 1 varian, tetap satu baris dengan label default "Default".
-
-### List Produk (`products.index.tsx`)
-- Kolom baru "Variasi" menampilkan jumlah variasi + rentang harga (mis. "3 variasi · Rp 50rb–75rb").
-- Stok total = SUM stok semua variasi.
-
-### Form Pesanan (`orders.new.tsx`)
-- Setelah pilih produk, muncul dropdown **Variasi** (inline, bukan popup). Default variant terpilih otomatis kalau cuma satu.
-- Harga, HPP, berat auto-fill dari variasi terpilih (tetap bisa dioverride manual seperti sekarang).
-- Item order menyimpan `variant_id`, dan `name` = "Nama Produk — Label Variasi".
-
-### Detail Pesanan & Label
-- Tampilkan label variasi di daftar item (sudah ada field `variant`, tinggal memastikan diisi).
-- Shipping label & queue tidak berubah struktur, hanya teks variasi lebih akurat.
-
-### Laporan
-- `reports.functions.ts` → `pnlByProduct` grup berdasarkan `product_id + variant_id` (atau tetap per produk dengan sub-baris variasi — versi awal: per produk, tambah kolom "Variasi teratas" opsional). Untuk iterasi pertama cukup grup per nama item (yang sudah termasuk label variasi).
-
-## Yang TIDAK berubah
-
-- Skema opsi (Size/Color) tidak dibuatkan tabel matrix — variasi tetap **label bebas** biar cepat dan sederhana. Bisa ditingkatkan nanti bila perlu.
-- Format cetak label & alur RajaOngkir tidak berubah.
-
-## Urutan Eksekusi
-
-1. Migrasi DB: bikin `product_variants`, tambah `variant_id` di `order_items`, backfill 1 default variant per produk existing.
-2. Update server functions produk (list/get/upsert).
-3. Update `product-form.tsx` + `products.index.tsx`.
-4. Update `orders.new.tsx` (pemilihan variasi + auto-fill).
-5. Verifikasi: buat produk 3 variasi → bikin order → cek total, profit, label, laporan.
+- Custom courier UI: tetap dalam `FormSection` "Pengiriman", sekitar baris 714 di `orders.new.tsx`.
+- Preset save memakai `updateSettings` yang existing — merge dengan array `custom_couriers` yang sudah ada agar tidak menimpa.
+- Report filter default sengaja mengecualikan `pending` supaya angka default = profit yang sudah pasti; user bisa expand dengan mencentang "Tertunda" kalau perlu.
