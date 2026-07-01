@@ -582,6 +582,8 @@ function VariantRow({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { unit, toDisplay, toGrams } = useWeightUnit();
+
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
