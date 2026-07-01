@@ -517,13 +517,33 @@ function OrderForm({ existingId }: { existingId?: string }) {
         </div>
       </Card>
 
-      <Card className="p-5 flex items-center justify-between flex-wrap gap-4">
-        <div className="space-y-1 text-sm">
-          <div className="flex gap-6"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatIDR(subtotal)}</span></div>
-          <div className="flex gap-6"><span className="text-muted-foreground">Ongkir</span><span className="font-mono">{formatIDR(Number(form.shipping_cost) || 0)}</span></div>
-          <div className="flex gap-6 text-base font-semibold"><span>Total</span><span className="font-mono">{formatIDR(total)}</span></div>
+      <Card className="p-5 space-y-4">
+        <h2 className="font-semibold">Ringkasan & Profit</h2>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <Label>Diskon / Voucher (Rp)</Label>
+            <Input type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label>Fee marketplace / COD (Rp)</Label>
+            <Input type="number" value={form.marketplace_fee} onChange={(e) => setForm({ ...form, marketplace_fee: Number(e.target.value) })} />
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="grid md:grid-cols-2 gap-4 items-start">
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatIDR(subtotal)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className="font-mono">- {formatIDR(discount)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span className="font-mono">{formatIDR(shippingCost)}</span></div>
+            <div className="flex justify-between text-base font-semibold border-t pt-1"><span>Total tagihan</span><span className="font-mono">{formatIDR(total)}</span></div>
+          </div>
+          <div className="space-y-1 text-sm rounded-md border p-3 bg-muted/30">
+            <div className="flex justify-between"><span className="text-muted-foreground">Revenue (Subtotal − Diskon)</span><span className="font-mono">{formatIDR(subtotal - discount)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">HPP (Modal)</span><span className="font-mono">- {formatIDR(totalCogs)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Fee marketplace</span><span className="font-mono">- {formatIDR(marketplaceFee)}</span></div>
+            <div className={`flex justify-between text-base font-semibold border-t pt-1 ${estProfit >= 0 ? "text-success" : "text-destructive"}`}><span>Estimasi profit</span><span className="font-mono">{formatIDR(estProfit)}</span></div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => navigate({ to: "/orders" })}>Batal</Button>
           <Button onClick={submit} disabled={mut.isPending}>
             {mut.isPending ? "Menyimpan..." : form.id ? "Simpan perubahan" : "Buat pesanan"}
