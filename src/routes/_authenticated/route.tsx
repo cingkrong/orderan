@@ -131,13 +131,13 @@ function ProtectedLayout() {
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="md:hidden h-14 border-b flex items-center px-4 gap-3 sticky top-0 bg-background z-20">
+        <header className="no-print md:hidden h-14 border-b flex items-center px-4 gap-3 sticky top-0 bg-background z-20">
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)}>
             <Menu className="size-5" />
           </Button>
           <span className="font-semibold">MAULARIS</span>
         </header>
-        <main className="flex-1 p-4 md:p-8 max-w-[1400px] w-full mx-auto">
+        <main className="flex-1 p-4 md:p-8 max-w-[1400px] w-full mx-auto print:p-0 print:max-w-none">
           <Outlet />
         </main>
       </div>
