@@ -249,20 +249,24 @@ function OrderForm({ existingId }: { existingId?: string }) {
   if (existingId && existingQ.isLoading) return <Skeleton className="h-96" />;
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          {form.id ? `Ubah pesanan` : "Pesanan baru"}
+    <div className="max-w-6xl mx-auto pb-24">
+      <div className="flex items-center justify-between border-b pb-4 mb-2">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">
+          {form.id ? "Ubah Pesanan" : "Buat Pesanan"}
         </h1>
-        <p className="text-muted-foreground text-sm mt-1">Fast entry — phone autofills, courier auto-calculates.</p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate({ to: "/orders" })}>Batal</Button>
+          <Button onClick={submit} disabled={mut.isPending}>
+            {mut.isPending ? "Menyimpan..." : form.id ? "Simpan perubahan" : "Buat pesanan"}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="p-5 lg:col-span-2 space-y-4">
-          <h2 className="font-semibold">Customer</h2>
+      <FormSection title="Pelanggan" description="Informasi kontak & pengiriman">
+        <Card className="p-5 space-y-4">
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label>Telepon</Label>
+              <Label>Telepon<span className="text-destructive">*</span></Label>
               <Input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -271,7 +275,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
               />
             </div>
             <div>
-              <Label>Nama pelanggan</Label>
+              <Label>Nama pelanggan<span className="text-destructive">*</span></Label>
               <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
             </div>
           </div>
@@ -363,43 +367,46 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
             </div>
           </div>
-
-          <div className="rounded-md border p-3 space-y-3 bg-muted/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-semibold">Kirim sebagai dropship</Label>
-                <p className="text-xs text-muted-foreground">Nama & telepon pengirim di label akan diganti dengan data dropshipper.</p>
-              </div>
-              <Switch
-                checked={form.is_dropship}
-                onCheckedChange={(v) => setForm({ ...form, is_dropship: v })}
-              />
-            </div>
-            {form.is_dropship && (
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <Label>Nama pengirim (dropshipper)</Label>
-                  <Input
-                    value={form.dropship_name ?? ""}
-                    onChange={(e) => setForm({ ...form, dropship_name: e.target.value })}
-                    placeholder="cth. Toko Aisyah"
-                  />
-                </div>
-                <div>
-                  <Label>Telepon pengirim (dropshipper)</Label>
-                  <Input
-                    value={form.dropship_phone ?? ""}
-                    onChange={(e) => setForm({ ...form, dropship_phone: e.target.value })}
-                    placeholder="0812..."
-                  />
-                </div>
-              </div>
-            )}
-          </div>
         </Card>
+      </FormSection>
 
+      <FormSection title="Dropship" description="Aktifkan bila pesanan dikirim atas nama pihak lain">
         <Card className="p-5 space-y-3">
-          <h2 className="font-semibold">Order channel</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-semibold">Kirim sebagai dropship</Label>
+              <p className="text-xs text-muted-foreground">Nama & telepon pengirim di label akan diganti dengan data dropshipper.</p>
+            </div>
+            <Switch
+              checked={form.is_dropship}
+              onCheckedChange={(v) => setForm({ ...form, is_dropship: v })}
+            />
+          </div>
+          {form.is_dropship && (
+            <div className="grid sm:grid-cols-2 gap-3 pt-3 border-t">
+              <div>
+                <Label>Nama pengirim (dropshipper)</Label>
+                <Input
+                  value={form.dropship_name ?? ""}
+                  onChange={(e) => setForm({ ...form, dropship_name: e.target.value })}
+                  placeholder="cth. Toko Aisyah"
+                />
+              </div>
+              <div>
+                <Label>Telepon pengirim (dropshipper)</Label>
+                <Input
+                  value={form.dropship_phone ?? ""}
+                  onChange={(e) => setForm({ ...form, dropship_phone: e.target.value })}
+                  placeholder="0812..."
+                />
+              </div>
+            </div>
+          )}
+        </Card>
+      </FormSection>
+
+      <FormSection title="Sumber Pesanan" description="Channel & kampanye asal pesanan">
+        <Card className="p-5 grid sm:grid-cols-3 gap-3">
           <div>
             <Label>Sumber</Label>
             <Select value={form.source ?? ""} onValueChange={(v) => setForm({ ...form, source: v })}>
@@ -418,181 +425,197 @@ function OrderForm({ existingId }: { existingId?: string }) {
             <Input value={form.ref ?? ""} onChange={(e) => setForm({ ...form, ref: e.target.value })} />
           </div>
         </Card>
-      </div>
+      </FormSection>
 
-      <Card className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Products</h2>
-          <Select onValueChange={addItem}>
-            <SelectTrigger className="w-[260px]"><SelectValue placeholder="Tambah produk…" /></SelectTrigger>
-            <SelectContent>
-              {(productsQ.data ?? []).map((p: any) => {
-                const vc = (p.variants ?? []).length;
-                return (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}{vc > 1 ? ` · ${vc} variasi` : ""}
-                  </SelectItem>
-                );
-              })}
-              <SelectItem value="__custom">+ Item custom</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Belum ada item</p>}
-          {form.items.map((it, idx) => {
-            const product = it.product_id
-              ? (productsQ.data as any[] | undefined)?.find((x) => x.id === it.product_id)
-              : null;
-            const variants: any[] = product?.variants ?? [];
-            return (
-            <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-12 sm:col-span-3">
-                <Label className="text-xs">Nama</Label>
-                <Input value={it.name} onChange={(e) => updateItem(setForm, idx, { name: e.target.value })} />
-              </div>
-              <div className="col-span-6 sm:col-span-2">
-                <Label className="text-xs">Varian</Label>
-                {variants.length > 0 ? (
-                  <Select value={it.variant_id ?? ""} onValueChange={(v) => pickVariant(idx, v)}>
-                    <SelectTrigger><SelectValue placeholder="Pilih varian" /></SelectTrigger>
-                    <SelectContent>
-                      {variants.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.label} · {formatIDR(Number(v.price))}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
-                )}
-              </div>
-              <div className="col-span-3 sm:col-span-1">
-                <Label className="text-xs">Qty</Label>
-                <Input type="number" min={1} value={it.qty} onChange={(e) => updateItem(setForm, idx, { qty: Number(e.target.value) })} />
-              </div>
-              <div className="col-span-3 sm:col-span-2">
-                <Label className="text-xs">Modal</Label>
-                <Input type="number" value={it.cost} onChange={(e) => updateItem(setForm, idx, { cost: Number(e.target.value) })} />
-              </div>
-              <div className="col-span-6 sm:col-span-2">
-                <Label className="text-xs">Harga jual</Label>
-                <Input type="number" value={it.price} onChange={(e) => updateItem(setForm, idx, { price: Number(e.target.value) })} />
-              </div>
-              <div className="col-span-4 sm:col-span-1">
-                <Label className="text-xs">Berat (g)</Label>
-                <Input type="number" value={it.weight_g} onChange={(e) => updateItem(setForm, idx, { weight_g: Number(e.target.value) })} />
-              </div>
-              <div className="col-span-2 sm:col-span-1 flex justify-end">
-                <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}>
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-              <div className="col-span-12 text-xs text-muted-foreground pl-1">
-                Profit item: <span className="font-mono">{formatIDR((it.price - (it.cost || 0)) * it.qty)}</span>
-              </div>
-            </div>
-            );
-          })}
-        </div>
-        <Button variant="outline" size="sm" onClick={() => addItem()}><Plus className="size-4 mr-1" />Tambah item custom</Button>
-      </Card>
-
-      <Card className="p-5 space-y-3">
-        <h2 className="font-semibold">Shipping</h2>
-        <div className="grid sm:grid-cols-4 gap-3">
-          <div>
-            <Label>Kurir</Label>
-            <Select value={form.courier ?? ""} onValueChange={(v) => setForm({ ...form, courier: v, service: "", shipping_cost: 0, eta: "" })}>
-              <SelectTrigger><SelectValue placeholder="Kurir" /></SelectTrigger>
+      <FormSection title="Produk" description="Item yang dipesan pelanggan">
+        <Card className="p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <Select onValueChange={addItem}>
+              <SelectTrigger className="w-[280px]"><SelectValue placeholder="Tambah produk…" /></SelectTrigger>
               <SelectContent>
-                {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
+                {(productsQ.data ?? []).map((p: any) => {
+                  const vc = (p.variants ?? []).length;
+                  return (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}{vc > 1 ? ` · ${vc} variasi` : ""}
+                    </SelectItem>
+                  );
+                })}
+                <SelectItem value="__custom">+ Item custom</SelectItem>
               </SelectContent>
             </Select>
+            <Button variant="outline" size="sm" onClick={() => addItem()}><Plus className="size-4 mr-1" />Item custom</Button>
           </div>
-          <div className="sm:col-span-2 flex items-end">
-            <Button onClick={calcShipping} disabled={loadingCost} className="w-full">
-              {loadingCost ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Truck className="size-4 mr-1" />}
-              Hitung ({Math.round(weight)}g)
-            </Button>
+          <div className="space-y-2">
+            {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center border rounded-md border-dashed">Belum ada item</p>}
+            {form.items.map((it, idx) => {
+              const product = it.product_id
+                ? (productsQ.data as any[] | undefined)?.find((x) => x.id === it.product_id)
+                : null;
+              const variants: any[] = product?.variants ?? [];
+              return (
+              <div key={idx} className="grid grid-cols-12 gap-2 items-end border rounded-md p-3">
+                <div className="col-span-12 sm:col-span-3">
+                  <Label className="text-xs">Nama</Label>
+                  <Input value={it.name} onChange={(e) => updateItem(setForm, idx, { name: e.target.value })} />
+                </div>
+                <div className="col-span-6 sm:col-span-2">
+                  <Label className="text-xs">Varian</Label>
+                  {variants.length > 0 ? (
+                    <Select value={it.variant_id ?? ""} onValueChange={(v) => pickVariant(idx, v)}>
+                      <SelectTrigger><SelectValue placeholder="Pilih varian" /></SelectTrigger>
+                      <SelectContent>
+                        {variants.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.label} · {formatIDR(Number(v.price))}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
+                  )}
+                </div>
+                <div className="col-span-3 sm:col-span-1">
+                  <Label className="text-xs">Qty</Label>
+                  <Input type="number" min={1} value={it.qty} onChange={(e) => updateItem(setForm, idx, { qty: Number(e.target.value) })} />
+                </div>
+                <div className="col-span-3 sm:col-span-2">
+                  <Label className="text-xs">Modal</Label>
+                  <Input type="number" value={it.cost} onChange={(e) => updateItem(setForm, idx, { cost: Number(e.target.value) })} />
+                </div>
+                <div className="col-span-6 sm:col-span-2">
+                  <Label className="text-xs">Harga jual</Label>
+                  <Input type="number" value={it.price} onChange={(e) => updateItem(setForm, idx, { price: Number(e.target.value) })} />
+                </div>
+                <div className="col-span-4 sm:col-span-1">
+                  <Label className="text-xs">Berat (g)</Label>
+                  <Input type="number" value={it.weight_g} onChange={(e) => updateItem(setForm, idx, { weight_g: Number(e.target.value) })} />
+                </div>
+                <div className="col-span-2 sm:col-span-1 flex justify-end">
+                  <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+                <div className="col-span-12 text-xs text-muted-foreground pl-1">
+                  Profit item: <span className="font-mono">{formatIDR((it.price - (it.cost || 0)) * it.qty)}</span>
+                </div>
+              </div>
+              );
+            })}
           </div>
-          <div>
-            <Label>Asuransi</Label>
-            <div className="h-9 flex items-center">
-              <Switch checked={form.insurance} onCheckedChange={(v) => setForm({ ...form, insurance: v })} />
+        </Card>
+      </FormSection>
+
+      <FormSection title="Pengiriman" description="Pilih kurir & hitung ongkir otomatis">
+        <Card className="p-5 space-y-3">
+          <div className="grid sm:grid-cols-4 gap-3">
+            <div>
+              <Label>Kurir</Label>
+              <Select value={form.courier ?? ""} onValueChange={(v) => setForm({ ...form, courier: v, service: "", shipping_cost: 0, eta: "" })}>
+                <SelectTrigger><SelectValue placeholder="Kurir" /></SelectTrigger>
+                <SelectContent>
+                  {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2 flex items-end">
+              <Button onClick={calcShipping} disabled={loadingCost} className="w-full">
+                {loadingCost ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Truck className="size-4 mr-1" />}
+                Hitung ({Math.round(weight)}g)
+              </Button>
+            </div>
+            <div>
+              <Label>Asuransi</Label>
+              <div className="h-9 flex items-center">
+                <Switch checked={form.insurance} onCheckedChange={(v) => setForm({ ...form, insurance: v })} />
+              </div>
             </div>
           </div>
-        </div>
-        {services.length > 0 && (
-          <div className="grid sm:grid-cols-3 gap-2">
-            {services.map((s) => (
-              <button
-                key={s.service}
-                onClick={() => setForm((f) => ({ ...f, service: s.service, shipping_cost: s.value, eta: s.etd }))}
-                className={`text-left border rounded-md p-3 hover:bg-accent transition ${
-                  form.service === s.service ? "border-primary bg-primary/5" : ""
-                }`}
-              >
-                <div className="font-semibold">{s.service} <span className="text-xs text-muted-foreground">({s.description})</span></div>
-                <div className="text-sm">{formatIDR(s.value)} · {s.etd} hari</div>
-              </button>
-            ))}
+          {services.length > 0 && (
+            <div className="grid sm:grid-cols-3 gap-2">
+              {services.map((s) => (
+                <button
+                  key={s.service}
+                  onClick={() => setForm((f) => ({ ...f, service: s.service, shipping_cost: s.value, eta: s.etd }))}
+                  className={`text-left border rounded-md p-3 hover:bg-accent transition ${
+                    form.service === s.service ? "border-primary bg-primary/5" : ""
+                  }`}
+                >
+                  <div className="font-semibold">{s.service} <span className="text-xs text-muted-foreground">({s.description})</span></div>
+                  <div className="text-sm">{formatIDR(s.value)} · {s.etd} hari</div>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <Label>Ongkir (Rp)</Label>
+              <Input type="number" value={form.shipping_cost} onChange={(e) => setForm({ ...form, shipping_cost: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>No. resi</Label>
+              <Input value={form.tracking_number ?? ""} onChange={(e) => setForm({ ...form, tracking_number: e.target.value })} />
+            </div>
+            <div>
+              <Label>Kode routing</Label>
+              <Input value={form.routing_code ?? ""} onChange={(e) => setForm({ ...form, routing_code: e.target.value })} />
+            </div>
           </div>
-        )}
-        <div className="grid sm:grid-cols-3 gap-3">
           <div>
-            <Label>Ongkir (Rp)</Label>
-            <Input type="number" value={form.shipping_cost} onChange={(e) => setForm({ ...form, shipping_cost: Number(e.target.value) })} />
+            <Label>Catatan</Label>
+            <Textarea rows={2} value={form.note ?? ""} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </div>
-          <div>
-            <Label>No. resi</Label>
-            <Input value={form.tracking_number ?? ""} onChange={(e) => setForm({ ...form, tracking_number: e.target.value })} />
-          </div>
-          <div>
-            <Label>Kode routing</Label>
-            <Input value={form.routing_code ?? ""} onChange={(e) => setForm({ ...form, routing_code: e.target.value })} />
-          </div>
-        </div>
-        <div>
-          <Label>Catatan</Label>
-          <Textarea rows={2} value={form.note ?? ""} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-        </div>
-      </Card>
+        </Card>
+      </FormSection>
 
-      <Card className="p-5 space-y-4">
-        <h2 className="font-semibold">Ringkasan & Profit</h2>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div>
-            <Label>Diskon / Voucher (Rp)</Label>
-            <Input type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} />
+      <FormSection title="Ringkasan & Profit" description="Diskon, fee & estimasi laba">
+        <Card className="p-5 space-y-4">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <Label>Diskon / Voucher (Rp)</Label>
+              <Input type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>Fee marketplace / COD (Rp)</Label>
+              <Input type="number" value={form.marketplace_fee} onChange={(e) => setForm({ ...form, marketplace_fee: Number(e.target.value) })} />
+            </div>
           </div>
-          <div>
-            <Label>Fee marketplace / COD (Rp)</Label>
-            <Input type="number" value={form.marketplace_fee} onChange={(e) => setForm({ ...form, marketplace_fee: Number(e.target.value) })} />
+          <div className="grid md:grid-cols-2 gap-4 items-start">
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatIDR(subtotal)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className="font-mono">- {formatIDR(discount)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span className="font-mono">{formatIDR(shippingCost)}</span></div>
+              <div className="flex justify-between text-base font-semibold border-t pt-1"><span>Total tagihan</span><span className="font-mono">{formatIDR(total)}</span></div>
+            </div>
+            <div className="space-y-1 text-sm rounded-md border p-3 bg-muted/30">
+              <div className="flex justify-between"><span className="text-muted-foreground">Revenue (Subtotal − Diskon)</span><span className="font-mono">{formatIDR(subtotal - discount)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">HPP (Modal)</span><span className="font-mono">- {formatIDR(totalCogs)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Fee marketplace</span><span className="font-mono">- {formatIDR(marketplaceFee)}</span></div>
+              <div className={`flex justify-between text-base font-semibold border-t pt-1 ${estProfit >= 0 ? "text-success" : "text-destructive"}`}><span>Estimasi profit</span><span className="font-mono">{formatIDR(estProfit)}</span></div>
+            </div>
           </div>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4 items-start">
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatIDR(subtotal)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className="font-mono">- {formatIDR(discount)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span className="font-mono">{formatIDR(shippingCost)}</span></div>
-            <div className="flex justify-between text-base font-semibold border-t pt-1"><span>Total tagihan</span><span className="font-mono">{formatIDR(total)}</span></div>
-          </div>
-          <div className="space-y-1 text-sm rounded-md border p-3 bg-muted/30">
-            <div className="flex justify-between"><span className="text-muted-foreground">Revenue (Subtotal − Diskon)</span><span className="font-mono">{formatIDR(subtotal - discount)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">HPP (Modal)</span><span className="font-mono">- {formatIDR(totalCogs)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Fee marketplace</span><span className="font-mono">- {formatIDR(marketplaceFee)}</span></div>
-            <div className={`flex justify-between text-base font-semibold border-t pt-1 ${estProfit >= 0 ? "text-success" : "text-destructive"}`}><span>Estimasi profit</span><span className="font-mono">{formatIDR(estProfit)}</span></div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => navigate({ to: "/orders" })}>Batal</Button>
-          <Button onClick={submit} disabled={mut.isPending}>
-            {mut.isPending ? "Menyimpan..." : form.id ? "Simpan perubahan" : "Buat pesanan"}
-          </Button>
-        </div>
-      </Card>
+        </Card>
+      </FormSection>
+
+      <div className="flex justify-end gap-2 pt-4 border-t mt-6">
+        <Button variant="outline" onClick={() => navigate({ to: "/orders" })}>Batal</Button>
+        <Button onClick={submit} disabled={mut.isPending}>
+          {mut.isPending ? "Menyimpan..." : form.id ? "Simpan perubahan" : "Buat pesanan"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function FormSection({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="grid md:grid-cols-[220px_1fr] gap-4 md:gap-8 py-6 border-b last:border-b-0">
+      <div className="md:pt-2">
+        <h2 className="font-semibold text-sm">{title}</h2>
+        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+      </div>
+      <div>{children}</div>
     </div>
   );
 }
