@@ -426,16 +426,26 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <Select onValueChange={addItem}>
             <SelectTrigger className="w-[260px]"><SelectValue placeholder="Tambah produk…" /></SelectTrigger>
             <SelectContent>
-              {(productsQ.data ?? []).map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}{p.variant ? ` · ${p.variant}` : ""}</SelectItem>
-              ))}
+              {(productsQ.data ?? []).map((p: any) => {
+                const vc = (p.variants ?? []).length;
+                return (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{vc > 1 ? ` · ${vc} variasi` : ""}
+                  </SelectItem>
+                );
+              })}
               <SelectItem value="__custom">+ Item custom</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
           {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Belum ada item</p>}
-          {form.items.map((it, idx) => (
+          {form.items.map((it, idx) => {
+            const product = it.product_id
+              ? (productsQ.data as any[] | undefined)?.find((x) => x.id === it.product_id)
+              : null;
+            const variants: any[] = product?.variants ?? [];
+            return (
             <div key={idx} className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-12 sm:col-span-3">
                 <Label className="text-xs">Nama</Label>
@@ -443,7 +453,20 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
               <div className="col-span-6 sm:col-span-2">
                 <Label className="text-xs">Varian</Label>
-                <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
+                {variants.length > 0 ? (
+                  <Select value={it.variant_id ?? ""} onValueChange={(v) => pickVariant(idx, v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih varian" /></SelectTrigger>
+                    <SelectContent>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.label} · {formatIDR(Number(v.price))}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
+                )}
               </div>
               <div className="col-span-3 sm:col-span-1">
                 <Label className="text-xs">Qty</Label>
