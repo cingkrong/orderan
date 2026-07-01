@@ -128,8 +128,6 @@ export const upsertProduct = createServerFn({ method: "POST" })
       product_id: productId!,
       label: v.label,
       sku: v.sku || null,
-      color: v.color || null,
-      size: v.size || null,
       price: v.price,
       cost: v.cost,
       weight_g: v.weight_g,
