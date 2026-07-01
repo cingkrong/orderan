@@ -15,6 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useWeightUnit } from "@/hooks/use-weight-unit";
+
 import {
   Select,
   SelectContent,
