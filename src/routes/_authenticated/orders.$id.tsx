@@ -37,6 +37,18 @@ function OrderDetail() {
   const updateStatus = useServerFn(updateOrderStatus);
   const setTrack = useServerFn(setTracking);
   const fetchSettings = useServerFn(getSettings);
+  const markPrinted = useServerFn(markLabelPrinted);
+
+  async function handlePrint() {
+    try {
+      await markPrinted({ data: { ids: [id] } });
+      qc.invalidateQueries({ queryKey: ["order", id] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    } catch {
+      /* non-blocking */
+    }
+    window.print();
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ["order", id],
