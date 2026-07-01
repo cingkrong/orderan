@@ -18,8 +18,6 @@ type VariantForm = {
   id?: string;
   label: string;
   sku: string;
-  color: string;
-  size: string;
   price: number;
   cost: number;
   weight_g: number;
@@ -37,8 +35,6 @@ type ProductFormState = {
 const emptyVariant = (): VariantForm => ({
   label: "Default",
   sku: "",
-  color: "",
-  size: "",
   price: 0,
   cost: 0,
   weight_g: 0,
@@ -73,8 +69,6 @@ export function ProductForm({ id }: { id?: string }) {
               id: v.id,
               label: v.label,
               sku: v.sku ?? "",
-              color: v.color ?? "",
-              size: v.size ?? "",
               price: Number(v.price),
               cost: Number(v.cost ?? 0),
               weight_g: v.weight_g,
@@ -86,8 +80,6 @@ export function ProductForm({ id }: { id?: string }) {
               {
                 label: loadQ.data.variant || "Default",
                 sku: loadQ.data.sku ?? "",
-                color: "",
-                size: "",
                 price: Number(loadQ.data.price),
                 cost: Number((loadQ.data as any).cost ?? 0),
                 weight_g: loadQ.data.weight_g,
@@ -109,8 +101,6 @@ export function ProductForm({ id }: { id?: string }) {
         id: v.id,
         label: v.label.trim() || `Variasi ${idx + 1}`,
         sku: v.sku || null,
-        color: v.color || null,
-        size: v.size || null,
         image_url: v.image_url,
         price: Number(v.price) || 0,
         cost: Number(v.cost) || 0,
@@ -370,14 +360,6 @@ function VariantRow({
           <div>
             <Label className="text-xs">SKU</Label>
             <Input value={variant.sku} onChange={(e) => onChange({ sku: e.target.value })} />
-          </div>
-          <div>
-            <Label className="text-xs">Warna</Label>
-            <Input value={variant.color} onChange={(e) => onChange({ color: e.target.value })} placeholder="cth. Merah" />
-          </div>
-          <div>
-            <Label className="text-xs">Ukuran</Label>
-            <Input value={variant.size} onChange={(e) => onChange({ size: e.target.value })} placeholder="cth. L" />
           </div>
 
           <div>
