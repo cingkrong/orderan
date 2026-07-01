@@ -49,7 +49,9 @@ const variantInput = z.object({
   stock: z.number().int(),
   is_default: z.boolean().default(false),
   sort_order: z.number().int().default(0),
+  image_url: z.string().nullable().optional(),
 });
+
 
 const productInput = z.object({
   id: z.string().uuid().optional(),
