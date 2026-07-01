@@ -13,6 +13,7 @@ type OrderRow = {
   id: string;
   created_at: string;
   status: string;
+  payment_status: string | null;
   source: string | null;
   campaign: string | null;
   subtotal: number | string;
