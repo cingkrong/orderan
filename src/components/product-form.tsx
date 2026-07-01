@@ -161,14 +161,16 @@ export function ProductForm({ id }: { id?: string }) {
         {
           label: `Variasi ${f.variants.length + 1}`,
           sku: "",
+          color: "",
+          size: "",
           price: f.variants[0]?.price ?? 0,
           cost: f.variants[0]?.cost ?? 0,
           weight_g: f.variants[0]?.weight_g ?? 0,
           stock: 0,
           is_default: false,
           image_url: null,
-
         },
+
       ],
     }));
   }
