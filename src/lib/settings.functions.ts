@@ -14,6 +14,13 @@ export const getSettings = createServerFn({ method: "GET" })
     return data;
   });
 
+const customCourierSchema = z.object({
+  name: z.string().min(1),
+  price: z.number().min(0),
+  description: z.string().optional().default(""),
+  etd: z.string().optional().default("-"),
+});
+
 const settingsSchema = z.object({
   sender_name: z.string(),
   sender_phone: z.string(),
@@ -22,6 +29,8 @@ const settingsSchema = z.object({
   origin_subdistrict_id: z.string(),
   origin_label: z.string(),
   logo_url: z.string().nullable(),
+  active_couriers: z.array(z.string()).default([]),
+  custom_couriers: z.array(customCourierSchema).default([]),
 });
 
 export const updateSettings = createServerFn({ method: "POST" })
