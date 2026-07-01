@@ -1,0 +1,1 @@
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS weight_unit text NOT NULL DEFAULT 'g' CHECK (weight_unit IN ('g','kg'));

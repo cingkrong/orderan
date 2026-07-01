@@ -531,6 +531,7 @@ export type Database = {
           sender_name: string
           sender_phone: string
           updated_at: string
+          weight_unit: string
         }
         Insert: {
           active_couriers?: string[]
@@ -546,6 +547,7 @@ export type Database = {
           sender_name?: string
           sender_phone?: string
           updated_at?: string
+          weight_unit?: string
         }
         Update: {
           active_couriers?: string[]
@@ -561,6 +563,7 @@ export type Database = {
           sender_name?: string
           sender_phone?: string
           updated_at?: string
+          weight_unit?: string
         }
         Relationships: []
       }
