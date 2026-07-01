@@ -23,6 +23,7 @@ type VariantForm = {
   weight_g: number;
   stock: number;
   is_default: boolean;
+  image_url: string | null;
 };
 
 type ProductFormState = {
@@ -39,9 +40,11 @@ const emptyVariant = (): VariantForm => ({
   weight_g: 0,
   stock: 0,
   is_default: true,
+  image_url: null,
 });
 
 const empty: ProductFormState = { name: "", variants: [emptyVariant()] };
+
 
 export function ProductForm({ id }: { id?: string }) {
   const navigate = useNavigate();
