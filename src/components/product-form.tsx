@@ -695,14 +695,16 @@ function VariantRow({
             <div className="relative">
               <Input
                 type="number"
-                value={variant.weight_g}
-                onChange={(e) => onChange({ weight_g: Number(e.target.value) })}
+                step={unit === "kg" ? "0.001" : "1"}
+                value={toDisplay(variant.weight_g)}
+                onChange={(e) => onChange({ weight_g: toGrams(Number(e.target.value)) })}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                Gram
+                {unit === "kg" ? "Kg" : "Gram"}
               </span>
             </div>
           </div>
+
           <div>
             <Label className="text-xs">
               SKU<span className="text-destructive">*</span>
