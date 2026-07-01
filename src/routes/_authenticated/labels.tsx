@@ -24,6 +24,8 @@ function LabelsPage() {
   const search = Route.useSearch();
   const fetchOrders = useServerFn(getOrdersByIds);
   const fetchSettings = useServerFn(getSettings);
+  const markPrinted = useServerFn(markLabelPrinted);
+  const qc = useQueryClient();
 
   const [manualIds, setManualIds] = useState(search.ids ?? "");
   const ids = (search.ids ?? manualIds)
@@ -45,18 +47,42 @@ function LabelsPage() {
     itemsByOrder.set(it.order_id, arr);
   }
   const s = settingsQ.data;
+  const orders = ordersQ.data?.orders ?? [];
+  const alreadyPrinted = orders.filter((o) => ((o as any).label_print_count ?? 0) > 0).length;
+
+  async function handlePrint() {
+    const orderIds = orders.map((o) => o.id);
+    if (orderIds.length) {
+      try {
+        await markPrinted({ data: { ids: orderIds } });
+        qc.invalidateQueries({ queryKey: ["orders"] });
+        qc.invalidateQueries({ queryKey: ["shipping-orders"] });
+        qc.invalidateQueries({ queryKey: ["order"] });
+        qc.invalidateQueries({ queryKey: ["labels"] });
+      } catch {
+        // non-blocking — user tetap bisa cetak
+      }
+    }
+    window.print();
+  }
 
   return (
     <div className="space-y-6">
       <div className="no-print flex justify-between items-start flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Shipping labels</h1>
-          <p className="text-muted-foreground text-sm mt-1">100 × 150 mm thermal · prints one per page</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Label pengiriman</h1>
+          <p className="text-muted-foreground text-sm mt-1">100 × 150 mm thermal · satu label per halaman</p>
+          {orders.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {alreadyPrinted} dari {orders.length} label sudah pernah dicetak
+            </p>
+          )}
         </div>
-        <Button onClick={() => window.print()} disabled={!ordersQ.data?.orders.length}>
-          <Printer className="size-4 mr-1" /> Cetak {ordersQ.data?.orders.length ?? 0} label
+        <Button onClick={handlePrint} disabled={!orders.length}>
+          <Printer className="size-4 mr-1" /> Cetak {orders.length} label
         </Button>
       </div>
+
 
       {ids.length === 0 && (
         <Card className="no-print p-5 space-y-3">
