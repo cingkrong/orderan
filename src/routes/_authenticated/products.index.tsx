@@ -31,8 +31,8 @@ function ProductsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Products</h1>
-          <p className="text-muted-foreground text-sm mt-1">Catalog used when creating orders</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Produk</h1>
+          <p className="text-muted-foreground text-sm mt-1">Katalog yang dipakai saat membuat pesanan</p>
         </div>
         <Button asChild>
           <Link to="/products/new">
@@ -47,9 +47,8 @@ function ProductsPage() {
             <thead className="bg-muted/50 text-left">
               <tr>
                 <th className="p-3 font-medium">Produk</th>
-                <th className="p-3 font-medium">SKU</th>
-                <th className="p-3 font-medium text-right">Modal</th>
-                <th className="p-3 font-medium text-right">Harga</th>
+                <th className="p-3 font-medium">Variasi</th>
+                <th className="p-3 font-medium text-right">Rentang harga</th>
                 <th className="p-3 font-medium text-right">Margin</th>
                 <th className="p-3 font-medium text-right">Berat</th>
                 <th className="p-3 font-medium text-right">Stok</th>
@@ -59,29 +58,51 @@ function ProductsPage() {
             <tbody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i}><td colSpan={8} className="p-3"><Skeleton className="h-8" /></td></tr>
+                  <tr key={i}><td colSpan={7} className="p-3"><Skeleton className="h-8" /></td></tr>
                 ))
               ) : (data ?? []).length === 0 ? (
-                <tr><td colSpan={8} className="p-10 text-center text-muted-foreground">Belum ada produk</td></tr>
+                <tr><td colSpan={7} className="p-10 text-center text-muted-foreground">Belum ada produk</td></tr>
               ) : (
-                data!.map((p) => {
-                  const price = Number(p.price);
-                  const cost = Number((p as any).cost ?? 0);
-                  const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
+                data!.map((p: any) => {
+                  const variants: any[] = p.variants ?? [];
+                  const prices = variants.map((v) => Number(v.price));
+                  const costs = variants.map((v) => Number(v.cost));
+                  const minP = prices.length ? Math.min(...prices) : Number(p.price);
+                  const maxP = prices.length ? Math.max(...prices) : Number(p.price);
+                  const avgCost = costs.length ? costs.reduce((s, c) => s + c, 0) / costs.length : Number(p.cost ?? 0);
+                  const avgPrice = prices.length ? prices.reduce((s, c) => s + c, 0) / prices.length : Number(p.price);
+                  const margin = avgPrice > 0 ? ((avgPrice - avgCost) / avgPrice) * 100 : 0;
+                  const totalStock = variants.length ? variants.reduce((s, v) => s + Number(v.stock ?? 0), 0) : p.stock;
+                  const weights = variants.map((v) => Number(v.weight_g));
+                  const weightLabel = weights.length && Math.min(...weights) !== Math.max(...weights)
+                    ? `${formatWeight(Math.min(...weights))}–${formatWeight(Math.max(...weights))}`
+                    : formatWeight(weights[0] ?? p.weight_g);
+                  const priceLabel = minP === maxP ? formatIDR(minP) : `${formatIDR(minP)}–${formatIDR(maxP)}`;
                   return (
                     <tr key={p.id} className="border-t">
                       <td className="p-3">
                         <div className="font-medium">{p.name}</div>
-                        {p.variant && <div className="text-xs text-muted-foreground">{p.variant}</div>}
+                        {variants[0]?.sku && (
+                          <div className="text-xs text-muted-foreground font-mono">{variants[0].sku}</div>
+                        )}
                       </td>
-                      <td className="p-3 font-mono text-xs">{p.sku ?? "—"}</td>
-                      <td className="p-3 text-right tabular-nums text-muted-foreground">{formatIDR(cost)}</td>
-                      <td className="p-3 text-right tabular-nums">{formatIDR(price)}</td>
+                      <td className="p-3">
+                        <div className="text-xs text-muted-foreground">
+                          {variants.length === 0 ? "—" : variants.length === 1 ? variants[0].label : `${variants.length} variasi`}
+                        </div>
+                        {variants.length > 1 && (
+                          <div className="text-xs text-muted-foreground">
+                            {variants.slice(0, 3).map((v) => v.label).join(", ")}
+                            {variants.length > 3 ? "…" : ""}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-right tabular-nums">{priceLabel}</td>
                       <td className={`p-3 text-right tabular-nums ${margin >= 0 ? "text-success" : "text-destructive"}`}>
-                        {cost > 0 ? `${margin.toFixed(1)}%` : "—"}
+                        {avgCost > 0 ? `${margin.toFixed(1)}%` : "—"}
                       </td>
-                      <td className="p-3 text-right text-muted-foreground">{formatWeight(p.weight_g)}</td>
-                      <td className="p-3 text-right tabular-nums">{p.stock}</td>
+                      <td className="p-3 text-right text-muted-foreground">{weightLabel}</td>
+                      <td className="p-3 text-right tabular-nums">{totalStock}</td>
                       <td className="p-3 flex gap-1 justify-end">
                         <Button asChild size="icon" variant="ghost">
                           <Link to="/products/$id/edit" params={{ id: p.id }}>
