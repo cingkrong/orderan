@@ -20,7 +20,10 @@ import { ShippingLabel } from "@/components/shipping-label";
 import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/format";
 import { Pencil, Printer } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/format";
+import { Pencil, Printer } from "lucide-react";
+import { toast } from "sonner";
+import { format, formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/orders/$id")({
