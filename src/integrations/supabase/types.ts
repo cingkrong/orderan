@@ -315,6 +315,7 @@ export type Database = {
       }
       product_variants: {
         Row: {
+          color: string | null
           cost: number
           created_at: string
           id: string
@@ -323,6 +324,7 @@ export type Database = {
           label: string
           price: number
           product_id: string
+          size: string | null
           sku: string | null
           sort_order: number
           stock: number
@@ -330,6 +332,7 @@ export type Database = {
           weight_g: number
         }
         Insert: {
+          color?: string | null
           cost?: number
           created_at?: string
           id?: string
@@ -338,6 +341,7 @@ export type Database = {
           label?: string
           price?: number
           product_id: string
+          size?: string | null
           sku?: string | null
           sort_order?: number
           stock?: number
@@ -345,6 +349,7 @@ export type Database = {
           weight_g?: number
         }
         Update: {
+          color?: string | null
           cost?: number
           created_at?: string
           id?: string
@@ -353,6 +358,7 @@ export type Database = {
           label?: string
           price?: number
           product_id?: string
+          size?: string | null
           sku?: string | null
           sort_order?: number
           stock?: number
