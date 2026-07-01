@@ -773,6 +773,48 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 )}
               </div>
 
+              {/* Custom courier inline */}
+              <div className="border rounded-md p-3 bg-muted/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Jasa kirim custom</Label>
+                  <span className="text-[10px] text-muted-foreground">Tidak ada di RajaOngkir? Input manual di sini</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2">
+                  <Input
+                    placeholder="Nama ekspedisi (mis. Gojek, Grab, Kurir Toko)"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Ongkir (Rp)"
+                    value={customPrice}
+                    onChange={(e) => setCustomPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={applyCustomCourier}
+                    disabled={!customName.trim() || customPrice === "" || savingPreset}
+                  >
+                    {savingPreset ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
+                    Gunakan
+                  </Button>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={savePreset}
+                    onChange={(e) => setSavePreset(e.target.checked)}
+                    className="size-3"
+                  />
+                  Simpan sebagai preset (muncul otomatis di order berikutnya)
+                </label>
+              </div>
+
+
+
               <div>
                 <Label>Ongkir final (Rp)</Label>
                 <Input type="number" value={form.shipping_cost} onChange={(e) => setForm({ ...form, shipping_cost: Number(e.target.value) })} />
