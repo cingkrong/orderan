@@ -54,7 +54,11 @@ export function ShippingLabel({ data }: { data: LabelData }) {
     }
   }, [code, data.order_number]);
 
-  const courierLine = [data.courier?.toUpperCase(), data.service].filter(Boolean).join(" ");
+  const isCustom = (data.courier ?? "").toLowerCase() === "custom";
+  const courierLine = isCustom
+    ? (data.service || "—")
+    : [data.courier?.toUpperCase(), data.service].filter(Boolean).join(" ");
+
 
   return (
     <div
