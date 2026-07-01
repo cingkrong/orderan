@@ -106,7 +106,7 @@ export function ShippingLabel({ data }: { data: LabelData }) {
           {(data.is_dropship ? (data.dropship_phone || data.sender.phone) : data.sender.phone)} · {data.sender.city}
         </div>
       </div>
-      <div className="border-b-2 border-black py-1 flex-1 min-h-0">
+      <div className="border-b-2 border-black py-1">
         <div className="text-[7pt] font-bold uppercase text-black/70">Penerima</div>
         <div className="font-bold leading-tight" style={{ fontSize: "11pt" }}>{data.customer_name}</div>
         <div className="leading-tight font-semibold">{data.phone}</div>
