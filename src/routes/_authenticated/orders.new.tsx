@@ -185,7 +185,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
   });
 
   // Shipping cost
-  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; etd: string; custom?: boolean }>>([]);
+  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; etd: string; courier_code?: string; courier_name?: string; custom?: boolean }>>([]);
   const [loadingCost, setLoadingCost] = useState(false);
   const [costCached, setCostCached] = useState(false);
 
