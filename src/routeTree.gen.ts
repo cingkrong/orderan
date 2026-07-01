@@ -27,7 +27,7 @@ import { Route as AuthenticatedOrdersIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
 import { Route as AuthenticatedCustomersIdRouteImport } from './routes/_authenticated/customers.$id'
 import { Route as AuthenticatedProductsIdEditRouteImport } from './routes/_authenticated/products.$id.edit'
-import { Route as AuthenticatedOrdersIdEditRouteImport } from './routes/_authenticated/orders.$id.edit'
+import { Route as AuthenticatedOrdersIdEditRouteImport } from './routes/_authenticated/orders_.$id.edit'
 import { Route as AuthenticatedExpensesIdEditRouteImport } from './routes/_authenticated/expenses.$id.edit'
 
 const AuthRoute = AuthRouteImport.update({
@@ -128,9 +128,9 @@ const AuthenticatedProductsIdEditRoute =
   } as any)
 const AuthenticatedOrdersIdEditRoute =
   AuthenticatedOrdersIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => AuthenticatedOrdersIdRoute,
+    id: '/orders_/$id/edit',
+    path: '/orders/$id/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedExpensesIdEditRoute =
   AuthenticatedExpensesIdEditRouteImport.update({
@@ -150,7 +150,7 @@ export interface FileRoutesByFullPath {
   '/warehouses': typeof AuthenticatedWarehousesRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
-  '/orders/$id': typeof AuthenticatedOrdersIdRouteWithChildren
+  '/orders/$id': typeof AuthenticatedOrdersIdRoute
   '/orders/new': typeof AuthenticatedOrdersNewRoute
   '/products/new': typeof AuthenticatedProductsNewRoute
   '/expenses/': typeof AuthenticatedExpensesIndexRoute
@@ -171,7 +171,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
-  '/orders/$id': typeof AuthenticatedOrdersIdRouteWithChildren
+  '/orders/$id': typeof AuthenticatedOrdersIdRoute
   '/orders/new': typeof AuthenticatedOrdersNewRoute
   '/products/new': typeof AuthenticatedProductsNewRoute
   '/expenses': typeof AuthenticatedExpensesIndexRoute
@@ -194,14 +194,14 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/_authenticated/expenses/new': typeof AuthenticatedExpensesNewRoute
-  '/_authenticated/orders/$id': typeof AuthenticatedOrdersIdRouteWithChildren
+  '/_authenticated/orders/$id': typeof AuthenticatedOrdersIdRoute
   '/_authenticated/orders/new': typeof AuthenticatedOrdersNewRoute
   '/_authenticated/products/new': typeof AuthenticatedProductsNewRoute
   '/_authenticated/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
   '/_authenticated/expenses/$id/edit': typeof AuthenticatedExpensesIdEditRoute
-  '/_authenticated/orders/$id/edit': typeof AuthenticatedOrdersIdEditRoute
+  '/_authenticated/orders_/$id/edit': typeof AuthenticatedOrdersIdEditRoute
   '/_authenticated/products/$id/edit': typeof AuthenticatedProductsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -267,7 +267,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orders/'
     | '/_authenticated/products/'
     | '/_authenticated/expenses/$id/edit'
-    | '/_authenticated/orders/$id/edit'
+    | '/_authenticated/orders_/$id/edit'
     | '/_authenticated/products/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -404,12 +404,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductsIdEditRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/orders/$id/edit': {
-      id: '/_authenticated/orders/$id/edit'
-      path: '/edit'
+    '/_authenticated/orders_/$id/edit': {
+      id: '/_authenticated/orders_/$id/edit'
+      path: '/orders/$id/edit'
       fullPath: '/orders/$id/edit'
       preLoaderRoute: typeof AuthenticatedOrdersIdEditRouteImport
-      parentRoute: typeof AuthenticatedOrdersIdRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/expenses/$id/edit': {
       id: '/_authenticated/expenses/$id/edit'
@@ -435,19 +435,6 @@ const AuthenticatedCustomersRouteWithChildren =
     AuthenticatedCustomersRouteChildren,
   )
 
-interface AuthenticatedOrdersIdRouteChildren {
-  AuthenticatedOrdersIdEditRoute: typeof AuthenticatedOrdersIdEditRoute
-}
-
-const AuthenticatedOrdersIdRouteChildren: AuthenticatedOrdersIdRouteChildren = {
-  AuthenticatedOrdersIdEditRoute: AuthenticatedOrdersIdEditRoute,
-}
-
-const AuthenticatedOrdersIdRouteWithChildren =
-  AuthenticatedOrdersIdRoute._addFileChildren(
-    AuthenticatedOrdersIdRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRouteWithChildren
   AuthenticatedLabelsRoute: typeof AuthenticatedLabelsRoute
@@ -457,13 +444,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWarehousesRoute: typeof AuthenticatedWarehousesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedExpensesNewRoute: typeof AuthenticatedExpensesNewRoute
-  AuthenticatedOrdersIdRoute: typeof AuthenticatedOrdersIdRouteWithChildren
+  AuthenticatedOrdersIdRoute: typeof AuthenticatedOrdersIdRoute
   AuthenticatedOrdersNewRoute: typeof AuthenticatedOrdersNewRoute
   AuthenticatedProductsNewRoute: typeof AuthenticatedProductsNewRoute
   AuthenticatedExpensesIndexRoute: typeof AuthenticatedExpensesIndexRoute
   AuthenticatedOrdersIndexRoute: typeof AuthenticatedOrdersIndexRoute
   AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
   AuthenticatedExpensesIdEditRoute: typeof AuthenticatedExpensesIdEditRoute
+  AuthenticatedOrdersIdEditRoute: typeof AuthenticatedOrdersIdEditRoute
   AuthenticatedProductsIdEditRoute: typeof AuthenticatedProductsIdEditRoute
 }
 
@@ -476,13 +464,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWarehousesRoute: AuthenticatedWarehousesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedExpensesNewRoute: AuthenticatedExpensesNewRoute,
-  AuthenticatedOrdersIdRoute: AuthenticatedOrdersIdRouteWithChildren,
+  AuthenticatedOrdersIdRoute: AuthenticatedOrdersIdRoute,
   AuthenticatedOrdersNewRoute: AuthenticatedOrdersNewRoute,
   AuthenticatedProductsNewRoute: AuthenticatedProductsNewRoute,
   AuthenticatedExpensesIndexRoute: AuthenticatedExpensesIndexRoute,
   AuthenticatedOrdersIndexRoute: AuthenticatedOrdersIndexRoute,
   AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
   AuthenticatedExpensesIdEditRoute: AuthenticatedExpensesIdEditRoute,
+  AuthenticatedOrdersIdEditRoute: AuthenticatedOrdersIdEditRoute,
   AuthenticatedProductsIdEditRoute: AuthenticatedProductsIdEditRoute,
 }
 
