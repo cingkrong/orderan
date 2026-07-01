@@ -314,7 +314,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                   product_id: p.id,
                   variant_id: v.id,
                   name: p.name,
-                  variant: v.label,
+                  variant: variantLabel(v),
                   qty: 1,
                   price: Number(v.price),
                   cost: Number(v.cost),
