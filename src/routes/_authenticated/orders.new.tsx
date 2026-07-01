@@ -656,41 +656,61 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
 
               <div>
-                <Label>Kurir</Label>
-                <div className="flex gap-2">
-                  <Select value={form.courier ?? ""} onValueChange={(v) => setForm({ ...form, courier: v, service: "", shipping_cost: 0, eta: "" })}>
-                    <SelectTrigger><SelectValue placeholder="Pilih kurir" /></SelectTrigger>
-                    <SelectContent>
-                      {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" onClick={calcShipping} disabled={loadingCost}>
-                    {loadingCost ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />}
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="mb-0">Pilih Ekspedisi</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void calcShipping(true)}
+                    disabled={loadingCost || !form.destination_subdistrict_id || !weight}
+                    className="h-7 text-xs"
+                  >
+                    {loadingCost ? <Loader2 className="size-3 animate-spin mr-1" /> : <Truck className="size-3 mr-1" />}
+                    {costCached ? "Perbarui" : "Refresh"}
                   </Button>
                 </div>
+                {!form.destination_subdistrict_id && (
+                  <p className="text-xs text-muted-foreground">Pilih tujuan dulu untuk menghitung ongkir</p>
+                )}
+                {form.destination_subdistrict_id && !weight && (
+                  <p className="text-xs text-muted-foreground">Tambah produk dulu (berat = 0)</p>
+                )}
+                {loadingCost && services.length === 0 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="size-3 animate-spin" /> Menghitung ongkir…</p>
+                )}
+                {costCached && services.length > 0 && (
+                  <p className="text-xs text-muted-foreground mb-1">Dari cache · klik Perbarui untuk cek ulang</p>
+                )}
+                {services.length > 0 && (
+                  <div className="space-y-1 max-h-64 overflow-auto">
+                    {services.map((s) => (
+                      <button
+                        key={s.service}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, service: s.service, courier: s.custom ? "custom" : (f.courier || "jne"), shipping_cost: s.value, eta: s.etd }))}
+                        className={`w-full text-left border rounded-md p-2 hover:bg-accent transition text-sm ${
+                          form.service === s.service ? "border-primary bg-primary/5" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">
+                            {s.service} {s.custom && <span className="text-[10px] bg-warning/20 text-warning-foreground px-1 rounded ml-1">CUSTOM</span>}
+                          </div>
+                          <div className="font-mono text-sm">{formatIDR(s.value)}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{s.description}{s.etd ? ` · ${s.etd} hari` : ""}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {services.length > 0 && (
-                <div className="space-y-1 max-h-52 overflow-auto">
-                  {services.map((s) => (
-                    <button
-                      key={s.service}
-                      onClick={() => setForm((f) => ({ ...f, service: s.service, shipping_cost: s.value, eta: s.etd }))}
-                      className={`w-full text-left border rounded-md p-2 hover:bg-accent transition text-sm ${
-                        form.service === s.service ? "border-primary bg-primary/5" : ""
-                      }`}
-                    >
-                      <div className="font-medium">{s.service} <span className="text-xs text-muted-foreground">({s.description})</span></div>
-                      <div className="text-xs">{formatIDR(s.value)} · {s.etd} hari</div>
-                    </button>
-                  ))}
-                </div>
-              )}
 
               <div>
-                <Label>Ongkir (Rp)</Label>
+                <Label>Ongkir final (Rp)</Label>
                 <Input type="number" value={form.shipping_cost} onChange={(e) => setForm({ ...form, shipping_cost: Number(e.target.value) })} />
               </div>
+
 
               <div>
                 <Label>No. Resi</Label>
