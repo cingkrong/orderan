@@ -517,7 +517,11 @@ function OrderForm({ existingId }: { existingId?: string }) {
             <h2 className="font-semibold mb-4">Pelanggan</h2>
             <div className="space-y-3">
               <div>
-                <Label>Telepon<span className="text-destructive">*</span></Label>
+                <Label>Nama pemesan<span className="text-destructive">*</span></Label>
+                <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Telepon pemesan<span className="text-destructive">*</span></Label>
                 <Input
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -525,10 +529,24 @@ function OrderForm({ existingId }: { existingId?: string }) {
                   placeholder="0812..."
                 />
               </div>
-              <div>
-                <Label>Nama pemesan<span className="text-destructive">*</span></Label>
-                <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
+
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <Switch id="same" checked={sameRecipient} onCheckedChange={setSameRecipient} />
+                <Label htmlFor="same" className="cursor-pointer">Penerima sama dengan pemesan</Label>
               </div>
+
+              {!sameRecipient && (
+                <div className="space-y-3 rounded-md border p-3 bg-muted/30">
+                  <div>
+                    <Label>Nama penerima<span className="text-destructive">*</span></Label>
+                    <Input value={form.recipient_name ?? ""} onChange={(e) => setForm({ ...form, recipient_name: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Telepon penerima</Label>
+                    <Input value={form.recipient_phone ?? ""} onChange={(e) => setForm({ ...form, recipient_phone: e.target.value })} />
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -556,23 +574,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <Card className="p-5">
             <h2 className="font-semibold mb-4">Pengiriman</h2>
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Switch id="same" checked={sameRecipient} onCheckedChange={setSameRecipient} />
-                <Label htmlFor="same" className="cursor-pointer">Penerima sama dengan pemesan</Label>
-              </div>
 
-              {!sameRecipient && (
-                <div className="space-y-3 rounded-md border p-3 bg-muted/30">
-                  <div>
-                    <Label>Nama penerima<span className="text-destructive">*</span></Label>
-                    <Input value={form.recipient_name ?? ""} onChange={(e) => setForm({ ...form, recipient_name: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Telepon penerima</Label>
-                    <Input value={form.recipient_phone ?? ""} onChange={(e) => setForm({ ...form, recipient_phone: e.target.value })} />
-                  </div>
-                </div>
-              )}
 
               <div>
                 <Label>Alamat lengkap<span className="text-destructive">*</span></Label>
