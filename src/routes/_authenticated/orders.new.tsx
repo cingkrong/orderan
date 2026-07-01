@@ -314,10 +314,33 @@ function OrderForm({ existingId }: { existingId?: string }) {
     if (parts.length > 0) return parts.join(" / ");
     return v.label ?? "";
   }
+  function isPreorder(p: any) {
+    return p?.product_type === "preorder";
+  }
+  function variantInStock(p: any, v: any) {
+    if (!v) return false;
+    if (isPreorder(p)) return true;
+    return Number(v.stock ?? 0) > 0;
+  }
+  function productHasStock(p: any) {
+    if (!p) return false;
+    if (isPreorder(p)) return true;
+    const variants: any[] = p.variants ?? [];
+    if (variants.length === 0) return Number(p.stock ?? 0) > 0;
+    return variants.some((v) => Number(v.stock ?? 0) > 0);
+  }
   function addItem(productId?: string) {
     const p = productId ? productsQ.data?.find((x: any) => x.id === productId) : undefined;
+    if (p && !productHasStock(p)) {
+      toast.error(`Stok "${(p as any).name}" habis`);
+      return;
+    }
     const variants: any[] = (p as any)?.variants ?? [];
-    const def = variants.find((v) => v.is_default) ?? variants[0];
+    const def =
+      variants.find((v) => v.is_default && variantInStock(p, v)) ??
+      variants.find((v) => variantInStock(p, v)) ??
+      variants.find((v) => v.is_default) ??
+      variants[0];
     setForm((f) => ({
       ...f,
       items: [
@@ -341,8 +364,13 @@ function OrderForm({ existingId }: { existingId?: string }) {
     const p = productsQ.data?.find((x: any) => x.id === item.product_id) as any;
     const v = (p?.variants ?? []).find((x: any) => x.id === variantId);
     if (!v) return;
+    if (!variantInStock(p, v)) {
+      toast.error(`Varian "${variantLabel(v)}" stok habis`);
+      return;
+    }
     updateItem(idx, { variant_id: v.id, variant: variantLabel(v), price: Number(v.price), cost: Number(v.cost), weight_g: Number(v.weight_g) });
   }
+
   function updateItem(idx: number, patch: Partial<OrderInput["items"][number]>) {
     setForm((f) => ({ ...f, items: f.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) }));
   }
