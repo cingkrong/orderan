@@ -392,6 +392,8 @@ export function ProductForm({ id }: { id?: string }) {
                 <VariantRow
                   key={v.id ?? `new-${idx}`}
                   variant={v}
+                  index={idx}
+                  productName={form.name}
                   onChange={(patch) => updateVariant(idx, patch)}
                   onSetDefault={() => setDefault(idx)}
                   onDuplicate={() => duplicateVariant(idx)}
