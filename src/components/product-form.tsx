@@ -18,8 +18,6 @@ type VariantForm = {
   id?: string;
   label: string;
   sku: string;
-  color: string;
-  size: string;
   price: number;
   cost: number;
   weight_g: number;
