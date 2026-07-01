@@ -93,6 +93,24 @@ const CATEGORIES = [
   "Lainnya",
 ];
 
+function slugPart(s: string, len = 4) {
+  return (s || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "")
+    .slice(0, len);
+}
+
+function generateSku(name: string, color: string, size: string, idx: number) {
+  const base = slugPart(name, 5) || "PRD";
+  const parts = [base];
+  const c = slugPart(color, 3);
+  const sz = slugPart(size, 3);
+  if (c) parts.push(c);
+  if (sz) parts.push(sz);
+  parts.push(String(idx + 1).padStart(2, "0"));
+  return parts.join("-");
+}
+
 function FormSection({
   title,
   hint,
