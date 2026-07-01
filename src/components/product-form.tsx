@@ -565,12 +565,16 @@ export function ProductForm({ id }: { id?: string }) {
 
 function VariantRow({
   variant,
+  index,
+  productName,
   onChange,
   onSetDefault,
   onDuplicate,
   onRemove,
 }: {
   variant: VariantForm;
+  index: number;
+  productName: string;
   onChange: (patch: Partial<VariantForm>) => void;
   onSetDefault: () => void;
   onDuplicate: () => void;
