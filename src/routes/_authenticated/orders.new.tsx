@@ -389,10 +389,21 @@ function OrderForm({ existingId }: { existingId?: string }) {
     for (const p of products) {
       for (const v of p.variants ?? []) {
         if (v.sku && v.sku.toLowerCase() === q.toLowerCase()) {
+          if (!variantInStock(p, v)) {
+            toast.error(`Stok "${p.name} · ${variantLabel(v)}" habis`);
+            setScan("");
+            return;
+          }
           // find existing item
           const existingIdx = form.items.findIndex((it) => it.variant_id === v.id);
           if (existingIdx >= 0) {
-            updateItem(existingIdx, { qty: form.items[existingIdx].qty + 1 });
+            const nextQty = form.items[existingIdx].qty + 1;
+            if (!isPreorder(p) && nextQty > Number(v.stock ?? 0)) {
+              toast.error(`Qty melebihi stok (${v.stock})`);
+              setScan("");
+              return;
+            }
+            updateItem(existingIdx, { qty: nextQty });
           } else {
             setForm((f) => ({
               ...f,
@@ -415,6 +426,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           return;
         }
       }
+
     }
     toast.error(`SKU "${q}" tidak ditemukan`);
     setScan("");
