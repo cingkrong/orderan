@@ -493,7 +493,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 Profit item: <span className="font-mono">{formatIDR((it.price - (it.cost || 0)) * it.qty)}</span>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         <Button variant="outline" size="sm" onClick={() => addItem()}><Plus className="size-4 mr-1" />Tambah item custom</Button>
       </Card>
