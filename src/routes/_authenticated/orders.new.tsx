@@ -248,6 +248,12 @@ function OrderForm({ existingId }: { existingId?: string }) {
   }
 
   // ---- item helpers ----
+  function variantLabel(v: any): string {
+    if (!v) return "";
+    const parts = [v.color, v.size].filter((x) => x && String(x).trim());
+    if (parts.length > 0) return parts.join(" / ");
+    return v.label ?? "";
+  }
   function addItem(productId?: string) {
     const p = productId ? productsQ.data?.find((x: any) => x.id === productId) : undefined;
     const variants: any[] = (p as any)?.variants ?? [];
@@ -260,7 +266,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           product_id: p?.id ?? null,
           variant_id: def?.id ?? null,
           name: p?.name ?? "Item custom",
-          variant: def?.label ?? "",
+          variant: variantLabel(def),
           qty: 1,
           price: def ? Number(def.price) : p ? Number((p as any).price) : 0,
           cost: def ? Number(def.cost) : p ? Number((p as any).cost ?? 0) : 0,
@@ -275,7 +281,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
     const p = productsQ.data?.find((x: any) => x.id === item.product_id) as any;
     const v = (p?.variants ?? []).find((x: any) => x.id === variantId);
     if (!v) return;
-    updateItem(idx, { variant_id: v.id, variant: v.label, price: Number(v.price), cost: Number(v.cost), weight_g: Number(v.weight_g) });
+    updateItem(idx, { variant_id: v.id, variant: variantLabel(v), price: Number(v.price), cost: Number(v.cost), weight_g: Number(v.weight_g) });
   }
   function updateItem(idx: number, patch: Partial<OrderInput["items"][number]>) {
     setForm((f) => ({ ...f, items: f.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) }));
