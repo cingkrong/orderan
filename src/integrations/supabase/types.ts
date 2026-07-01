@@ -315,14 +315,17 @@ export type Database = {
       }
       product_variants: {
         Row: {
+          color: string | null
           cost: number
           created_at: string
+          dropship_price: number
           id: string
           image_url: string | null
           is_default: boolean
           label: string
           price: number
           product_id: string
+          size: string | null
           sku: string | null
           sort_order: number
           stock: number
@@ -330,14 +333,17 @@ export type Database = {
           weight_g: number
         }
         Insert: {
+          color?: string | null
           cost?: number
           created_at?: string
+          dropship_price?: number
           id?: string
           image_url?: string | null
           is_default?: boolean
           label?: string
           price?: number
           product_id: string
+          size?: string | null
           sku?: string | null
           sort_order?: number
           stock?: number
@@ -345,14 +351,17 @@ export type Database = {
           weight_g?: number
         }
         Update: {
+          color?: string | null
           cost?: number
           created_at?: string
+          dropship_price?: number
           id?: string
           image_url?: string | null
           is_default?: boolean
           label?: string
           price?: number
           product_id?: string
+          size?: string | null
           sku?: string | null
           sort_order?: number
           stock?: number
@@ -371,40 +380,67 @@ export type Database = {
       }
       products: {
         Row: {
+          category: string | null
           cost: number
           created_at: string
+          description: string | null
+          discount_type: string | null
+          discount_value: number | null
           id: string
           name: string
           price: number
+          product_type: string
+          show_stock: boolean
           sku: string | null
           stock: number
+          storefront_visible: boolean
           updated_at: string
           variant: string | null
           weight_g: number
+          wholesale_enabled: boolean
+          wholesale_tiers: Json
         }
         Insert: {
+          category?: string | null
           cost?: number
           created_at?: string
+          description?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           name: string
           price?: number
+          product_type?: string
+          show_stock?: boolean
           sku?: string | null
           stock?: number
+          storefront_visible?: boolean
           updated_at?: string
           variant?: string | null
           weight_g?: number
+          wholesale_enabled?: boolean
+          wholesale_tiers?: Json
         }
         Update: {
+          category?: string | null
           cost?: number
           created_at?: string
+          description?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           name?: string
           price?: number
+          product_type?: string
+          show_stock?: boolean
           sku?: string | null
           stock?: number
+          storefront_visible?: boolean
           updated_at?: string
           variant?: string | null
           weight_g?: number
+          wholesale_enabled?: boolean
+          wholesale_tiers?: Json
         }
         Relationships: []
       }
