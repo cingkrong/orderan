@@ -215,6 +215,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           variant: p?.variant ?? "",
           qty: 1,
           price: p ? Number(p.price) : 0,
+          cost: p ? Number((p as any).cost ?? 0) : 0,
           weight_g: p?.weight_g ?? 0,
         },
       ],
