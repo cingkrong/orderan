@@ -13,6 +13,7 @@ export type LabelData = {
   service?: string | null;
   tracking_number?: string | null;
   weight_g: number;
+  shipping_cost?: number | null;
   insurance: boolean;
   routing_code?: string | null;
   note?: string | null;
