@@ -43,8 +43,11 @@ const variantInput = z.object({
   id: z.string().uuid().optional(),
   label: z.string().min(1),
   sku: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  size: z.string().nullable().optional(),
   price: z.number().min(0),
   cost: z.number().min(0).default(0),
+  dropship_price: z.number().min(0).default(0),
   weight_g: z.number().int().min(0),
   stock: z.number().int(),
   is_default: z.boolean().default(false),
@@ -52,19 +55,32 @@ const variantInput = z.object({
   image_url: z.string().nullable().optional(),
 });
 
-
+const wholesaleTier = z.object({
+  min_qty: z.number().int().min(1),
+  price: z.number().min(0),
+});
 
 const productInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  product_type: z.enum(["stock", "preorder"]).default("stock"),
   sku: z.string().nullable().optional(),
   variant: z.string().nullable().optional(),
   price: z.number().min(0),
   cost: z.number().min(0).default(0),
   weight_g: z.number().int().min(0),
   stock: z.number().int(),
+  wholesale_enabled: z.boolean().default(false),
+  wholesale_tiers: z.array(wholesaleTier).default([]),
+  discount_type: z.string().nullable().optional(),
+  discount_value: z.number().nullable().optional(),
+  storefront_visible: z.boolean().default(false),
+  show_stock: z.boolean().default(false),
   variants: z.array(variantInput).min(1),
 });
+
 
 export const upsertProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -128,14 +144,18 @@ export const upsertProduct = createServerFn({ method: "POST" })
       product_id: productId!,
       label: v.label,
       sku: v.sku || null,
+      color: v.color || null,
+      size: v.size || null,
       price: v.price,
       cost: v.cost,
+      dropship_price: v.dropship_price ?? 0,
       weight_g: v.weight_g,
       stock: v.stock,
       is_default: v.is_default,
       sort_order: v.sort_order ?? idx,
       image_url: v.image_url || null,
     }));
+
 
 
     const { error: upErr } = await context.supabase
