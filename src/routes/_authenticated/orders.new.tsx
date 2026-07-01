@@ -414,7 +414,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                           <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
                           <SelectContent>
                             {variants.map((v) => (
-                              <SelectItem key={v.id} value={v.id}>{v.label} · {formatIDR(Number(v.price))}</SelectItem>
+                              <SelectItem key={v.id} value={v.id}>{variantLabel(v)} · {formatIDR(Number(v.price))}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
