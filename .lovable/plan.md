@@ -1,33 +1,33 @@
-## Yang masih kosong
+## Tujuan
+Menambahkan dukungan **pesanan dropship** — label "Dropship" di daftar pelanggan + field pengirim dropship (nama & telepon) di form pesanan, yang ikut tercetak di label pengiriman.
 
-Setelah saya cek, semua menu utama (Dashboard, Pesanan, Pengiriman, Produk, Pelanggan, Label, Pengaturan) sudah punya halaman. Yang **belum lengkap** adalah halaman detail Pelanggan:
+## Perubahan Database
+Migrasi baru menambahkan kolom di tabel `orders`:
+- `is_dropship` (boolean, default false)
+- `dropship_name` (text, nullable)
+- `dropship_phone` (text, nullable)
 
-- Server function `getCustomer` dan `updateCustomerTags` sudah ada di `src/lib/customers.functions.ts`, tapi route-nya belum dibuat.
-- Di halaman `/customers`, baris pelanggan tidak bisa diklik — jadi data riwayat pesanan & edit tag/catatan tidak bisa diakses.
+Trigger `update_customer_rollup()` diperbarui: jika `is_dropship = true`, tandai pelanggan tersebut dengan menambahkan tag `"dropship"` di kolom `customers.tags` (append kalau belum ada). Pelanggan yang pernah dropship otomatis punya label ini di daftar Pelanggan.
 
-## Rencana
+## Backend
+`src/lib/orders.functions.ts` — tambah 3 field di skema `orderInput` (`is_dropship`, `dropship_name`, `dropship_phone`) supaya bisa disimpan lewat `saveOrder`.
 
-### 1. Halaman baru: `/customers/$id`
-File: `src/routes/_authenticated/customers.$id.tsx`
+## Form Pesanan (`src/routes/_authenticated/orders.new.tsx`)
+Tambah section baru "Dropship" di kartu Customer, di atas atau bawah alamat:
+- Switch **"Kirim sebagai dropship"** (`is_dropship`)
+- Saat aktif, tampilkan 2 input inline (tidak popup): **Nama pengirim** dan **Telepon pengirim**
+- Muat nilai ini juga saat mode edit dari `existingQ.data`
 
-Isi:
-- **Header**: nama, telepon, tombol kembali ke daftar.
-- **Ringkasan**: total pesanan, total belanja, tanggal dibuat.
-- **Alamat terakhir**: full address, kota/subdistrict dari `last_address` JSONB.
-- **Tag & Catatan** (form inline, bukan popup):
-  - Input tag (chip add/remove sederhana).
-  - Textarea catatan.
-  - Tombol "Simpan" → panggil `updateCustomerTags`, invalidate query.
-- **Riwayat pesanan**: tabel `order_number`, status (pakai `STATUS_LABEL`), kurir + resi, total, tanggal — setiap baris link ke `/orders/$id`.
+## Label Pengiriman (`src/components/shipping-label.tsx`)
+Bagian "Pengirim" pada label: kalau `order.is_dropship`, ganti nama & telepon pengirim dengan `dropship_name` / `dropship_phone` (alamat gudang tetap dari settings sebagai origin — hanya identitas pengirim di label yang berubah, sesuai praktik dropship umum).
 
-### 2. Update daftar pelanggan
-File: `src/routes/_authenticated/customers.tsx`
-- Bungkus baris dengan `Link to="/customers/$id"` atau `onClick navigate` supaya bisa masuk ke detail.
-- Tambah cursor pointer + hover.
+## Halaman Pelanggan
+- `src/routes/_authenticated/customers.tsx`: tampilkan badge "Dropship" pada baris pelanggan yang tags-nya mengandung `"dropship"`.
+- `src/routes/_authenticated/customers.$id.tsx`: badge yang sama muncul otomatis (sudah render tags).
 
-### 3. Tidak ada perubahan database
-Semua kolom dan server function yang dibutuhkan sudah tersedia.
+## Detail Pesanan (`src/routes/_authenticated/orders.$id.tsx`)
+Tampilkan info dropship (nama + telepon pengirim) bila `is_dropship = true`, dengan badge kecil "Dropship".
 
-## Catatan
-
-Kalau ada halaman lain yang menurut Anda masih "kosong" (misalnya analitik di Dashboard, halaman profil user, atau modul lain), beritahu — saya bisa tambahkan ke rencana ini sebelum implementasi.
+## Catatan Teknis
+- Tidak ada popup baru; semua input dropship inline mengikuti aturan proyek.
+- Tag `"dropship"` tetap bisa diedit manual di halaman detail pelanggan (tag editor sudah ada).

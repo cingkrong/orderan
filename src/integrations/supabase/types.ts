@@ -117,10 +117,13 @@ export type Database = {
           destination_label: string | null
           destination_subdistrict_id: string | null
           district: string | null
+          dropship_name: string | null
+          dropship_phone: string | null
           eta: string | null
           full_address: string
           id: string
           insurance: boolean
+          is_dropship: boolean
           note: string | null
           order_number: string | null
           phone: string
@@ -150,10 +153,13 @@ export type Database = {
           destination_label?: string | null
           destination_subdistrict_id?: string | null
           district?: string | null
+          dropship_name?: string | null
+          dropship_phone?: string | null
           eta?: string | null
           full_address: string
           id?: string
           insurance?: boolean
+          is_dropship?: boolean
           note?: string | null
           order_number?: string | null
           phone: string
@@ -183,10 +189,13 @@ export type Database = {
           destination_label?: string | null
           destination_subdistrict_id?: string | null
           district?: string | null
+          dropship_name?: string | null
+          dropship_phone?: string | null
           eta?: string | null
           full_address?: string
           id?: string
           insurance?: boolean
+          is_dropship?: boolean
           note?: string | null
           order_number?: string | null
           phone?: string

@@ -17,6 +17,9 @@ export type LabelData = {
   routing_code?: string | null;
   note?: string | null;
   items: Array<{ name: string; variant?: string | null; qty: number }>;
+  is_dropship?: boolean;
+  dropship_name?: string | null;
+  dropship_phone?: string | null;
   sender: {
     name: string;
     phone: string;
@@ -90,9 +93,18 @@ export function ShippingLabel({ data }: { data: LabelData }) {
 
       {/* Sender / Receiver */}
       <div className="border-b border-black py-1">
-        <div className="text-[7pt] font-bold uppercase text-black/70">Pengirim</div>
-        <div className="font-semibold leading-tight">{data.sender.name}</div>
-        <div className="leading-tight">{data.sender.phone} · {data.sender.city}</div>
+        <div className="text-[7pt] font-bold uppercase text-black/70 flex items-center gap-1">
+          Pengirim
+          {data.is_dropship && (
+            <span className="border border-black px-1 text-[7pt] font-bold">DROPSHIP</span>
+          )}
+        </div>
+        <div className="font-semibold leading-tight">
+          {data.is_dropship ? (data.dropship_name || data.sender.name) : data.sender.name}
+        </div>
+        <div className="leading-tight">
+          {(data.is_dropship ? (data.dropship_phone || data.sender.phone) : data.sender.phone)} · {data.sender.city}
+        </div>
       </div>
       <div className="border-b-2 border-black py-1 flex-1 min-h-0">
         <div className="text-[7pt] font-bold uppercase text-black/70">Penerima</div>
