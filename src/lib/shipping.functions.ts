@@ -47,12 +47,13 @@ async function rajaongkir(
   }
   const code = json.meta?.code ?? res.status;
   const msg = json.meta?.message ?? "";
-  if (code === 400 && /not found/i.test(msg)) {
+  if (/not found/i.test(msg)) {
     return { meta: json.meta, data: [] };
   }
   if (!res.ok || (code !== 200 && code !== 201)) {
     throw new Error(msg || `RajaOngkir error (${code}) ${json.meta?.status ?? ""}`.trim());
   }
+
   return json;
 }
 
