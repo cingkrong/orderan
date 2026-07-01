@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { saveOrder, getOrder, type OrderInput } from "@/lib/orders.functions";
-import { listProducts } from "@/lib/products.functions";
+import { listProducts, quickCreateProduct } from "@/lib/products.functions";
 import { getCustomerByPhone } from "@/lib/customers.functions";
 import { searchDestinations, getShippingCost, type Destination } from "@/lib/shipping.functions";
 import { listWarehouses } from "@/lib/warehouses.functions";
