@@ -72,6 +72,9 @@ function OrderForm({ existingId }: { existingId?: string }) {
     insurance: false,
     routing_code: "",
     note: "",
+    is_dropship: false,
+    dropship_name: "",
+    dropship_phone: "",
     items: [],
   });
 
@@ -102,6 +105,9 @@ function OrderForm({ existingId }: { existingId?: string }) {
         insurance: order.insurance,
         routing_code: order.routing_code ?? "",
         note: order.note ?? "",
+        is_dropship: (order as any).is_dropship ?? false,
+        dropship_name: (order as any).dropship_name ?? "",
+        dropship_phone: (order as any).dropship_phone ?? "",
         items: items.map((i) => ({
           product_id: i.product_id,
           name: i.name,
@@ -326,6 +332,39 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <Input value={form.postal_code ?? ""} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} placeholder="Kode pos" />
               </div>
             </div>
+          </div>
+
+          <div className="rounded-md border p-3 space-y-3 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-semibold">Kirim sebagai dropship</Label>
+                <p className="text-xs text-muted-foreground">Nama & telepon pengirim di label akan diganti dengan data dropshipper.</p>
+              </div>
+              <Switch
+                checked={form.is_dropship}
+                onCheckedChange={(v) => setForm({ ...form, is_dropship: v })}
+              />
+            </div>
+            {form.is_dropship && (
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>Nama pengirim (dropshipper)</Label>
+                  <Input
+                    value={form.dropship_name ?? ""}
+                    onChange={(e) => setForm({ ...form, dropship_name: e.target.value })}
+                    placeholder="cth. Toko Aisyah"
+                  />
+                </div>
+                <div>
+                  <Label>Telepon pengirim (dropshipper)</Label>
+                  <Input
+                    value={form.dropship_phone ?? ""}
+                    onChange={(e) => setForm({ ...form, dropship_phone: e.target.value })}
+                    placeholder="0812..."
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 

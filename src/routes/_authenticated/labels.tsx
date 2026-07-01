@@ -89,6 +89,9 @@ function LabelsPage() {
               routing_code: o.routing_code,
               note: o.note,
               items: itemsByOrder.get(o.id) ?? [],
+              is_dropship: (o as any).is_dropship ?? false,
+              dropship_name: (o as any).dropship_name,
+              dropship_phone: (o as any).dropship_phone,
               sender: {
                 name: s?.sender_name ?? "",
                 phone: s?.sender_phone ?? "",

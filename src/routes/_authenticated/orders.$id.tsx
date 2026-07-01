@@ -94,13 +94,22 @@ function OrderDetail() {
       <div className="grid lg:grid-cols-3 gap-4 no-print">
         <Card className="p-5 lg:col-span-2 space-y-4">
           <div>
-            <h2 className="font-semibold mb-2">Customer & address</h2>
+            <h2 className="font-semibold mb-2 flex items-center gap-2">
+              Customer & address
+              {(order as any).is_dropship && <Badge variant="outline">Dropship</Badge>}
+            </h2>
             <div className="text-sm space-y-1">
               <div className="font-medium">{order.customer_name} <span className="text-muted-foreground">· {order.phone}</span></div>
               <div>{order.full_address}</div>
               <div className="text-muted-foreground">
                 {[order.district, order.city, order.province, order.postal_code].filter(Boolean).join(", ")}
               </div>
+              {(order as any).is_dropship && (
+                <div className="mt-2 pt-2 border-t text-xs">
+                  <div className="font-semibold uppercase text-muted-foreground">Pengirim (Dropship)</div>
+                  <div>{(order as any).dropship_name || "—"} · {(order as any).dropship_phone || "—"}</div>
+                </div>
+              )}
             </div>
           </div>
           <div>
@@ -188,6 +197,9 @@ function OrderDetail() {
                 routing_code: order.routing_code,
                 note: order.note,
                 items: items.map((i) => ({ name: i.name, variant: i.variant, qty: i.qty })),
+                is_dropship: (order as any).is_dropship ?? false,
+                dropship_name: (order as any).dropship_name,
+                dropship_phone: (order as any).dropship_phone,
                 sender: {
                   name: s.sender_name,
                   phone: s.sender_phone,
