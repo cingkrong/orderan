@@ -43,16 +43,21 @@ async function loadPeriod(
   supabase: { from: (t: string) => any },
   from: string,
   to: string,
+  statuses?: string[],
+  paymentStatuses?: string[],
 ): Promise<{ orders: OrderRow[]; items: ItemRow[]; expenses: ExpenseRow[] }> {
   const fromISO = `${from}T00:00:00.000Z`;
   const toISO = `${to}T23:59:59.999Z`;
 
-  const { data: orders, error: oe } = await supabase
+  let q = supabase
     .from("orders")
-    .select("id, created_at, status, source, campaign, subtotal, discount, marketplace_fee, shipping_cost, total")
+    .select("id, created_at, status, payment_status, source, campaign, subtotal, discount, marketplace_fee, shipping_cost, total")
     .gte("created_at", fromISO)
-    .lte("created_at", toISO)
-    .neq("status", "cancelled");
+    .lte("created_at", toISO);
+  if (statuses && statuses.length > 0) q = q.in("status", statuses);
+  else q = q.neq("status", "cancelled");
+  if (paymentStatuses && paymentStatuses.length > 0) q = q.in("payment_status", paymentStatuses);
+  const { data: orders, error: oe } = await q;
   if (oe) throw new Error(oe.message);
 
   const ids = (orders ?? []).map((o: OrderRow) => o.id);
