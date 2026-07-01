@@ -53,8 +53,48 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          note: string | null
+          source: string | null
+          subcategory: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          note?: string | null
+          source?: string | null
+          subcategory?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          note?: string | null
+          source?: string | null
+          subcategory?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
+          cost: number
           created_at: string
           id: string
           name: string
@@ -66,6 +106,7 @@ export type Database = {
           weight_g: number
         }
         Insert: {
+          cost?: number
           created_at?: string
           id?: string
           name: string
@@ -77,6 +118,7 @@ export type Database = {
           weight_g?: number
         }
         Update: {
+          cost?: number
           created_at?: string
           id?: string
           name?: string
@@ -88,6 +130,13 @@ export type Database = {
           weight_g?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_pnl"
+            referencedColumns: ["order_id"]
+          },
           {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
@@ -116,6 +165,7 @@ export type Database = {
           destination_city_id: string | null
           destination_label: string | null
           destination_subdistrict_id: string | null
+          discount: number
           district: string | null
           dropship_name: string | null
           dropship_phone: string | null
@@ -126,6 +176,7 @@ export type Database = {
           is_dropship: boolean
           label_print_count: number
           label_printed_at: string | null
+          marketplace_fee: number
           note: string | null
           order_number: string | null
           phone: string
@@ -154,6 +205,7 @@ export type Database = {
           destination_city_id?: string | null
           destination_label?: string | null
           destination_subdistrict_id?: string | null
+          discount?: number
           district?: string | null
           dropship_name?: string | null
           dropship_phone?: string | null
@@ -164,6 +216,7 @@ export type Database = {
           is_dropship?: boolean
           label_print_count?: number
           label_printed_at?: string | null
+          marketplace_fee?: number
           note?: string | null
           order_number?: string | null
           phone: string
@@ -192,6 +245,7 @@ export type Database = {
           destination_city_id?: string | null
           destination_label?: string | null
           destination_subdistrict_id?: string | null
+          discount?: number
           district?: string | null
           dropship_name?: string | null
           dropship_phone?: string | null
@@ -202,6 +256,7 @@ export type Database = {
           is_dropship?: boolean
           label_print_count?: number
           label_printed_at?: string | null
+          marketplace_fee?: number
           note?: string | null
           order_number?: string | null
           phone?: string
@@ -231,6 +286,7 @@ export type Database = {
       }
       products: {
         Row: {
+          cost: number
           created_at: string
           id: string
           name: string
@@ -242,6 +298,7 @@ export type Database = {
           weight_g: number
         }
         Insert: {
+          cost?: number
           created_at?: string
           id?: string
           name: string
@@ -253,6 +310,7 @@ export type Database = {
           weight_g?: number
         }
         Update: {
+          cost?: number
           created_at?: string
           id?: string
           name?: string
@@ -351,7 +409,34 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      order_pnl: {
+        Row: {
+          campaign: string | null
+          cogs: number | null
+          created_at: string | null
+          customer_id: string | null
+          discount: number | null
+          gross_profit: number | null
+          marketplace_fee: number | null
+          order_id: string | null
+          order_number: string | null
+          revenue: number | null
+          shipping_cost: number | null
+          source: string | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          subtotal: number | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
@@ -365,6 +450,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff"
+      expense_category:
+        | "ads"
+        | "operational"
+        | "salary"
+        | "rent"
+        | "packaging"
+        | "other"
       order_status:
         | "pending"
         | "confirmed"
@@ -500,6 +592,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff"],
+      expense_category: [
+        "ads",
+        "operational",
+        "salary",
+        "rent",
+        "packaging",
+        "other",
+      ],
       order_status: [
         "pending",
         "confirmed",
