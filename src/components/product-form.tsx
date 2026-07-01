@@ -705,7 +705,13 @@ function VariantRow({
             </Label>
             <Input
               value={variant.sku}
+              placeholder={generateSku(productName, variant.color, variant.size, index)}
               onChange={(e) => onChange({ sku: e.target.value })}
+              onBlur={() => {
+                if (!variant.sku.trim()) {
+                  onChange({ sku: generateSku(productName, variant.color, variant.size, index) });
+                }
+              }}
             />
           </div>
           <div>
