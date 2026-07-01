@@ -22,6 +22,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Trash2, Star, Upload, X, Loader2, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { useWeightUnit } from "@/hooks/use-weight-unit";
+
 
 type VariantForm = {
   id?: string;
