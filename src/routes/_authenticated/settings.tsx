@@ -122,7 +122,26 @@ function SettingsPage() {
           <div><Label>URL Logo (opsional)</Label><Input value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} placeholder="https://..." /></div>
         </div>
         <div><Label>Alamat</Label><Textarea rows={2} value={form.sender_address} onChange={(e) => setForm({ ...form, sender_address: e.target.value })} /></div>
+        <div>
+          <Label>Satuan berat</Label>
+          <div className="mt-1 flex gap-2">
+            {(["g", "kg"] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => setForm({ ...form, weight_unit: u })}
+                className={`px-4 py-2 text-sm rounded-md border ${form.weight_unit === u ? "border-primary bg-primary/5 font-medium" : "hover:bg-accent"}`}
+              >
+                {u === "g" ? "Gram (g)" : "Kilogram (kg)"}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Menentukan satuan input & tampilan berat di seluruh sistem. Data disimpan tetap dalam gram.
+          </p>
+        </div>
       </Card>
+
 
       <Card className="p-5 space-y-4">
         <h2 className="font-semibold">Asal pengiriman (RajaOngkir V2)</h2>
