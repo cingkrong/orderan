@@ -142,23 +142,48 @@ function OrderDetail() {
             <h2 className="font-semibold mb-2">Items</h2>
             <table className="w-full text-sm">
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.id} className="border-t">
-                    <td className="py-2">
-                      <div className="font-medium">{it.name}</div>
-                      {it.variant && <div className="text-xs text-muted-foreground">{it.variant}</div>}
-                    </td>
-                    <td className="py-2 text-center w-16">{it.qty}×</td>
-                    <td className="py-2 text-right tabular-nums">{formatIDR(Number(it.price) * it.qty)}</td>
-                  </tr>
-                ))}
+                {items.map((it) => {
+                  const price = Number(it.price);
+                  const cost = Number((it as any).cost ?? 0);
+                  const profit = (price - cost) * it.qty;
+                  return (
+                    <tr key={it.id} className="border-t">
+                      <td className="py-2">
+                        <div className="font-medium">{it.name}</div>
+                        {it.variant && <div className="text-xs text-muted-foreground">{it.variant}</div>}
+                        {cost > 0 && (
+                          <div className="text-xs text-muted-foreground">Modal {formatIDR(cost)} · Profit {formatIDR(profit)}</div>
+                        )}
+                      </td>
+                      <td className="py-2 text-center w-16">{it.qty}×</td>
+                      <td className="py-2 text-right tabular-nums">{formatIDR(price * it.qty)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            <div className="border-t mt-2 pt-2 text-sm space-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{formatIDR(order.subtotal)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Ongkir {order.service ? `(${order.service})` : ""}</span><span className="tabular-nums">{formatIDR(order.shipping_cost)}</span></div>
-              <div className="flex justify-between font-semibold text-base"><span>Total</span><span className="tabular-nums">{formatIDR(order.total)}</span></div>
-            </div>
+            {(() => {
+              const cogs = items.reduce((s, i) => s + Number((i as any).cost ?? 0) * i.qty, 0);
+              const discount = Number((order as any).discount ?? 0);
+              const fee = Number((order as any).marketplace_fee ?? 0);
+              const revenue = Number(order.subtotal) - discount;
+              const gross = revenue - cogs - fee;
+              return (
+                <div className="border-t mt-2 pt-2 text-sm space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{formatIDR(order.subtotal)}</span></div>
+                  {discount > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className="tabular-nums">- {formatIDR(discount)}</span></div>}
+                  <div className="flex justify-between"><span className="text-muted-foreground">Ongkir {order.service ? `(${order.service})` : ""}</span><span className="tabular-nums">{formatIDR(order.shipping_cost)}</span></div>
+                  <div className="flex justify-between font-semibold text-base"><span>Total tagihan</span><span className="tabular-nums">{formatIDR(order.total)}</span></div>
+                  <div className="mt-3 pt-3 border-t space-y-1 rounded bg-muted/30 p-2">
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">Laba / Rugi</div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Revenue</span><span className="tabular-nums">{formatIDR(revenue)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">HPP</span><span className="tabular-nums">- {formatIDR(cogs)}</span></div>
+                    {fee > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Fee</span><span className="tabular-nums">- {formatIDR(fee)}</span></div>}
+                    <div className={`flex justify-between font-semibold ${gross >= 0 ? "text-success" : "text-destructive"}`}><span>Gross Profit</span><span className="tabular-nums">{formatIDR(gross)}</span></div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </Card>
 
