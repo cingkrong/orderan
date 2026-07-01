@@ -87,19 +87,33 @@ function OrderDetail() {
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-mono">{order.order_number}</h1>
             <Badge variant="secondary" className={STATUS_TONE[order.status]}>{STATUS_LABEL[order.status]}</Badge>
+            {((order as any).label_print_count ?? 0) > 0 && (
+              <Badge variant="outline">
+                Label dicetak {(order as any).label_print_count}×
+                {(order as any).label_printed_at && (
+                  <span className="ml-1 text-muted-foreground">
+                    · {formatDistanceToNow(new Date((order as any).label_printed_at), { addSuffix: true, locale: idLocale })}
+                  </span>
+                )}
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground text-sm mt-1">
             Dibuat {format(new Date(order.created_at), "dd MMM yyyy HH:mm", { locale: idLocale })}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()}><Printer className="size-4 mr-1" /> Cetak label</Button>
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="size-4 mr-1" />
+            {((order as any).label_print_count ?? 0) > 0 ? "Cetak ulang label" : "Cetak label"}
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/orders/$id/edit" params={{ id }}><Pencil className="size-4 mr-1" /> Ubah</Link>
           </Button>
+
         </div>
       </div>
 
