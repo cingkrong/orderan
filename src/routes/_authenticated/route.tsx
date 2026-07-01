@@ -15,6 +15,7 @@ import {
   Plus,
   Wallet,
   TrendingUp,
+  Warehouse,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const NAV: NavItem[] = [
   { to: "/labels", label: "Label", icon: Printer },
   { to: "/expenses", label: "Pengeluaran", icon: Wallet },
   { to: "/reports", label: "Laporan L/R", icon: TrendingUp },
+  { to: "/warehouses", label: "Gudang", icon: Warehouse },
   { to: "/settings", label: "Pengaturan", icon: Settings },
 ];
 

@@ -189,9 +189,12 @@ export type Database = {
           marketplace_fee: number
           note: string | null
           order_number: string | null
+          payment_status: string
           phone: string
           postal_code: string | null
           province: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
           ref: string | null
           routing_code: string | null
           service: string | null
@@ -202,6 +205,7 @@ export type Database = {
           total: number
           tracking_number: string | null
           updated_at: string
+          warehouse_id: string | null
           weight_g: number
         }
         Insert: {
@@ -229,9 +233,12 @@ export type Database = {
           marketplace_fee?: number
           note?: string | null
           order_number?: string | null
+          payment_status?: string
           phone: string
           postal_code?: string | null
           province?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
           ref?: string | null
           routing_code?: string | null
           service?: string | null
@@ -242,6 +249,7 @@ export type Database = {
           total?: number
           tracking_number?: string | null
           updated_at?: string
+          warehouse_id?: string | null
           weight_g?: number
         }
         Update: {
@@ -269,9 +277,12 @@ export type Database = {
           marketplace_fee?: number
           note?: string | null
           order_number?: string | null
+          payment_status?: string
           phone?: string
           postal_code?: string | null
           province?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
           ref?: string | null
           routing_code?: string | null
           service?: string | null
@@ -282,6 +293,7 @@ export type Database = {
           total?: number
           tracking_number?: string | null
           updated_at?: string
+          warehouse_id?: string | null
           weight_g?: number
         }
         Relationships: [
@@ -290,6 +302,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -470,6 +489,48 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      warehouses: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          origin_label: string | null
+          origin_subdistrict_id: string | null
+          sender_name: string | null
+          sender_phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          origin_label?: string | null
+          origin_subdistrict_id?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          origin_label?: string | null
+          origin_subdistrict_id?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
