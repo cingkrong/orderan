@@ -138,9 +138,11 @@ export const upsertProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    // Upsert current
-    const rows = variants.map((v, idx) => ({
-      ...(v.id ? { id: v.id } : {}),
+    // Split into inserts (no id → let DB generate) vs updates (has id).
+    // NOTE: mixing rows with/without id in a single .upsert() causes PostgREST
+    // to send `id: null` for rows lacking the key, overriding the DB default
+    // gen_random_uuid() and violating the NOT NULL constraint.
+    const commonRow = (v: any, idx: number) => ({
       product_id: productId!,
       label: v.label,
       sku: v.sku || null,
@@ -154,14 +156,27 @@ export const upsertProduct = createServerFn({ method: "POST" })
       is_default: v.is_default,
       sort_order: v.sort_order ?? idx,
       image_url: v.image_url || null,
-    }));
+    });
 
+    const toInsert = variants
+      .map((v, idx) => ({ v, idx }))
+      .filter(({ v }) => !v.id)
+      .map(({ v, idx }) => commonRow(v, idx));
 
+    const toUpdate = variants
+      .map((v, idx) => ({ v, idx }))
+      .filter(({ v }) => !!v.id)
+      .map(({ v, idx }) => ({ id: v.id!, ...commonRow(v, idx) }));
 
-    const { error: upErr } = await context.supabase
-      .from("product_variants")
-      .upsert(rows);
-    if (upErr) throw new Error(upErr.message);
+    if (toInsert.length > 0) {
+      const { error } = await context.supabase.from("product_variants").insert(toInsert);
+      if (error) throw new Error(error.message);
+    }
+    if (toUpdate.length > 0) {
+      const { error } = await context.supabase.from("product_variants").upsert(toUpdate);
+      if (error) throw new Error(error.message);
+    }
+
 
     return { ok: true, id: productId };
   });
