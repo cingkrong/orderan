@@ -299,6 +299,7 @@ export type Database = {
           cost: number
           created_at: string
           id: string
+          image_url: string | null
           is_default: boolean
           label: string
           price: number
@@ -313,6 +314,7 @@ export type Database = {
           cost?: number
           created_at?: string
           id?: string
+          image_url?: string | null
           is_default?: boolean
           label?: string
           price?: number
@@ -327,6 +329,7 @@ export type Database = {
           cost?: number
           created_at?: string
           id?: string
+          image_url?: string | null
           is_default?: boolean
           label?: string
           price?: number
