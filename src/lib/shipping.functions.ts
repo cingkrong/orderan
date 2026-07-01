@@ -190,7 +190,7 @@ export const getShippingCost = createServerFn({ method: "POST" })
         const value = Number(row.cost ?? 0);
         const etd = String(row.etd ?? "");
         return {
-          service: `${code.toUpperCase()} ${service}`.trim(),
+          service,
           courier_code: code,
           courier_name: name,
           description: description || service,
