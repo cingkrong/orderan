@@ -76,6 +76,8 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const fetchCost = useServerFn(getShippingCost);
   const fetchOrder = useServerFn(getOrder);
   const fetchWarehouses = useServerFn(listWarehouses);
+  const fetchSettings = useServerFn(getSettings);
+  const saveSettings = useServerFn(updateSettings);
 
   const productsQ = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts() });
   const warehousesQ = useQuery({ queryKey: ["warehouses"], queryFn: () => fetchWarehouses() });
