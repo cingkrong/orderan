@@ -101,8 +101,6 @@ export function ProductForm({ id }: { id?: string }) {
         id: v.id,
         label: v.label.trim() || `Variasi ${idx + 1}`,
         sku: v.sku || null,
-        color: v.color || null,
-        size: v.size || null,
         image_url: v.image_url,
         price: Number(v.price) || 0,
         cost: Number(v.cost) || 0,
