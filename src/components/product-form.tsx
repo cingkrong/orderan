@@ -214,68 +214,17 @@ export function ProductForm({ id }: { id?: string }) {
         </div>
 
         <div className="space-y-3">
-          {form.variants.map((v, idx) => {
-            const margin = v.price > 0 ? ((v.price - v.cost) / v.price) * 100 : 0;
-            return (
-              <div key={idx} className="rounded-md border p-3 space-y-3 bg-muted/20">
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant={v.is_default ? "default" : "ghost"}
-                    onClick={() => setDefault(idx)}
-                    title="Jadikan default"
-                    className="h-8 w-8"
-                  >
-                    <Star className={`size-4 ${v.is_default ? "fill-current" : ""}`} />
-                  </Button>
-                  <Input
-                    value={v.label}
-                    onChange={(e) => updateVariant(idx, { label: e.target.value })}
-                    placeholder="cth. Merah / L"
-                    className="font-medium"
-                  />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => removeVariant(idx)}
-                    className="h-8 w-8"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-                <div className="grid sm:grid-cols-2 md:grid-cols-5 gap-2">
-                  <div>
-                    <Label className="text-xs">SKU</Label>
-                    <Input value={v.sku} onChange={(e) => updateVariant(idx, { sku: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Harga jual (Rp)</Label>
-                    <Input type="number" value={v.price} onChange={(e) => updateVariant(idx, { price: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Modal / HPP (Rp)</Label>
-                    <Input type="number" value={v.cost} onChange={(e) => updateVariant(idx, { cost: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Berat (g)</Label>
-                    <Input type="number" value={v.weight_g} onChange={(e) => updateVariant(idx, { weight_g: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Stok</Label>
-                    <Input type="number" value={v.stock} onChange={(e) => updateVariant(idx, { stock: Number(e.target.value) })} />
-                  </div>
-                </div>
-                {v.price > 0 && v.cost > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Margin {margin.toFixed(1)}% · Profit/unit Rp {(v.price - v.cost).toLocaleString("id-ID")}
-                  </p>
-                )}
-              </div>
-            );
-          })}
+          {form.variants.map((v, idx) => (
+            <VariantRow
+              key={v.id ?? `new-${idx}`}
+              variant={v}
+              onChange={(patch) => updateVariant(idx, patch)}
+              onSetDefault={() => setDefault(idx)}
+              onRemove={() => removeVariant(idx)}
+            />
+          ))}
         </div>
+
       </Card>
 
       <div className="flex justify-end gap-2">
