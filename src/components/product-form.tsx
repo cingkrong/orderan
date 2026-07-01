@@ -9,43 +9,109 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Plus, Trash2, Star, Upload, X, Loader2 } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, Loader2, Copy } from "lucide-react";
 import { toast } from "sonner";
-
 
 type VariantForm = {
   id?: string;
   label: string;
   sku: string;
+  color: string;
+  size: string;
   price: number;
   cost: number;
+  dropship_price: number;
   weight_g: number;
   stock: number;
   is_default: boolean;
   image_url: string | null;
 };
 
+type WholesaleTier = { min_qty: number; price: number };
+
 type ProductFormState = {
   id?: string;
   name: string;
+  description: string;
+  category: string;
+  product_type: "stock" | "preorder";
+  wholesale_enabled: boolean;
+  wholesale_tiers: WholesaleTier[];
+  discount_type: string;
+  discount_value: number;
+  storefront_visible: boolean;
+  show_stock: boolean;
   variants: VariantForm[];
 };
 
-const emptyVariant = (): VariantForm => ({
-  label: "Default",
+const emptyVariant = (isFirst = true): VariantForm => ({
+  label: isFirst ? "Default" : "",
   sku: "",
+  color: "",
+  size: "",
   price: 0,
   cost: 0,
+  dropship_price: 0,
   weight_g: 0,
   stock: 0,
-  is_default: true,
+  is_default: isFirst,
   image_url: null,
 });
 
+const empty: ProductFormState = {
+  name: "",
+  description: "",
+  category: "",
+  product_type: "stock",
+  wholesale_enabled: false,
+  wholesale_tiers: [],
+  discount_type: "",
+  discount_value: 0,
+  storefront_visible: false,
+  show_stock: false,
+  variants: [emptyVariant()],
+};
 
-const empty: ProductFormState = { name: "", variants: [emptyVariant()] };
+const CATEGORIES = [
+  "Fashion",
+  "Aksesoris",
+  "Kecantikan",
+  "Makanan & Minuman",
+  "Elektronik",
+  "Rumah Tangga",
+  "Lainnya",
+];
 
+function FormSection({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 md:gap-6 py-6 border-b last:border-b-0">
+      <div>
+        <h3 className="font-semibold text-primary">{title}</h3>
+        {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </div>
+  );
+}
 
 export function ProductForm({ id }: { id?: string }) {
   const navigate = useNavigate();
@@ -54,6 +120,7 @@ export function ProductForm({ id }: { id?: string }) {
   const upsert = useServerFn(upsertProduct);
 
   const [form, setForm] = useState<ProductFormState>(empty);
+  const [createAnother, setCreateAnother] = useState(false);
 
   const loadQ = useQuery({
     queryKey: ["product", id],
@@ -62,65 +129,79 @@ export function ProductForm({ id }: { id?: string }) {
   });
 
   useEffect(() => {
-    if (loadQ.data) {
-      const variants: VariantForm[] =
-        ((loadQ.data as any).variants ?? []).length > 0
-          ? (loadQ.data as any).variants.map((v: any) => ({
-              id: v.id,
-              label: v.label,
-              sku: v.sku ?? "",
-              price: Number(v.price),
-              cost: Number(v.cost ?? 0),
-              weight_g: v.weight_g,
-              stock: v.stock,
-              is_default: !!v.is_default,
-              image_url: v.image_url ?? null,
-            }))
-          : [
-              {
-                label: loadQ.data.variant || "Default",
-                sku: loadQ.data.sku ?? "",
-                price: Number(loadQ.data.price),
-                cost: Number((loadQ.data as any).cost ?? 0),
-                weight_g: loadQ.data.weight_g,
-                stock: loadQ.data.stock,
-                is_default: true,
-                image_url: null,
-              },
-            ];
-
-
-      if (!variants.some((v) => v.is_default)) variants[0].is_default = true;
-      setForm({ id: loadQ.data.id, name: loadQ.data.name, variants });
-    }
+    if (!loadQ.data) return;
+    const d: any = loadQ.data;
+    const variants: VariantForm[] =
+      (d.variants ?? []).length > 0
+        ? d.variants.map((v: any) => ({
+            id: v.id,
+            label: v.label,
+            sku: v.sku ?? "",
+            color: v.color ?? "",
+            size: v.size ?? "",
+            price: Number(v.price),
+            cost: Number(v.cost ?? 0),
+            dropship_price: Number(v.dropship_price ?? 0),
+            weight_g: v.weight_g,
+            stock: v.stock,
+            is_default: !!v.is_default,
+            image_url: v.image_url ?? null,
+          }))
+        : [emptyVariant()];
+    if (!variants.some((v) => v.is_default)) variants[0].is_default = true;
+    setForm({
+      id: d.id,
+      name: d.name ?? "",
+      description: d.description ?? "",
+      category: d.category ?? "",
+      product_type: d.product_type ?? "stock",
+      wholesale_enabled: !!d.wholesale_enabled,
+      wholesale_tiers: Array.isArray(d.wholesale_tiers) ? d.wholesale_tiers : [],
+      discount_type: d.discount_type ?? "",
+      discount_value: Number(d.discount_value ?? 0),
+      storefront_visible: !!d.storefront_visible,
+      show_stock: !!d.show_stock,
+      variants,
+    });
   }, [loadQ.data]);
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const variants = form.variants.map((v, idx) => ({
         id: v.id,
         label: v.label.trim() || `Variasi ${idx + 1}`,
         sku: v.sku || null,
+        color: v.color || null,
+        size: v.size || null,
         image_url: v.image_url,
         price: Number(v.price) || 0,
         cost: Number(v.cost) || 0,
+        dropship_price: Number(v.dropship_price) || 0,
         weight_g: Number(v.weight_g) || 0,
         stock: Number(v.stock) || 0,
         is_default: v.is_default,
         sort_order: idx,
       }));
-
       const def = variants.find((v) => v.is_default) ?? variants[0];
       return upsert({
         data: {
           id: form.id,
           name: form.name,
+          description: form.description || null,
+          category: form.category || null,
+          product_type: form.product_type,
           sku: def.sku,
           variant: variants.length > 1 ? `${variants.length} variasi` : def.label,
           price: def.price,
           cost: def.cost,
           weight_g: def.weight_g,
           stock: variants.reduce((s, v) => s + v.stock, 0),
+          wholesale_enabled: form.wholesale_enabled,
+          wholesale_tiers: form.wholesale_tiers,
+          discount_type: form.discount_type || null,
+          discount_value: form.discount_type ? Number(form.discount_value) || 0 : null,
+          storefront_visible: form.storefront_visible,
+          show_stock: form.show_stock,
           variants,
         },
       });
@@ -128,7 +209,12 @@ export function ProductForm({ id }: { id?: string }) {
     onSuccess: () => {
       toast.success("Produk disimpan");
       qc.invalidateQueries({ queryKey: ["products"] });
-      navigate({ to: "/products" });
+      if (createAnother && !id) {
+        setForm(empty);
+        setCreateAnother(false);
+      } else {
+        navigate({ to: "/products" });
+      }
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
   });
@@ -150,23 +236,18 @@ export function ProductForm({ id }: { id?: string }) {
   function addVariant() {
     setForm((f) => ({
       ...f,
-      variants: [
-        ...f.variants,
-        {
-          label: `Variasi ${f.variants.length + 1}`,
-          sku: "",
-          color: "",
-          size: "",
-          price: f.variants[0]?.price ?? 0,
-          cost: f.variants[0]?.cost ?? 0,
-          weight_g: f.variants[0]?.weight_g ?? 0,
-          stock: 0,
-          is_default: false,
-          image_url: null,
-        },
-
-      ],
+      variants: [...f.variants, emptyVariant(false)],
     }));
+  }
+
+  function duplicateVariant(idx: number) {
+    setForm((f) => {
+      const src = f.variants[idx];
+      const copy: VariantForm = { ...src, id: undefined, is_default: false, sku: "" };
+      const next = [...f.variants];
+      next.splice(idx + 1, 0, copy);
+      return { ...f, variants: next };
+    });
   }
 
   function removeVariant(idx: number) {
@@ -181,65 +262,282 @@ export function ProductForm({ id }: { id?: string }) {
     });
   }
 
+  function addTier() {
+    setForm((f) => ({
+      ...f,
+      wholesale_tiers: [...f.wholesale_tiers, { min_qty: 1, price: 0 }],
+    }));
+  }
+
+  function updateTier(idx: number, patch: Partial<WholesaleTier>) {
+    setForm((f) => ({
+      ...f,
+      wholesale_tiers: f.wholesale_tiers.map((t, i) => (i === idx ? { ...t, ...patch } : t)),
+    }));
+  }
+
+  function removeTier(idx: number) {
+    setForm((f) => ({
+      ...f,
+      wholesale_tiers: f.wholesale_tiers.filter((_, i) => i !== idx),
+    }));
+  }
+
   if (id && loadQ.isLoading) return <Skeleton className="h-96" />;
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-2">
-        <Button asChild variant="ghost" size="icon">
-          <Link to="/products"><ArrowLeft className="size-4" /></Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {id ? "Ubah produk" : "Produk baru"}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {id ? "Perbarui detail produk" : "Tambah produk ke katalog Anda"}
-          </p>
-        </div>
+    <div className="max-w-5xl mx-auto pb-24">
+      <div className="mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">
+          {id ? "Ubah Produk" : "Buat Produk"}
+        </h1>
       </div>
 
-      <Card className="p-5 space-y-4">
-        <div>
-          <Label>Nama produk</Label>
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="cth. Kaos Polos Premium" />
+      <Card className="p-0 divide-y">
+        {/* GENERAL */}
+        <div className="px-5">
+          <FormSection title="General" hint="Informasi umum produk">
+            <div>
+              <Label>
+                Judul produk<span className="text-destructive">*</span>
+              </Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="cth. Kaos Polos Premium"
+              />
+            </div>
+            <div>
+              <Label>
+                Deskripsi<span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                rows={8}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Deskripsikan produk Anda…"
+              />
+            </div>
+            <div>
+              <Label>
+                Kategori<span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={form.category}
+                onValueChange={(v) => setForm({ ...form, category: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </FormSection>
+        </div>
+
+        {/* INVENTORI */}
+        <div className="px-5">
+          <FormSection title="Inventori" hint="Atur stok produk">
+            <div className="flex items-center gap-6">
+              <Label className="text-muted-foreground">Jenis Produk</Label>
+              <RadioGroup
+                value={form.product_type}
+                onValueChange={(v) =>
+                  setForm({ ...form, product_type: v as "stock" | "preorder" })
+                }
+                className="flex gap-6"
+              >
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="stock" id="pt-stock" />
+                  <span className="text-sm">Produk stok sendiri</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="preorder" id="pt-preorder" />
+                  <span className="text-sm">Produk Pre-Order</span>
+                </label>
+              </RadioGroup>
+            </div>
+          </FormSection>
+        </div>
+
+        {/* VARIAN */}
+        <div className="px-5">
+          <FormSection title="Varian Produk" hint="Atur varian produk">
+            <div className="space-y-3">
+              {form.variants.map((v, idx) => (
+                <VariantRow
+                  key={v.id ?? `new-${idx}`}
+                  variant={v}
+                  onChange={(patch) => updateVariant(idx, patch)}
+                  onSetDefault={() => setDefault(idx)}
+                  onDuplicate={() => duplicateVariant(idx)}
+                  onRemove={() => removeVariant(idx)}
+                />
+              ))}
+              <Button variant="outline" size="sm" onClick={addVariant}>
+                <Plus className="size-4 mr-1" /> Tambah Varian
+              </Button>
+            </div>
+          </FormSection>
+        </div>
+
+        {/* HARGA GROSIR */}
+        <div className="px-5">
+          <FormSection
+            title="Harga Grosir"
+            hint="Atur harga grosir pada produk, misal: jumlah pembelian 1 - 10 harga Rp15.000, 11 - 20 harga Rp12.000"
+          >
+            <div>
+              <Label className="text-muted-foreground">Rentang Harga Grosir</Label>
+              <div className="mt-2 space-y-2">
+                {form.wholesale_tiers.map((t, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-12">Min qty</span>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      value={t.min_qty}
+                      onChange={(e) => updateTier(idx, { min_qty: Number(e.target.value) })}
+                    />
+                    <span className="text-xs text-muted-foreground">Harga</span>
+                    <Input
+                      type="number"
+                      className="w-40"
+                      value={t.price}
+                      onChange={(e) => updateTier(idx, { price: Number(e.target.value) })}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeTier(idx)}
+                      className="h-8 w-8"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={addTier}>
+                  Tambah Harga
+                </Button>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Switch
+                  checked={form.wholesale_enabled}
+                  onCheckedChange={(v) => setForm({ ...form, wholesale_enabled: v })}
+                />
+                <span className="text-sm">Aktifkan Grosir</span>
+              </div>
+            </div>
+          </FormSection>
+        </div>
+
+        {/* PROMOSI */}
+        <div className="px-5">
+          <FormSection title="Promosi" hint="Atur harga spesial untuk produk ini">
+            <div>
+              <Label className="text-muted-foreground">Jenis diskon</Label>
+              <Select
+                value={form.discount_type || "none"}
+                onValueChange={(v) =>
+                  setForm({ ...form, discount_type: v === "none" ? "" : v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih salah satu opsi" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Tanpa diskon</SelectItem>
+                  <SelectItem value="percent">Persentase (%)</SelectItem>
+                  <SelectItem value="fixed">Nominal (Rp)</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.discount_type && (
+                <div className="mt-2">
+                  <Label className="text-xs">
+                    Nilai diskon ({form.discount_type === "percent" ? "%" : "Rp"})
+                  </Label>
+                  <Input
+                    type="number"
+                    value={form.discount_value}
+                    onChange={(e) =>
+                      setForm({ ...form, discount_value: Number(e.target.value) })
+                    }
+                    className="w-40"
+                  />
+                </div>
+              )}
+            </div>
+          </FormSection>
+        </div>
+
+        {/* STOREFRONT */}
+        <div className="px-5">
+          <FormSection title="Storefront">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <Switch
+                  checked={form.storefront_visible}
+                  onCheckedChange={(v) => setForm({ ...form, storefront_visible: v })}
+                />
+                <div>
+                  <div className="text-sm font-medium">Tampilkan</div>
+                  <p className="text-xs text-muted-foreground">
+                    Produk akan muncul di Storefront
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Switch
+                  checked={form.show_stock}
+                  onCheckedChange={(v) => setForm({ ...form, show_stock: v })}
+                />
+                <div>
+                  <div className="text-sm font-medium">Tampilkan jumlah stok</div>
+                  <p className="text-xs text-muted-foreground">
+                    Jika aktif, jumlah stok akan ditampilkan. Jika tidak aktif ditampilkan
+                    "Stok tersedia" atau "Stok habis"
+                  </p>
+                </div>
+              </div>
+            </div>
+          </FormSection>
         </div>
       </Card>
 
-      <Card className="p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-semibold">Variasi</h2>
-            <p className="text-xs text-muted-foreground">
-              Setiap variasi punya SKU, harga, HPP, berat, dan stok sendiri. Klik bintang untuk memilih variasi default.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={addVariant}>
-            <Plus className="size-4 mr-1" /> Tambah variasi
+      {/* STICKY FOOTER */}
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur z-20">
+        <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-2">
+          <Button
+            onClick={() => {
+              setCreateAnother(false);
+              save.mutate();
+            }}
+            disabled={!form.name || save.isPending}
+          >
+            {save.isPending && !createAnother ? "Menyimpan…" : id ? "Simpan" : "Buat"}
+          </Button>
+          {!id && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateAnother(true);
+                save.mutate();
+              }}
+              disabled={!form.name || save.isPending}
+            >
+              Buat & buat lainnya
+            </Button>
+          )}
+          <Button variant="ghost" asChild>
+            <Link to="/products">Batal</Link>
           </Button>
         </div>
-
-        <div className="space-y-3">
-          {form.variants.map((v, idx) => (
-            <VariantRow
-              key={v.id ?? `new-${idx}`}
-              variant={v}
-              onChange={(patch) => updateVariant(idx, patch)}
-              onSetDefault={() => setDefault(idx)}
-              onRemove={() => removeVariant(idx)}
-            />
-          ))}
-        </div>
-
-      </Card>
-
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" asChild>
-          <Link to="/products">Batal</Link>
-        </Button>
-        <Button onClick={() => save.mutate()} disabled={!form.name || save.isPending}>
-          {save.isPending ? "Menyimpan…" : "Simpan produk"}
-        </Button>
       </div>
     </div>
   );
@@ -249,16 +547,17 @@ function VariantRow({
   variant,
   onChange,
   onSetDefault,
+  onDuplicate,
   onRemove,
 }: {
   variant: VariantForm;
   onChange: (patch: Partial<VariantForm>) => void;
   onSetDefault: () => void;
+  onDuplicate: () => void;
   onRemove: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const margin = variant.price > 0 ? ((variant.price - variant.cost) / variant.price) * 100 : 0;
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -278,7 +577,6 @@ function VariantRow({
         contentType: file.type,
       });
       if (error) throw error;
-      // Remove old file if any
       if (variant.image_url) {
         await supabase.storage.from("product-images").remove([variant.image_url]);
       }
@@ -298,42 +596,41 @@ function VariantRow({
   }
 
   return (
-    <div className="rounded-md border p-3 space-y-3 bg-muted/20">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          size="icon"
-          variant={variant.is_default ? "default" : "ghost"}
-          onClick={onSetDefault}
-          title="Jadikan default"
-          className="h-8 w-8"
-        >
-          <Star className={`size-4 ${variant.is_default ? "fill-current" : ""}`} />
-        </Button>
-        <Input
-          value={variant.label}
-          onChange={(e) => onChange({ label: e.target.value })}
-          placeholder="cth. Merah / L"
-          className="font-medium"
-        />
-        <Button type="button" size="icon" variant="ghost" onClick={onRemove} className="h-8 w-8">
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative shrink-0">
-          <div className="relative h-24 w-24 rounded-md overflow-hidden border bg-background">
-            <StorageImage path={variant.image_url} alt={variant.label} className="h-full w-full object-cover" />
-            {variant.image_url && !uploading && (
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute top-1 right-1 rounded-full bg-background/90 border p-0.5 hover:bg-background"
-                title="Hapus gambar"
-              >
-                <X className="size-3" />
-              </button>
+    <div className="rounded-md border p-3 bg-muted/20">
+      <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_auto] gap-3">
+        {/* IMAGE */}
+        <div>
+          <Label className="text-xs">Foto</Label>
+          <div
+            className="mt-1 relative h-28 rounded-md border border-dashed bg-background flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => !uploading && fileRef.current?.click()}
+          >
+            {variant.image_url ? (
+              <>
+                <StorageImage
+                  path={variant.image_url}
+                  alt={variant.label}
+                  className="h-full w-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeImage();
+                  }}
+                  className="absolute top-1 right-1 rounded-full bg-background/90 border p-0.5 hover:bg-background"
+                >
+                  <X className="size-3" />
+                </button>
+              </>
+            ) : uploading ? (
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            ) : (
+              <div className="text-center text-xs text-muted-foreground px-2">
+                <Upload className="size-4 mx-auto mb-1" />
+                Seret & Jatuhkan berkas atau{" "}
+                <span className="text-primary underline">Jelajahi</span>
+              </div>
             )}
           </div>
           <input
@@ -343,50 +640,140 @@ function VariantRow({
             className="hidden"
             onChange={handleFile}
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-2 w-24"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-          >
-            {uploading ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Upload className="size-3 mr-1" />}
-            {variant.image_url ? "Ganti" : "Unggah"}
-          </Button>
         </div>
 
-        <div className="flex-1 grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+        {/* FIELDS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div>
-            <Label className="text-xs">SKU</Label>
-            <Input value={variant.sku} onChange={(e) => onChange({ sku: e.target.value })} />
-          </div>
-
-          <div>
-            <Label className="text-xs">Harga jual (Rp)</Label>
-            <Input type="number" value={variant.price} onChange={(e) => onChange({ price: Number(e.target.value) })} />
-          </div>
-          <div>
-            <Label className="text-xs">Modal / HPP (Rp)</Label>
-            <Input type="number" value={variant.cost} onChange={(e) => onChange({ cost: Number(e.target.value) })} />
+            <Label className="text-xs">Warna</Label>
+            <Input
+              value={variant.color}
+              onChange={(e) => onChange({ color: e.target.value })}
+              placeholder="cth. Merah"
+            />
           </div>
           <div>
-            <Label className="text-xs">Berat (g)</Label>
-            <Input type="number" value={variant.weight_g} onChange={(e) => onChange({ weight_g: Number(e.target.value) })} />
+            <Label className="text-xs">Ukuran</Label>
+            <Input
+              value={variant.size}
+              onChange={(e) => onChange({ size: e.target.value })}
+              placeholder="cth. XL"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">
+              Berat<span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                type="number"
+                value={variant.weight_g}
+                onChange={(e) => onChange({ weight_g: Number(e.target.value) })}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                Gram
+              </span>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">
+              SKU<span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={variant.sku}
+              onChange={(e) => onChange({ sku: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">
+              Harga Beli (HPP)<span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                Rp
+              </span>
+              <Input
+                type="number"
+                className="pl-8"
+                value={variant.cost}
+                onChange={(e) => onChange({ cost: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">
+              Harga Normal<span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                Rp
+              </span>
+              <Input
+                type="number"
+                className="pl-8"
+                value={variant.price}
+                onChange={(e) => onChange({ price: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Harga Dropshipper</Label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                Rp
+              </span>
+              <Input
+                type="number"
+                className="pl-8"
+                value={variant.dropship_price}
+                onChange={(e) => onChange({ dropship_price: Number(e.target.value) })}
+              />
+            </div>
           </div>
           <div>
             <Label className="text-xs">Stok</Label>
-            <Input type="number" value={variant.stock} onChange={(e) => onChange({ stock: Number(e.target.value) })} />
+            <Input
+              type="number"
+              value={variant.stock}
+              onChange={(e) => onChange({ stock: Number(e.target.value) })}
+            />
           </div>
         </div>
-      </div>
 
-      {variant.price > 0 && variant.cost > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Margin {margin.toFixed(1)}% · Profit/unit Rp {(variant.price - variant.cost).toLocaleString("id-ID")}
-        </p>
-      )}
+        {/* ACTIONS */}
+        <div className="flex md:flex-col items-center gap-1">
+          <Button
+            type="button"
+            size="icon"
+            variant={variant.is_default ? "default" : "ghost"}
+            onClick={onSetDefault}
+            title="Jadikan default"
+            className="h-8 w-8"
+          >
+            <Star className={`size-4 ${variant.is_default ? "fill-current" : ""}`} />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={onDuplicate}
+            title="Duplikat"
+            className="h-8 w-8"
+          >
+            <Copy className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={onRemove}
+            title="Hapus"
+            className="h-8 w-8 text-destructive"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
-
