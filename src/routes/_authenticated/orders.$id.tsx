@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { getOrder, updateOrderStatus, setTracking } from "@/lib/orders.functions";
+import { getOrder, updateOrderStatus, setTracking, markLabelPrinted } from "@/lib/orders.functions";
 import { getSettings } from "@/lib/settings.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
