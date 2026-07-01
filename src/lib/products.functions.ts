@@ -34,6 +34,7 @@ const productInput = z.object({
   sku: z.string().nullable().optional(),
   variant: z.string().nullable().optional(),
   price: z.number().min(0),
+  cost: z.number().min(0).default(0),
   weight_g: z.number().int().min(0),
   stock: z.number().int(),
 });
