@@ -690,18 +690,19 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 )}
                 {services.length > 0 && (
                   <div className="space-y-1 max-h-64 overflow-auto">
-                    {services.map((s) => (
+                    {services.map((s, i) => (
                       <button
-                        key={s.service}
+                        key={`${s.courier_code ?? "c"}-${s.service}-${i}`}
                         type="button"
-                        onClick={() => setForm((f) => ({ ...f, service: s.service, courier: s.custom ? "custom" : (f.courier || "jne"), shipping_cost: s.value, eta: s.etd }))}
+                        onClick={() => setForm((f) => ({ ...f, service: s.service, courier: s.custom ? "custom" : (s.courier_code || f.courier || "jne"), shipping_cost: s.value, eta: s.etd }))}
                         className={`w-full text-left border rounded-md p-2 hover:bg-accent transition text-sm ${
-                          form.service === s.service ? "border-primary bg-primary/5" : ""
+                          form.service === s.service && (s.custom ? form.courier === "custom" : form.courier === s.courier_code) ? "border-primary bg-primary/5" : ""
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="font-medium">
-                            {s.service} {s.custom && <span className="text-[10px] bg-warning/20 text-warning-foreground px-1 rounded ml-1">CUSTOM</span>}
+                            {(s.courier_code?.toUpperCase() || s.courier_name || "")} {s.service}
+                            {s.custom && <span className="text-[10px] bg-warning/20 text-warning-foreground px-1 rounded ml-1">CUSTOM</span>}
                           </div>
                           <div className="font-mono text-sm">{formatIDR(s.value)}</div>
                         </div>
