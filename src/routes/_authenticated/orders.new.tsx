@@ -418,7 +418,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           {form.items.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Belum ada item</p>}
           {form.items.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-12 sm:col-span-4">
+              <div className="col-span-12 sm:col-span-3">
                 <Label className="text-xs">Nama</Label>
                 <Input value={it.name} onChange={(e) => updateItem(setForm, idx, { name: e.target.value })} />
               </div>
@@ -427,14 +427,18 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <Input value={it.variant ?? ""} onChange={(e) => updateItem(setForm, idx, { variant: e.target.value })} />
               </div>
               <div className="col-span-3 sm:col-span-1">
-                <Label className="text-xs">Jumlah</Label>
+                <Label className="text-xs">Qty</Label>
                 <Input type="number" min={1} value={it.qty} onChange={(e) => updateItem(setForm, idx, { qty: Number(e.target.value) })} />
               </div>
               <div className="col-span-3 sm:col-span-2">
-                <Label className="text-xs">Harga</Label>
+                <Label className="text-xs">Modal</Label>
+                <Input type="number" value={it.cost} onChange={(e) => updateItem(setForm, idx, { cost: Number(e.target.value) })} />
+              </div>
+              <div className="col-span-6 sm:col-span-2">
+                <Label className="text-xs">Harga jual</Label>
                 <Input type="number" value={it.price} onChange={(e) => updateItem(setForm, idx, { price: Number(e.target.value) })} />
               </div>
-              <div className="col-span-4 sm:col-span-2">
+              <div className="col-span-4 sm:col-span-1">
                 <Label className="text-xs">Berat (g)</Label>
                 <Input type="number" value={it.weight_g} onChange={(e) => updateItem(setForm, idx, { weight_g: Number(e.target.value) })} />
               </div>
@@ -442,6 +446,9 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <Button variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}>
                   <Trash2 className="size-4" />
                 </Button>
+              </div>
+              <div className="col-span-12 text-xs text-muted-foreground pl-1">
+                Profit item: <span className="font-mono">{formatIDR((it.price - (it.cost || 0)) * it.qty)}</span>
               </div>
             </div>
           ))}
