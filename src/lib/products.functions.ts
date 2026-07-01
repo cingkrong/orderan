@@ -189,3 +189,60 @@ export const deleteProduct = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Quick-create product from the order form (Item custom → simpan ke katalog).
+// Creates one product with a single variant (optional color/size).
+export const quickCreateProduct = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      name: z.string().min(1),
+      category: z.string().nullable().optional(),
+      price: z.number().min(0),
+      cost: z.number().min(0).default(0),
+      weight_g: z.number().int().min(0),
+      stock: z.number().int().default(0),
+      color: z.string().nullable().optional(),
+      size: z.string().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const labelParts = [data.color, data.size].filter((x) => x && String(x).trim());
+    const variantLabel = labelParts.length ? labelParts.join(" / ") : "Default";
+    const { data: prod, error: pErr } = await context.supabase
+      .from("products")
+      .insert({
+        name: data.name,
+        category: data.category || null,
+        product_type: "stock",
+        price: data.price,
+        cost: data.cost,
+        weight_g: data.weight_g,
+        stock: data.stock,
+        variant: variantLabel,
+      })
+      .select("id")
+      .single();
+    if (pErr) throw new Error(pErr.message);
+
+    const { data: variant, error: vErr } = await context.supabase
+      .from("product_variants")
+      .insert({
+        product_id: prod.id,
+        label: variantLabel,
+        color: data.color || null,
+        size: data.size || null,
+        price: data.price,
+        cost: data.cost,
+        weight_g: data.weight_g,
+        stock: data.stock,
+        is_default: true,
+        sort_order: 0,
+      })
+      .select("id")
+      .single();
+    if (vErr) throw new Error(vErr.message);
+
+    return { product_id: prod.id, variant_id: variant.id };
+  });
+
