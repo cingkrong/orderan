@@ -122,6 +122,7 @@ function LabelsPage() {
                   service: o.service,
                   tracking_number: o.tracking_number,
                   weight_g: o.weight_g,
+                  shipping_cost: (o as any).shipping_cost,
                   insurance: o.insurance,
                   routing_code: o.routing_code,
                   note: o.note,
