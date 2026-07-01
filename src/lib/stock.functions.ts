@@ -45,8 +45,8 @@ export const adjustStockManual = createServerFn({ method: "POST" })
       _delta: data.delta,
       _reason: "manual",
       _order_id: null,
-      _note: data.note ?? null,
-    });
+      _note: data.note ?? "",
+    } as any);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
