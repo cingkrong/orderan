@@ -1,15 +1,18 @@
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getProduct, upsertProduct } from "@/lib/products.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { StorageImage } from "@/components/storage-image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Plus, Trash2, Star } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Star, Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
 
 type VariantForm = {
   id?: string;
