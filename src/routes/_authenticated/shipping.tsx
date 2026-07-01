@@ -27,6 +27,7 @@ function ShippingPage() {
   const fetchOrders = useServerFn(listOrders);
   const setTrack = useServerFn(setTracking);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [courier, setCourier] = useState<string>("all");
   const [pending, setPending] = useState<Record<string, string>>({});
 
