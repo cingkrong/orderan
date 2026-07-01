@@ -314,10 +314,33 @@ function OrderForm({ existingId }: { existingId?: string }) {
     if (parts.length > 0) return parts.join(" / ");
     return v.label ?? "";
   }
+  function isPreorder(p: any) {
+    return p?.product_type === "preorder";
+  }
+  function variantInStock(p: any, v: any) {
+    if (!v) return false;
+    if (isPreorder(p)) return true;
+    return Number(v.stock ?? 0) > 0;
+  }
+  function productHasStock(p: any) {
+    if (!p) return false;
+    if (isPreorder(p)) return true;
+    const variants: any[] = p.variants ?? [];
+    if (variants.length === 0) return Number(p.stock ?? 0) > 0;
+    return variants.some((v) => Number(v.stock ?? 0) > 0);
+  }
   function addItem(productId?: string) {
     const p = productId ? productsQ.data?.find((x: any) => x.id === productId) : undefined;
+    if (p && !productHasStock(p)) {
+      toast.error(`Stok "${(p as any).name}" habis`);
+      return;
+    }
     const variants: any[] = (p as any)?.variants ?? [];
-    const def = variants.find((v) => v.is_default) ?? variants[0];
+    const def =
+      variants.find((v) => v.is_default && variantInStock(p, v)) ??
+      variants.find((v) => variantInStock(p, v)) ??
+      variants.find((v) => v.is_default) ??
+      variants[0];
     setForm((f) => ({
       ...f,
       items: [
@@ -341,8 +364,13 @@ function OrderForm({ existingId }: { existingId?: string }) {
     const p = productsQ.data?.find((x: any) => x.id === item.product_id) as any;
     const v = (p?.variants ?? []).find((x: any) => x.id === variantId);
     if (!v) return;
+    if (!variantInStock(p, v)) {
+      toast.error(`Varian "${variantLabel(v)}" stok habis`);
+      return;
+    }
     updateItem(idx, { variant_id: v.id, variant: variantLabel(v), price: Number(v.price), cost: Number(v.cost), weight_g: Number(v.weight_g) });
   }
+
   function updateItem(idx: number, patch: Partial<OrderInput["items"][number]>) {
     setForm((f) => ({ ...f, items: f.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) }));
   }
@@ -361,10 +389,21 @@ function OrderForm({ existingId }: { existingId?: string }) {
     for (const p of products) {
       for (const v of p.variants ?? []) {
         if (v.sku && v.sku.toLowerCase() === q.toLowerCase()) {
+          if (!variantInStock(p, v)) {
+            toast.error(`Stok "${p.name} · ${variantLabel(v)}" habis`);
+            setScan("");
+            return;
+          }
           // find existing item
           const existingIdx = form.items.findIndex((it) => it.variant_id === v.id);
           if (existingIdx >= 0) {
-            updateItem(existingIdx, { qty: form.items[existingIdx].qty + 1 });
+            const nextQty = form.items[existingIdx].qty + 1;
+            if (!isPreorder(p) && nextQty > Number(v.stock ?? 0)) {
+              toast.error(`Qty melebihi stok (${v.stock})`);
+              setScan("");
+              return;
+            }
+            updateItem(existingIdx, { qty: nextQty });
           } else {
             setForm((f) => ({
               ...f,
@@ -387,6 +426,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           return;
         }
       }
+
     }
     toast.error(`SKU "${q}" tidak ditemukan`);
     setScan("");
@@ -429,14 +469,18 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <SelectContent>
                   {(productsQ.data ?? []).map((p: any) => {
                     const vc = (p.variants ?? []).length;
+                    const inStock = productHasStock(p);
+                    const totalStock = (p.variants ?? []).reduce((s: number, v: any) => s + Number(v.stock ?? 0), 0);
                     return (
-                      <SelectItem key={p.id} value={p.id}>
+                      <SelectItem key={p.id} value={p.id} disabled={!inStock}>
                         {p.name}{vc > 1 ? ` · ${vc} variasi` : ""}
+                        {!inStock ? " · Stok habis" : isPreorder(p) ? " · PO" : ` · stok ${totalStock}`}
                       </SelectItem>
                     );
                   })}
                 </SelectContent>
               </Select>
+
               <div className="relative flex-1 min-w-[220px]">
                 <ScanBarcode className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -473,9 +517,15 @@ function OrderForm({ existingId }: { existingId?: string }) {
                         <Select value={it.variant_id ?? ""} onValueChange={(v) => pickVariant(idx, v)}>
                           <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
                           <SelectContent>
-                            {variants.map((v) => (
-                              <SelectItem key={v.id} value={v.id}>{variantLabel(v)} · {formatIDR(Number(v.price))}</SelectItem>
-                            ))}
+                            {variants.map((v) => {
+                              const ok = variantInStock(product, v);
+                              return (
+                                <SelectItem key={v.id} value={v.id} disabled={!ok}>
+                                  {variantLabel(v)} · {formatIDR(Number(v.price))}
+                                  {!ok ? " · habis" : isPreorder(product) ? " · PO" : ` · stok ${v.stock}`}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       ) : (
@@ -484,7 +534,26 @@ function OrderForm({ existingId }: { existingId?: string }) {
                     </div>
                     <div className="col-span-3 sm:col-span-1">
                       <Label className="text-xs">Qty</Label>
-                      <Input type="number" min={1} value={it.qty} onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })} />
+                      <Input
+                        type="number"
+                        min={1}
+                        max={product && !isPreorder(product) ? (() => {
+                          const v = variants.find((x: any) => x.id === it.variant_id);
+                          return v ? Number(v.stock) : undefined;
+                        })() : undefined}
+                        value={it.qty}
+                        onChange={(e) => {
+                          const q = Number(e.target.value);
+                          const v = variants.find((x: any) => x.id === it.variant_id);
+                          if (product && !isPreorder(product) && v && q > Number(v.stock)) {
+                            toast.error(`Stok tersisa ${v.stock}`);
+                            updateItem(idx, { qty: Number(v.stock) });
+                            return;
+                          }
+                          updateItem(idx, { qty: q });
+                        }}
+                      />
+
                     </div>
                     <div className="col-span-3 sm:col-span-2">
                       <Label className="text-xs">Modal</Label>
