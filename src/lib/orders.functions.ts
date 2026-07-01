@@ -44,6 +44,9 @@ const orderInput = z.object({
   insurance: z.boolean().default(false),
   routing_code: z.string().nullable().optional(),
   note: z.string().nullable().optional(),
+  is_dropship: z.boolean().default(false),
+  dropship_name: z.string().nullable().optional(),
+  dropship_phone: z.string().nullable().optional(),
   items: z.array(itemSchema).min(1),
 });
 
