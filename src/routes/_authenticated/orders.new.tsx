@@ -761,8 +761,9 @@ function OrderForm({ existingId }: { existingId?: string }) {
                       >
                         <div className="flex items-center justify-between">
                           <div className="font-medium">
-                            {(s.courier_code?.toUpperCase() || s.courier_name || "")} {s.service}
-                            {s.custom && <span className="text-[10px] bg-warning/20 text-warning-foreground px-1 rounded ml-1">CUSTOM</span>}
+                            {s.custom
+                              ? s.service
+                              : `${s.courier_code?.toUpperCase() || s.courier_name || ""} ${s.service}`}
                           </div>
                           <div className="font-mono text-sm">{formatIDR(s.value)}</div>
                         </div>
