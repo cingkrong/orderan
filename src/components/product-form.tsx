@@ -17,10 +17,11 @@ type ProductFormState = {
   sku: string;
   variant: string;
   price: number;
+  cost: number;
   weight_g: number;
   stock: number;
 };
-const empty: ProductFormState = { name: "", sku: "", variant: "", price: 0, weight_g: 0, stock: 0 };
+const empty: ProductFormState = { name: "", sku: "", variant: "", price: 0, cost: 0, weight_g: 0, stock: 0 };
 
 export function ProductForm({ id }: { id?: string }) {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ export function ProductForm({ id }: { id?: string }) {
         sku: loadQ.data.sku ?? "",
         variant: loadQ.data.variant ?? "",
         price: Number(loadQ.data.price),
+        cost: Number((loadQ.data as any).cost ?? 0),
         weight_g: loadQ.data.weight_g,
         stock: loadQ.data.stock,
       });
@@ -59,6 +61,7 @@ export function ProductForm({ id }: { id?: string }) {
           sku: form.sku || null,
           variant: form.variant || null,
           price: Number(form.price) || 0,
+          cost: Number(form.cost) || 0,
           weight_g: Number(form.weight_g) || 0,
           stock: Number(form.stock) || 0,
         },
@@ -104,11 +107,22 @@ export function ProductForm({ id }: { id?: string }) {
             <Input value={form.variant} onChange={(e) => setForm({ ...form, variant: e.target.value })} />
           </div>
         </div>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 gap-3">
           <div>
-            <Label>Harga (Rp)</Label>
+            <Label>Harga jual (Rp)</Label>
             <Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
           </div>
+          <div>
+            <Label>Harga modal / HPP (Rp)</Label>
+            <Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: Number(e.target.value) })} />
+            {form.price > 0 && form.cost > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Margin: {(((form.price - form.cost) / form.price) * 100).toFixed(1)}% · Profit/unit Rp {(form.price - form.cost).toLocaleString("id-ID")}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <Label>Berat (g)</Label>
             <Input type="number" value={form.weight_g} onChange={(e) => setForm({ ...form, weight_g: Number(e.target.value) })} />
