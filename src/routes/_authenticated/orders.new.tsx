@@ -193,6 +193,62 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const [loadingCost, setLoadingCost] = useState(false);
   const [costCached, setCostCached] = useState(false);
 
+  // Custom courier inline form
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState<number | "">("");
+  const [savePreset, setSavePreset] = useState(false);
+  const [savingPreset, setSavingPreset] = useState(false);
+
+  function applyCustomCourier() {
+    const name = customName.trim();
+    const price = Number(customPrice);
+    if (!name) return toast.error("Nama ekspedisi wajib diisi");
+    if (!Number.isFinite(price) || price < 0) return toast.error("Ongkir tidak valid");
+    setForm((f) => ({ ...f, courier: "custom", service: name, shipping_cost: price, eta: "-" }));
+    setServices((prev) => {
+      const filtered = prev.filter((s) => !(s.custom && s.service === name));
+      return [
+        ...filtered,
+        { service: name, description: "Custom", value: price, etd: "-", courier_code: "custom", courier_name: name, custom: true },
+      ];
+    });
+    toast.success(`Jasa kirim "${name}" digunakan`);
+
+    if (savePreset) {
+      void (async () => {
+        const s: any = settingsQ.data;
+        if (!s) return toast.error("Pengaturan belum termuat");
+        const existing: any[] = Array.isArray(s.custom_couriers) ? s.custom_couriers : [];
+        if (existing.some((c) => String(c?.name ?? "").toLowerCase() === name.toLowerCase())) {
+          toast.info("Preset dengan nama sama sudah ada");
+          return;
+        }
+        setSavingPreset(true);
+        try {
+          await saveSettings({
+            data: {
+              sender_name: s.sender_name ?? "",
+              sender_phone: s.sender_phone ?? "",
+              sender_city: s.sender_city ?? "",
+              sender_address: s.sender_address ?? "",
+              origin_subdistrict_id: s.origin_subdistrict_id ?? "",
+              origin_label: s.origin_label ?? "",
+              logo_url: s.logo_url ?? null,
+              active_couriers: Array.isArray(s.active_couriers) ? s.active_couriers : [],
+              custom_couriers: [...existing, { name, price, description: "Custom", etd: "-" }],
+            },
+          });
+          toast.success("Preset jasa kirim disimpan");
+          setSavePreset(false);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Gagal menyimpan preset");
+        } finally {
+          setSavingPreset(false);
+        }
+      })();
+    }
+  }
+
   async function calcShipping(force = false) {
     if (!form.destination_subdistrict_id) return;
     if (!weight) return;
