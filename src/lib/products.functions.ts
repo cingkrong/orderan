@@ -49,7 +49,9 @@ const variantInput = z.object({
   stock: z.number().int(),
   is_default: z.boolean().default(false),
   sort_order: z.number().int().default(0),
+  image_url: z.string().nullable().optional(),
 });
+
 
 const productInput = z.object({
   id: z.string().uuid().optional(),
@@ -131,7 +133,9 @@ export const upsertProduct = createServerFn({ method: "POST" })
       stock: v.stock,
       is_default: v.is_default,
       sort_order: v.sort_order ?? idx,
+      image_url: v.image_url || null,
     }));
+
     const { error: upErr } = await context.supabase
       .from("product_variants")
       .upsert(rows);
