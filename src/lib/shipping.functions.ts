@@ -173,15 +173,20 @@ export const getShippingCost = createServerFn({ method: "POST" })
     const origin = data.origin_subdistrict_id || settings?.origin_subdistrict_id || "33.72.01";
 
     const localConfig = loadLocalLincahConfig() || {};
-    const dbActive: string[] = Array.isArray(settings?.active_couriers) ? settings!.active_couriers : [];
-    const lincahActive: string[] = Array.isArray(localConfig?.lincah_couriers)
+    const embeddedLincah = extractLincahFromCustom((settings as any)?.custom_couriers);
+
+    const activeCouriersList: string[] = Array.isArray(localConfig?.lincah_couriers)
       ? localConfig.lincah_couriers
       : Array.isArray((settings as any)?.lincah_couriers)
         ? (settings as any).lincah_couriers
-        : ["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana"];
+        : Array.isArray(embeddedLincah?.lincah_couriers)
+          ? embeddedLincah.lincah_couriers
+          : Array.isArray(settings?.active_couriers)
+            ? settings!.active_couriers
+            : ["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana"];
 
-    const mergedActive = Array.from(new Set([...dbActive, ...lincahActive]));
-    const active = mergedActive.length > 0 ? mergedActive : DEFAULT_COURIERS.split(":");
+    const active = activeCouriersList;
+    const lincahActive = active;
 
     const requested = (data.courier || DEFAULT_COURIERS).split(":").map((c) => c.trim().toLowerCase()).filter(Boolean);
     const courierList = requested.filter((c) => active.includes(c));

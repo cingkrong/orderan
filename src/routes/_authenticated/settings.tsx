@@ -151,21 +151,29 @@ function SettingsPage() {
   });
 
   function toggleLincahCourier(code: string, on: boolean) {
-    setForm((f) => ({
-      ...f,
-      lincah_couriers: on
+    setForm((f) => {
+      const updated = on
         ? Array.from(new Set([...f.lincah_couriers, code]))
-        : f.lincah_couriers.filter((c) => c !== code),
-    }));
+        : f.lincah_couriers.filter((c) => c !== code);
+      return {
+        ...f,
+        lincah_couriers: updated,
+        active_couriers: updated,
+      };
+    });
   }
 
   function toggleNonLincahCourier(code: string, on: boolean) {
-    setForm((f) => ({
-      ...f,
-      active_couriers: on
+    setForm((f) => {
+      const updated = on
         ? Array.from(new Set([...f.active_couriers, code]))
-        : f.active_couriers.filter((c) => c !== code),
-    }));
+        : f.active_couriers.filter((c) => c !== code);
+      return {
+        ...f,
+        active_couriers: updated,
+        lincah_couriers: updated,
+      };
+    });
   }
 
   function addCustom() {
