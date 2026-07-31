@@ -1183,7 +1183,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
               <div className="border rounded-md p-3 bg-muted/30 space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm">Jasa kirim custom</Label>
-                  <span className="text-[10px] text-muted-foreground">Tidak ada di RajaOngkir? Input manual di sini</span>
+                  <span className="text-[10px] text-muted-foreground">Tidak ada di pilihan ekspedisi? Input manual di sini</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2">
                   <Input

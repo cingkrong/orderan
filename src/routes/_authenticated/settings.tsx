@@ -343,7 +343,7 @@ function SettingsPage() {
           <div>
             <h2 className="font-semibold text-base">Ekspedisi Non-Lincah / Manual (Direct)</h2>
             <p className="text-xs text-muted-foreground">
-              Ekspedisi standar (Pengecekan tarif manual/RajaOngkir & input nomor resi secara manual).
+              Ekspedisi standar (Input manual & nomor resi manual).
             </p>
           </div>
         </div>

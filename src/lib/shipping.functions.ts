@@ -3,7 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getLincahConfig, loadLocalLincahConfig } from "./lincah.functions";
 
-const RO_BASE = "https://rajaongkir.komerce.id/api/v1";
 const DEFAULT_COURIERS = "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana";
 const CACHE_TTL_HOURS = 24;
 
@@ -59,57 +58,6 @@ export function resolveLincahDiscount(courierCode: string, serviceName: string, 
   };
 }
 
-async function rajaongkir(
-  path: string,
-  init?: RequestInit & { query?: Record<string, string> },
-): Promise<{
-  meta?: { code?: number; status?: string; message?: string };
-  data?: unknown;
-}> {
-  const key = process.env.RAJAONGKIR_API_KEY;
-  if (!key) throw new Error("RAJAONGKIR_API_KEY belum di-set di Settings");
-  const url = new URL(`${RO_BASE}${path}`);
-  if (init?.query) {
-    for (const [k, v] of Object.entries(init.query)) url.searchParams.set(k, v);
-  }
-  let res: Response;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    res = await fetch(url.toString(), {
-      ...init,
-      signal: controller.signal,
-      headers: {
-        key,
-        accept: "application/json",
-        ...(init?.body ? { "content-type": "application/x-www-form-urlencoded" } : {}),
-        ...(init?.headers ?? {}),
-      },
-    });
-    clearTimeout(timeout);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("RajaOngkir fetch failed:", msg);
-    throw new Error(`Tidak bisa menghubungi RajaOngkir (${msg})`);
-  }
-  let json: { meta?: { code?: number; status?: string; message?: string }; data?: unknown };
-  try {
-    json = (await res.json()) as typeof json;
-  } catch {
-    throw new Error(`RajaOngkir mengembalikan respons non-JSON (HTTP ${res.status})`);
-  }
-  const code = json.meta?.code ?? res.status;
-  const msg = json.meta?.message ?? "";
-  if (/not found/i.test(msg)) {
-    return { meta: json.meta, data: [] };
-  }
-  if (!res.ok || (code !== 200 && code !== 201)) {
-    throw new Error(msg || `RajaOngkir error (${code}) ${json.meta?.status ?? ""}`.trim());
-  }
-
-  return json;
-}
-
 export type Destination = {
   id: string;
   label: string;
@@ -156,21 +104,7 @@ export const searchDestinations = createServerFn({ method: "POST" })
     const q = data.q.trim();
     if (q.length < 3) return [] as Destination[];
     
-    // Try RajaOngkir if API Key present
-    if (process.env.RAJAONGKIR_API_KEY) {
-      try {
-        const r = await rajaongkir("/destination/domestic-destination", {
-          method: "GET",
-          query: { search: q, limit: String(data.limit), offset: "0" },
-        });
-        const rows = Array.isArray(r.data) ? (r.data as Array<Record<string, unknown>>) : [];
-        if (rows.length > 0) return rows.map(toDestination);
-      } catch (err) {
-        console.warn("RajaOngkir search failed, trying Lincah:", err);
-      }
-    }
-
-    // Fallback to Lincah.id District Search
+    // Search directly via Lincah.id District API
     try {
       const config = await getLincahConfig(context.supabase);
       const url = `${config.baseUrl}/district/search?q=${encodeURIComponent(q)}`;
@@ -182,10 +116,18 @@ export const searchDestinations = createServerFn({ method: "POST" })
       });
       const json = await res.json();
       const list = Array.isArray(json.data) ? json.data : [];
-      return list.map(toDestination);
-    } catch (lincahErr) {
-      console.error("Lincah district search failed:", lincahErr);
-      return [] as Destination[];
+      return list.slice(0, data.limit).map((item: any) => ({
+        id: item.code || item.id || "",
+        label: item.fullName || [item.name, item.city, item.province].filter(Boolean).join(", "),
+        subdistrict_name: item.name || "",
+        district_name: item.name || "",
+        city_name: item.city || "",
+        province_name: item.province || "",
+        zip_code: item.zipcode || item.zip_code || "",
+      }));
+    } catch (e) {
+      console.error("Lincah district search failed:", e);
+      return [];
     }
   });
 
@@ -272,53 +214,8 @@ export const getShippingCost = createServerFn({ method: "POST" })
     }
 
     if (!cached) {
-      let fetchedSuccess = false;
-
-      // 1. Try RajaOngkir if key configured
-      if (process.env.RAJAONGKIR_API_KEY) {
-        try {
-          const body = new URLSearchParams({
-            origin,
-            destination: data.destination_subdistrict_id,
-            weight: String(weightG),
-            courier: couriers,
-          }).toString();
-          const r = await rajaongkir("/calculate/domestic-cost", { method: "POST", body });
-          const rows = Array.isArray(r.data) ? (r.data as Array<Record<string, unknown>>) : [];
-          services = rows.map((row) => {
-            const code = String(row.code ?? row.courier ?? "").toLowerCase();
-            const name = String(row.name ?? row.courier_name ?? code.toUpperCase());
-            const service = String(row.service ?? "");
-            const description = String(row.description ?? "");
-            const value = Number(row.cost ?? 0);
-            const etd = String(row.etd ?? "");
-            const rule = resolveLincahDiscount(code, service, isCod);
-            const discPercent = rule.discount_percent;
-            const finalVal = discPercent > 0 ? Math.round(value * (1 - discPercent / 100)) : value;
-
-            return {
-              service,
-              courier_code: code,
-              courier_name: name,
-              description: description || service,
-              value: finalVal,
-              original_value: value,
-              discount_percent: discPercent,
-              special_terms: rule.special_terms,
-              cod_fee_percent: isCod ? rule.cod_fee_percent : 0,
-              etd,
-            };
-          });
-          if (services.length > 0) fetchedSuccess = true;
-        } catch (err) {
-          console.warn("RajaOngkir rate check failed, falling back to Lincah.id:", err);
-        }
-      }
-
-      // 2. Try Lincah.id
-      if (!fetchedSuccess) {
-        try {
-          const config = await getLincahConfig(context.supabase);
+      try {
+        const config = await getLincahConfig(context.supabase);
 
           // Resolve Lincah district origin code if origin is numeric or not in Lincah format
           let lincahOrigin = origin;
@@ -394,29 +291,25 @@ export const getShippingCost = createServerFn({ method: "POST" })
             });
           });
 
-          if (services.length > 0) fetchedSuccess = true;
+          if (services.length > 0 && services.some((s) => s.value > 0)) {
+            await context.supabase
+              .from("shipping_rate_cache")
+              .upsert(
+                {
+                  origin_subdistrict_id: cacheKey.origin,
+                  destination_subdistrict_id: cacheKey.dest,
+                  weight_bucket: cacheKey.bucket,
+                  couriers: cacheKey.couriers,
+                  services,
+                  fetched_at: new Date().toISOString(),
+                },
+                { onConflict: "origin_subdistrict_id,destination_subdistrict_id,weight_bucket,couriers" },
+              );
+          }
         } catch (lincahErr) {
           console.error("Lincah rate calculation failed:", lincahErr);
         }
       }
-
-      // Save to cache if we got valid services with non-zero rates
-      if (services.length > 0 && services.some((s) => s.value > 0)) {
-        await context.supabase
-          .from("shipping_rate_cache")
-          .upsert(
-            {
-              origin_subdistrict_id: cacheKey.origin,
-              destination_subdistrict_id: cacheKey.dest,
-              weight_bucket: cacheKey.bucket,
-              couriers: cacheKey.couriers,
-              services,
-              fetched_at: new Date().toISOString(),
-            },
-            { onConflict: "origin_subdistrict_id,destination_subdistrict_id,weight_bucket,couriers" },
-          );
-      }
-    }
 
     // ALWAYS filter services to match active couriers configured in settings
     if (active.length > 0) {
