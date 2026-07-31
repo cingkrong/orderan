@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swagger Lincah — Masuk</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#F1F5FD;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.card{background:#fff;border-radius:14px;padding:2rem;max-width:400px;width:100%;box-shadow:0 1px 4px rgba(30,42,59,.08)}
+h1{font-size:1rem;font-weight:700;margin-bottom:.25rem;display:flex;align-items:center;gap:.5rem}
+h1 img{height:20px}
+p{font-size:.8rem;color:#6B7A99;margin-bottom:1.25rem}
+.field{margin-bottom:1rem}
+label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.3rem}
+input{width:100%;padding:.5rem .7rem;border:1.5px solid #E2E8F0;border-radius:7px;font-size:.875rem;font-family:inherit}
+input:focus{outline:none;border-color:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+button{width:100%;padding:.6rem;border:none;border-radius:7px;background:#DC2626;color:#fff;font-size:.875rem;font-weight:600;cursor:pointer}
+button:hover{opacity:.88}
+.err{font-size:.8rem;color:#DC2626;margin-top:.75rem;display:none;padding:.5rem .7rem;background:#FEF2F2;border-radius:6px}
+</style></head><body>
+<div class="card">
+  <h1><img src="/logo/logo_lincah.png" alt=""> Swagger Lincah</h1>
+  <p>Masuk dengan kredensial Lincah untuk mengakses dokumentasi API.</p>
+  <div style="font-size:.75rem;color:#6B7A99;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:.5rem .7rem;margin-bottom:1rem">⚠️ Gunakan akun <strong>SandBox</strong> untuk login</div>
+  <form id="f" onsubmit="login(event)">
+    
+    <div class="field"><label>API Token</label><input id="tok" placeholder="dari Profile Settings" autocomplete="off"></div>
+    <div class="field"><label>Partner ID (opsional)</label><input id="pid" placeholder="Gunakan Partner ID anda atau kosongkan jika tidak tahu" autocomplete="off"></div>
+    
+    <p class="err" id="err"></p>
+    <button type="submit">Masuk</button>
+  </form>
+</div>
+<script>
+async function login(e){e.preventDefault();const err=document.getElementById('err');err.style.display='none';const provider="lincah";const body={provider:"lincah",partnerId:document.getElementById("pid").value,apiToken:document.getElementById("tok").value};const r=await fetch('/swagger-login',{method:'POST',headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});if(r.ok){location.href="/"}else{const j=await r.json();err.textContent=j.error||"Login gagal";err.style.display="block"}}
+</script></body></html>

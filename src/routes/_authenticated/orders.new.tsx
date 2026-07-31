@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { saveOrder, getOrder, type OrderInput } from "@/lib/orders.functions";
 import { listProducts, quickCreateProduct } from "@/lib/products.functions";
-import { getCustomerByPhone } from "@/lib/customers.functions";
-import { searchDestinations, getShippingCost, type Destination } from "@/lib/shipping.functions";
+import { getCustomerByPhone, searchCustomersByName } from "@/lib/customers.functions";
+import { searchDestinations, getShippingCost, LINCAH_DISCOUNT_TABLE, type Destination } from "@/lib/shipping.functions";
 import { listWarehouses } from "@/lib/warehouses.functions";
 import { getSettings, updateSettings } from "@/lib/settings.functions";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useWeightUnit } from "@/hooks/use-weight-unit";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 import {
   Select,
@@ -26,7 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Truck, Loader2, ScanBarcode, Pencil } from "lucide-react";
+import { Plus, Trash2, Truck, Loader2, ScanBarcode, Pencil, Info } from "lucide-react";
+
 import { toast } from "sonner";
 import { formatIDR, SOURCES, COURIERS, COURIER_LABEL } from "@/lib/format";
 
@@ -173,6 +175,28 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const total = subtotal - discount + shippingCost;
   const estProfit = subtotal - discount - totalCogs - marketplaceFee;
 
+  const fetchCustomerByName = useServerFn(searchCustomersByName);
+
+  // Customer & Recipient Name Live Search
+  const [customerSearchQ, setCustomerSearchQ] = useState("");
+  const [recipientSearchQ, setRecipientSearchQ] = useState("");
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
+
+  const customerSearchQuery = useQuery({
+    queryKey: ["customers-search-name", customerSearchQ],
+    queryFn: () => fetchCustomerByName({ data: { query: customerSearchQ } }),
+    enabled: customerSearchQ.trim().length >= 1 && showCustomerDropdown,
+    staleTime: 10_000,
+  });
+
+  const recipientSearchQuery = useQuery({
+    queryKey: ["customers-search-recipient", recipientSearchQ],
+    queryFn: () => fetchCustomerByName({ data: { query: recipientSearchQ } }),
+    enabled: recipientSearchQ.trim().length >= 1 && showRecipientDropdown,
+    staleTime: 10_000,
+  });
+
   async function tryAutofill(phone: string) {
     if (phone.length < 6) return;
     try {
@@ -203,7 +227,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
   });
 
   // Shipping cost
-  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; etd: string; courier_code?: string; courier_name?: string; custom?: boolean }>>([]);
+  const [services, setServices] = useState<Array<{ service: string; description: string; value: number; original_value?: number; discount_percent?: number; special_terms?: string; cod_fee_percent?: number; etd: string; courier_code?: string; courier_name?: string; custom?: boolean }>>([]);
   const [loadingCost, setLoadingCost] = useState(false);
   const [costCached, setCostCached] = useState(false);
 
@@ -218,33 +242,28 @@ function OrderForm({ existingId }: { existingId?: string }) {
     const price = Number(customPrice);
     if (!name) return toast.error("Nama ekspedisi wajib diisi");
     if (!Number.isFinite(price) || price < 0) return toast.error("Ongkir tidak valid");
-    setForm((f) => ({ ...f, courier: "custom", service: name, shipping_cost: price, eta: "-" }));
-    setServices((prev) => {
-      const filtered = prev.filter((s) => !(s.custom && s.service === name));
-      return [
-        ...filtered,
-        { service: name, description: "Custom", value: price, etd: "-", courier_code: "custom", courier_name: name, custom: true },
-      ];
-    });
-    toast.success(`Jasa kirim "${name}" digunakan`);
+
+    setForm((f) => ({
+      ...f,
+      courier: "custom",
+      service: name,
+      shipping_cost: price,
+      eta: "-",
+    }));
+    toast.success(`Jasa kirim custom "${name}" dipilih (${formatIDR(price)})`);
 
     if (savePreset) {
       void (async () => {
-        const s: any = settingsQ.data;
-        if (!s) return toast.error("Pengaturan belum termuat");
-        const existing: any[] = Array.isArray(s.custom_couriers) ? s.custom_couriers : [];
-        if (existing.some((c) => String(c?.name ?? "").toLowerCase() === name.toLowerCase())) {
-          toast.info("Preset dengan nama sama sudah ada");
-          return;
-        }
         setSavingPreset(true);
         try {
+          const s = await fetchSettings();
+          const existing = Array.isArray(s?.custom_couriers) ? (s!.custom_couriers as Array<any>) : [];
+          if (existing.some((c) => String(c?.name).toLowerCase() === name.toLowerCase())) {
+            toast.info(`Preset "${name}" sudah ada`);
+            return;
+          }
           await saveSettings({
             data: {
-              sender_name: s.sender_name ?? "",
-              sender_phone: s.sender_phone ?? "",
-              sender_city: s.sender_city ?? "",
-              sender_address: s.sender_address ?? "",
               origin_subdistrict_id: s.origin_subdistrict_id ?? "",
               origin_label: s.origin_label ?? "",
               logo_url: s.logo_url ?? null,
@@ -263,39 +282,42 @@ function OrderForm({ existingId }: { existingId?: string }) {
     }
   }
 
+  const isCodActive = form.payment_status === "cod" || String(form.source).toLowerCase().includes("cod");
+
   async function calcShipping(force = false) {
     if (!form.destination_subdistrict_id) return;
-    if (!weight) return;
+    const effectiveWeight = weight > 0 ? weight : 1000;
     const wh = warehousesQ.data?.find((w: any) => w.id === form.warehouse_id) as any;
     setLoadingCost(true);
     try {
       const r = await fetchCost({
         data: {
           destination_subdistrict_id: form.destination_subdistrict_id,
-          weight_g: weight,
-          courier: "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana",
+          weight_g: effectiveWeight,
+          courier: "jne:sap:ninja:sicepat:jnt:pos:tiki:anteraja:ide:wahana:lion",
           origin_subdistrict_id: wh?.origin_subdistrict_id ?? null,
+          is_cod: isCodActive,
           force_refresh: force,
         },
       });
-      setServices(r.services);
+      setServices(r.services as any);
       setCostCached(!!r.cached);
       if (force) toast.success("Ongkir diperbarui");
-      else if (r.services.length === 0) toast.warning("Tidak ada layanan tersedia");
+      else if (r.services.length === 0) toast.warning("Tidak ada layanan pengiriman tersedia");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal");
+      toast.error(e instanceof Error ? e.message : "Gagal menghitung ongkir");
     } finally {
       setLoadingCost(false);
     }
   }
 
-  // Auto-calculate when destination + weight + warehouse are set (debounced)
+  // Auto-calculate when destination or COD status is set (debounced)
   useEffect(() => {
-    if (!form.destination_subdistrict_id || !weight || !form.warehouse_id) return;
+    if (!form.destination_subdistrict_id) return;
     const t = setTimeout(() => { void calcShipping(false); }, 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.destination_subdistrict_id, weight, form.warehouse_id]);
+  }, [form.destination_subdistrict_id, weight, form.warehouse_id, isCodActive]);
 
   const mut = useMutation({
     mutationFn: (payload: OrderInput) => save({ data: payload }),
@@ -309,9 +331,19 @@ function OrderForm({ existingId }: { existingId?: string }) {
   });
 
   async function submit() {
-    if (form.items.length === 0) return toast.error("Tambahkan minimal satu produk");
-    const parsed = z.string().min(3).safeParse(form.customer_name);
-    if (!parsed.success) return toast.error("Nama pelanggan wajib diisi");
+    if (form.items.length === 0) return toast.error("Tambahkan minimal 1 produk");
+    if (!form.customer_name || !form.customer_name.trim()) return toast.error("Nama pemesan wajib diisi");
+    if (!form.phone || !form.phone.trim() || form.phone.trim().length < 3) return toast.error("Nomor telepon pemesan wajib diisi");
+
+    if (!sameRecipient) {
+      if (!form.recipient_name || !form.recipient_name.trim()) return toast.error("Nama penerima wajib diisi");
+      if (!form.recipient_phone || !form.recipient_phone.trim() || form.recipient_phone.trim().length < 3) return toast.error("Nomor telepon penerima wajib diisi");
+    }
+
+    if (!form.full_address || !form.full_address.trim()) return toast.error("Alamat lengkap pengiriman wajib diisi");
+    if (!form.destination_subdistrict_id) return toast.error("Pilih kecamatan tujuan pengiriman terlebih dahulu");
+    if (!form.warehouse_id) return toast.error("Pilih gudang asal pengiriman terlebih dahulu");
+    if (!form.service || !form.courier) return toast.error("Pilih ekspedisi dan layanan pengiriman terlebih dahulu");
 
     // Save any "Item custom → Simpan ke katalog" flagged items to the product catalog first.
     let items = form.items;
@@ -356,11 +388,12 @@ function OrderForm({ existingId }: { existingId?: string }) {
       ...form,
       items,
       shipping_cost: Number(form.shipping_cost) || 0,
-      recipient_name: sameRecipient ? "" : form.recipient_name,
-      recipient_phone: sameRecipient ? "" : form.recipient_phone,
+      recipient_name: sameRecipient ? form.customer_name : form.recipient_name,
+      recipient_phone: sameRecipient ? form.phone : form.recipient_phone,
     };
     mut.mutate(payload);
   }
+
 
 
   // ---- item helpers ----
@@ -611,15 +644,11 @@ function OrderForm({ existingId }: { existingId?: string }) {
                       />
 
                     </div>
-                    <div className="col-span-3 sm:col-span-2">
-                      <Label className="text-xs">Modal</Label>
-                      <Input type="number" value={it.cost} onChange={(e) => updateItem(idx, { cost: Number(e.target.value) })} />
-                    </div>
-                    <div className="col-span-6 sm:col-span-2">
-                      <Label className="text-xs">Harga</Label>
+                    <div className="col-span-6 sm:col-span-3">
+                      <Label className="text-xs">Harga (Rp)</Label>
                       <Input type="number" value={it.price} onChange={(e) => updateItem(idx, { price: Number(e.target.value) })} />
                     </div>
-                    <div className="col-span-4 sm:col-span-1">
+                    <div className="col-span-4 sm:col-span-2">
                       <Label className="text-xs">Berat ({weightUnit})</Label>
                       <Input
                         type="number"
@@ -630,7 +659,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                     </div>
                     <div className="col-span-2 sm:col-span-1 flex justify-end">
                       <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
-                        <Trash2 className="size-4" />
+                        <Trash2 className="size-4 text-destructive" />
                       </Button>
                     </div>
                     {!it.product_id && (() => {
@@ -704,21 +733,22 @@ function OrderForm({ existingId }: { existingId?: string }) {
             <div className="mt-4 border rounded-md p-4 space-y-1.5 text-sm">
               <Row label="Subtotal" value={formatIDR(subtotal)} />
               <Row label="Ongkir" value={formatIDR(shippingCost)} />
-              <Row label="Diskon" value={`- ${formatIDR(discount)}`} valueClass="text-primary" />
-              <Row label="Fee marketplace" value={`- ${formatIDR(marketplaceFee)}`} valueClass="text-primary" />
+              {Boolean(discount > 0) && (
+                <Row label="Diskon" value={`- ${formatIDR(discount)}`} valueClass="text-primary" />
+              )}
               <div className="border-t pt-2 mt-2">
                 <Row label={<span className="font-semibold">Total</span>} value={<span className="font-bold text-base">{formatIDR(total)}</span>} />
               </div>
-              <div className={`flex justify-between pt-1 text-xs ${estProfit >= 0 ? "text-success" : "text-destructive"}`}>
+              <div className={`flex justify-between pt-1 text-xs ${estProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                 <span>Estimasi profit</span>
                 <span className="font-mono">{formatIDR(estProfit)}</span>
               </div>
             </div>
           </Card>
 
-          {/* Pembayaran */}
+          {/* Pembayaran & Sumber */}
           <Card className="p-5">
-            <h2 className="font-semibold mb-4">Pembayaran</h2>
+            <h2 className="font-semibold mb-4">Pembayaran & Sumber Pesanan</h2>
             <div className="grid sm:grid-cols-3 gap-3">
               <div>
                 <Label>Status Pembayaran<span className="text-destructive">*</span></Label>
@@ -737,18 +767,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <Input type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: Number(e.target.value) })} />
               </div>
               <div>
-                <Label>Fee marketplace (Rp)</Label>
-                <Input type="number" value={form.marketplace_fee} onChange={(e) => setForm({ ...form, marketplace_fee: Number(e.target.value) })} />
-              </div>
-            </div>
-          </Card>
-
-          {/* Sumber */}
-          <Card className="p-5">
-            <h2 className="font-semibold mb-4">Sumber Pesanan</h2>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div>
-                <Label>Sumber</Label>
+                <Label>Sumber Pesanan</Label>
                 <Select value={form.source ?? ""} onValueChange={(v) => setForm({ ...form, source: v })}>
                   <SelectTrigger><SelectValue placeholder="Sumber" /></SelectTrigger>
                   <SelectContent>
@@ -756,17 +775,10 @@ function OrderForm({ existingId }: { existingId?: string }) {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Kampanye</Label>
-                <Input value={form.campaign ?? ""} onChange={(e) => setForm({ ...form, campaign: e.target.value })} />
-              </div>
-              <div>
-                <Label>Ref / afiliasi</Label>
-                <Input value={form.ref ?? ""} onChange={(e) => setForm({ ...form, ref: e.target.value })} />
-              </div>
             </div>
           </Card>
         </div>
+
 
         {/* RIGHT: Pelanggan + Pengiriman */}
         <div className="space-y-4">
@@ -774,10 +786,66 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <Card className="p-5">
             <h2 className="font-semibold mb-4">Pelanggan</h2>
             <div className="space-y-3">
-              <div>
+              <div className="relative">
                 <Label>Nama pemesan<span className="text-destructive">*</span></Label>
-                <Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
+                <div className="relative mt-1">
+                  <Input
+                    value={form.customer_name}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm((f) => ({ ...f, customer_name: val }));
+                      setCustomerSearchQ(val);
+                      setShowCustomerDropdown(true);
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    placeholder="Nama pemesan / inisial..."
+                  />
+                  {customerSearchQuery.isFetching && (
+                    <Loader2 className="size-4 animate-spin text-primary absolute right-3 top-2.5" />
+                  )}
+                </div>
+
+                {showCustomerDropdown && customerSearchQ.trim().length >= 1 && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-popover text-popover-foreground border rounded-md shadow-lg max-h-60 overflow-auto">
+                    {customerSearchQuery.isFetching && (
+                      <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="size-3.5 animate-spin text-primary" />
+                        Mencari inisial/nama pelanggan...
+                      </div>
+                    )}
+                    {!customerSearchQuery.isFetching && customerSearchQuery.data?.length === 0 && (
+                      <div className="p-3 text-xs text-muted-foreground">Tidak ada pelanggan dengan inisial tersebut</div>
+                    )}
+                    {!customerSearchQuery.isFetching && (customerSearchQuery.data ?? []).map((c: any) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="w-full text-left p-2.5 hover:bg-accent border-b last:border-0 text-xs transition"
+                        onClick={() => {
+                          setForm((f) => ({
+                            ...f,
+                            customer_name: c.name,
+                            phone: f.phone || c.phone,
+                            full_address: f.full_address || (c.last_address as any)?.full_address || "",
+                            city: f.city || (c.last_address as any)?.city || "",
+                            province: f.province || (c.last_address as any)?.province || "",
+                            district: f.district || (c.last_address as any)?.district || "",
+                            postal_code: f.postal_code || (c.last_address as any)?.postal_code || "",
+                            destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
+                            destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
+                          }));
+                          setShowCustomerDropdown(false);
+                          toast.info(`Pelanggan "${c.name}" dipilih`);
+                        }}
+                      >
+                        <div className="font-medium text-sm text-foreground">{c.name}</div>
+                        <div className="text-muted-foreground text-[11px] mt-0.5">{c.phone} {(c.last_address as any)?.full_address ? `· ${(c.last_address as any).full_address}` : ""}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+
               <div>
                 <Label>Telepon pemesan<span className="text-destructive">*</span></Label>
                 <Input
@@ -795,9 +863,64 @@ function OrderForm({ existingId }: { existingId?: string }) {
 
               {!sameRecipient && (
                 <div className="space-y-3 rounded-md border p-3 bg-muted/30">
-                  <div>
+                  <div className="relative">
                     <Label>Nama penerima<span className="text-destructive">*</span></Label>
-                    <Input value={form.recipient_name ?? ""} onChange={(e) => setForm({ ...form, recipient_name: e.target.value })} />
+                    <div className="relative mt-1">
+                      <Input
+                        value={form.recipient_name ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm((f) => ({ ...f, recipient_name: val }));
+                          setRecipientSearchQ(val);
+                          setShowRecipientDropdown(true);
+                        }}
+                        onFocus={() => setShowRecipientDropdown(true)}
+                        placeholder="Nama penerima / inisial..."
+                      />
+                      {recipientSearchQuery.isFetching && (
+                        <Loader2 className="size-4 animate-spin text-primary absolute right-3 top-2.5" />
+                      )}
+                    </div>
+
+                    {showRecipientDropdown && recipientSearchQ.trim().length >= 1 && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-popover text-popover-foreground border rounded-md shadow-lg max-h-60 overflow-auto">
+                        {recipientSearchQuery.isFetching && (
+                          <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
+                            <Loader2 className="size-3.5 animate-spin text-primary" />
+                            Mencari inisial/nama penerima...
+                          </div>
+                        )}
+                        {!recipientSearchQuery.isFetching && recipientSearchQuery.data?.length === 0 && (
+                          <div className="p-3 text-xs text-muted-foreground">Tidak ada penerima dengan inisial tersebut</div>
+                        )}
+                        {!recipientSearchQuery.isFetching && (recipientSearchQuery.data ?? []).map((c: any) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className="w-full text-left p-2.5 hover:bg-accent border-b last:border-0 text-xs transition"
+                            onClick={() => {
+                              setForm((f) => ({
+                                ...f,
+                                recipient_name: c.name,
+                                recipient_phone: f.recipient_phone || c.phone,
+                                full_address: f.full_address || (c.last_address as any)?.full_address || "",
+                                city: f.city || (c.last_address as any)?.city || "",
+                                province: f.province || (c.last_address as any)?.province || "",
+                                district: f.district || (c.last_address as any)?.district || "",
+                                postal_code: f.postal_code || (c.last_address as any)?.postal_code || "",
+                                destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
+                                destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
+                              }));
+                              setShowRecipientDropdown(false);
+                              toast.info(`Penerima "${c.name}" dipilih`);
+                            }}
+                          >
+                            <div className="font-medium text-sm text-foreground">{c.name}</div>
+                            <div className="text-muted-foreground text-[11px] mt-0.5">{c.phone} {(c.last_address as any)?.full_address ? `· ${(c.last_address as any).full_address}` : ""}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label>Telepon penerima</Label>
@@ -805,6 +928,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                   </div>
                 </div>
               )}
+
             </div>
           </Card>
 
@@ -840,7 +964,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
 
               <div>
-                <Label>Tujuan (kelurahan)</Label>
+                <Label>Kecamatan Penerima<span className="text-destructive">*</span></Label>
                 {form.destination_subdistrict_id ? (
                   <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                     <div className="min-w-0">
@@ -855,7 +979,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 ) : (
                   <div className="rounded-md border">
                     <Input
-                      placeholder="Cari kelurahan/kota (min. 3 huruf)…"
+                      placeholder="Ketikan minimal 3 huruf awal kecamatan..."
                       value={cityQ}
                       onChange={(e) => setCityQ(e.target.value)}
                       className="rounded-none border-0 border-b focus-visible:ring-0"
@@ -879,25 +1003,22 @@ function OrderForm({ existingId }: { existingId?: string }) {
                             setCityQ("");
                           }}
                         >
-                          <div className="font-medium">{c.subdistrict_name}, {c.district_name}</div>
-                          <div className="text-xs text-muted-foreground">{c.city_name} · {c.zip_code}</div>
+                          <div className="font-medium">{c.district_name || c.subdistrict_name}, {c.city_name}</div>
+                          <div className="text-xs text-muted-foreground">{c.province_name} {c.zip_code ? `· ${c.zip_code}` : ""}</div>
                         </button>
                       ))}
                       {cityQ.trim().length >= 3 && !citiesQuery.isLoading && (citiesQuery.data?.length ?? 0) === 0 && (
-                        <div className="p-3 text-sm text-muted-foreground">Tidak ada hasil</div>
+                        <div className="p-3 text-sm text-muted-foreground">Tidak ada kecamatan ditemukan</div>
                       )}
                       {cityQ.trim().length < 3 && (
-                        <div className="p-3 text-sm text-muted-foreground">Ketik minimal 3 huruf…</div>
+                        <div className="p-3 text-sm text-muted-foreground">Ketikan minimal 3 huruf awal kecamatan...</div>
                       )}
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={form.district ?? ""} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="Kecamatan" />
-                <Input value={form.postal_code ?? ""} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} placeholder="Kode pos" />
-              </div>
+
 
               <div>
                 <Label>Gudang<span className="text-destructive">*</span></Label>
@@ -914,14 +1035,64 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label className="mb-0">Pilih Ekspedisi</Label>
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                  <div className="flex items-center gap-2">
+                    <Label className="mb-0">Pilih Ekspedisi</Label>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-primary">
+                          <Info className="size-3" />
+                          Skema Diskon & COD
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl max-h-[85vh] overflow-auto">
+                        <DialogHeader>
+                          <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                            <span>Ketentuan Diskon Ongkir & COD Lincah.id</span>
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3 text-sm mt-2">
+                          <p className="text-xs text-muted-foreground">
+                            Berikut adalah tabel skema diskon ongkir resmi, biaya COD (3.33%), dan ketentuan khusus pengembalian paket (Return Fee) Lincah.id:
+                          </p>
+                          <div className="border rounded-md overflow-hidden">
+                            <table className="w-full text-xs text-left border-collapse">
+                              <thead className="bg-muted font-semibold border-b">
+                                <tr>
+                                  <th className="p-2 border-r">Layanan Kurir</th>
+                                  <th className="p-2 border-r">Metode</th>
+                                  <th className="p-2 border-r">Diskon</th>
+                                  <th className="p-2 border-r">COD Fee</th>
+                                  <th className="p-2">Ketentuan Khusus</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {LINCAH_DISCOUNT_TABLE.map((row, idx) => (
+                                  <tr key={idx} className="border-b hover:bg-muted/50 transition">
+                                    <td className="p-2 font-medium border-r">{row.courier_name}</td>
+                                    <td className="p-2 border-r">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${row.is_cod ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" : "bg-muted text-muted-foreground"}`}>
+                                        {row.is_cod ? "COD" : "Non-COD"}
+                                      </span>
+                                    </td>
+                                    <td className="p-2 font-semibold text-emerald-600 border-r">{row.discount_percent}%</td>
+                                    <td className="p-2 border-r">{row.cod_fee_percent > 0 ? `${row.cod_fee_percent}%` : "-"}</td>
+                                    <td className="p-2 text-muted-foreground">{row.special_terms}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => void calcShipping(true)}
-                    disabled={loadingCost || !form.destination_subdistrict_id || !weight}
+                    disabled={loadingCost || !form.destination_subdistrict_id}
                     className="h-7 text-xs"
                   >
                     {loadingCost ? <Loader2 className="size-3 animate-spin mr-1" /> : <Truck className="size-3 mr-1" />}
@@ -930,9 +1101,6 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 </div>
                 {!form.destination_subdistrict_id && (
                   <p className="text-xs text-muted-foreground">Pilih tujuan dulu untuk menghitung ongkir</p>
-                )}
-                {form.destination_subdistrict_id && !weight && (
-                  <p className="text-xs text-muted-foreground">Tambah produk dulu (berat = 0)</p>
                 )}
                 {loadingCost && services.length === 0 && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="size-3 animate-spin" /> Menghitung ongkir…</p>
@@ -947,24 +1115,61 @@ function OrderForm({ existingId }: { existingId?: string }) {
                         key={`${s.courier_code ?? "c"}-${s.service}-${i}`}
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, service: s.service, courier: s.custom ? "custom" : (s.courier_code || f.courier || "jne"), shipping_cost: s.value, eta: s.etd }))}
-                        className={`w-full text-left border rounded-md p-2 hover:bg-accent transition text-sm ${
-                          form.service === s.service && (s.custom ? form.courier === "custom" : form.courier === s.courier_code) ? "border-primary bg-primary/5" : ""
+                        className={`w-full text-left border rounded-md p-2.5 hover:bg-accent transition text-sm ${
+                          form.service === s.service && (s.custom ? form.courier === "custom" : form.courier === s.courier_code) ? "border-primary bg-primary/5 ring-1 ring-primary/20" : ""
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium">
-                            {s.custom
-                              ? s.service
-                              : `${s.courier_code?.toUpperCase() || s.courier_name || ""} ${s.service}`}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-medium flex items-center gap-1.5 flex-wrap">
+                              <span>
+                                {s.custom
+                                  ? s.service
+                                  : `${s.courier_code?.toUpperCase() || s.courier_name || ""} ${s.service}`}
+                              </span>
+                              {Boolean(s.discount_percent && s.discount_percent > 0) && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                  Diskon {s.discount_percent}%
+                                </span>
+                              )}
+                              {Boolean(s.cod_fee_percent && s.cod_fee_percent > 0) && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                  COD Fee {s.cod_fee_percent}%
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {s.description}{s.etd ? ` · ${s.etd} hari` : ""}
+                            </div>
+                            {s.special_terms && (
+                              <div className="text-[10px] text-muted-foreground/80 mt-0.5 italic">
+                                ℹ️ {s.special_terms}
+                              </div>
+                            )}
                           </div>
-                          <div className="font-mono text-sm">{formatIDR(s.value)}</div>
+                          <div className="text-right shrink-0">
+                            <div className="font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                              {formatIDR(s.value)}
+                            </div>
+                            {Boolean(s.original_value && s.original_value > s.value) && (
+                              <div className="font-mono text-[11px] line-through text-muted-foreground mt-0.5">
+                                {formatIDR(s.original_value)}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">{s.description}{s.etd ? ` · ${s.etd} hari` : ""}</div>
+                        {Boolean(s.original_value && s.original_value > s.value) && (
+                          <div className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mt-1 border-t pt-1 flex justify-between items-center">
+                            <span>Harga setelah diskon</span>
+                            <span>Hemat {formatIDR(s.original_value - s.value)}</span>
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
+
 
               {/* Custom courier inline */}
               <div className="border rounded-md p-3 bg-muted/30 space-y-2">

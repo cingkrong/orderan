@@ -26,6 +26,21 @@ export const getCustomerByPhone = createServerFn({ method: "POST" })
     return row;
   });
 
+export const searchCustomersByName = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ query: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const q = data.query.trim();
+    if (q.length < 1) return [];
+    const { data: rows, error } = await context.supabase
+      .from("customers")
+      .select("*")
+      .or(`name.ilike.%${q}%,phone.ilike.%${q}%`)
+      .limit(10);
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
 export const getCustomer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))

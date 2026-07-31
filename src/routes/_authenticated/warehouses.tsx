@@ -120,7 +120,7 @@ function WarehousesPage() {
             ) : (
               <div className="rounded-md border">
                 <Input
-                  placeholder="Cari kelurahan/kota asal (min. 3 huruf)…"
+                  placeholder="Ketikan minimal 3 huruf awal kecamatan asal..."
                   value={originQ}
                   onChange={(e) => setOriginQ(e.target.value)}
                   className="rounded-none border-0 border-b focus-visible:ring-0"
@@ -136,8 +136,9 @@ function WarehousesPage() {
                         setOriginQ("");
                       }}
                     >
-                      <div className="font-medium">{d.subdistrict_name}, {d.district_name}</div>
-                      <div className="text-xs text-muted-foreground">{d.city_name} · {d.zip_code}</div>
+                      <div className="font-medium">{d.district_name || d.subdistrict_name}, {d.city_name}</div>
+                      <div className="text-xs text-muted-foreground">{d.province_name} {d.zip_code ? `· ${d.zip_code}` : ""}</div>
+
                     </button>
                   ))}
                   {originQ.trim().length >= 3 && !originResults.isLoading && (originResults.data?.length ?? 0) === 0 && (

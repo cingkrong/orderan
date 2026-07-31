@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { autoSubmitOrderToLincah } from "./lincah.functions";
+
 
 const orderStatus = z.enum([
   "pending",
@@ -202,8 +204,16 @@ export const saveOrder = createServerFn({ method: "POST" })
     const { error: ierr } = await context.supabase.from("order_items").insert(itemRows);
     if (ierr) throw new Error(ierr.message);
 
+    // Auto submit order to Lincah.id system
+    try {
+      await autoSubmitOrderToLincah(context.supabase as any, orderId!);
+    } catch (lincahErr) {
+      console.warn("Auto Lincah order submit failed:", lincahErr);
+    }
+
     return { id: orderId! };
   });
+
 
 export const updateOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

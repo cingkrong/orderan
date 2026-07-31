@@ -521,6 +521,10 @@ export type Database = {
           active_couriers: string[]
           custom_couriers: Json
           id: number
+          lincah_api_key: string | null
+          lincah_couriers: string[] | null
+          lincah_env: string | null
+          lincah_partner_id: string | null
           logo_url: string | null
           origin_city_id: string
           origin_label: string
@@ -537,6 +541,10 @@ export type Database = {
           active_couriers?: string[]
           custom_couriers?: Json
           id?: number
+          lincah_api_key?: string | null
+          lincah_couriers?: string[] | null
+          lincah_env?: string | null
+          lincah_partner_id?: string | null
           logo_url?: string | null
           origin_city_id?: string
           origin_label?: string
@@ -553,6 +561,10 @@ export type Database = {
           active_couriers?: string[]
           custom_couriers?: Json
           id?: number
+          lincah_api_key?: string | null
+          lincah_couriers?: string[] | null
+          lincah_env?: string | null
+          lincah_partner_id?: string | null
           logo_url?: string | null
           origin_city_id?: string
           origin_label?: string

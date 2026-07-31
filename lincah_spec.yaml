@@ -1,0 +1,1134 @@
+openapi: 3.0.3
+info:
+  title: Lincah Public API
+  version: 1.1.7-draft
+  description: |
+    Lincah-only OpenAPI spec.
+
+    Auth:
+    - Header `Authorization`: `Bearer <API token>`
+    - Header `partner-id`: required on every request
+    - `partner-id` source: Lincah partner dashboard
+    - API token source: Profile Settings -> Open API
+
+    📂 [Dokumentasi API (lengkap)](https://drive.google.com/file/d/1o1Xl7BIaQ2T3IQYdf2Kie6t1Qoi5X3sj/view?usp=sharing)
+    📄 [Dokumentasi Webhook (PDF)](https://drive.google.com/file/d/1hy0ja-AkeGodkP8Tuu7UrlNqZId9VULt/view?usp=sharing)
+
+servers:
+  - url: https://api.lincah.id/openapi
+    description: Production
+  - url: https://dev-api.lincah.id/openapi
+    description: Development
+
+security:
+  - LincahAuth: []
+    PartnerIdAuth: []
+
+tags:
+  - name: Account
+  - name: Location
+  - name: Shipping
+  - name: Address
+  - name: Order
+  - name: Webhook
+
+paths:
+  /me:
+    get:
+      tags: [Account]
+      summary: Get authenticated user profile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+
+  /balance:
+    get:
+      tags: [Account]
+      summary: Get account balance
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+
+  /provinces:
+    get:
+      tags: [Location]
+      summary: List provinces
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvinceListResponse'
+
+  /city:
+    get:
+      tags: [Location]
+      summary: List cities by province code
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CityListResponse'
+
+  /district:
+    get:
+      tags: [Location]
+      summary: List districts by city code
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistrictListResponse'
+
+  /district/search:
+    get:
+      tags: [Location]
+      summary: Search districts by name
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+            minLength: 3
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistrictListResponse'
+
+  /courier:
+    get:
+      tags: [Location]
+      summary: List available couriers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourierListResponse'
+
+  /ongkir:
+    post:
+      tags: [Shipping]
+      summary: Check shipping rates
+      description: MCP wrapper handles `weight` in grams.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OngkirRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LincahOngkirResponse'
+
+  /insurance:
+    post:
+      tags: [Shipping]
+      summary: Calculate insurance fee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsuranceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsuranceResponse'
+
+  /address:
+    get:
+      tags: [Address]
+      summary: Search/list addresses
+      parameters:
+        - in: query
+          name: current
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            maximum: 100
+        - in: query
+          name: q
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressSearchResponse'
+
+    post:
+      tags: [Address]
+      summary: Create an address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressCreateResponse'
+
+  /address/{id}:
+    get:
+      tags: [Address]
+      summary: Get address detail
+      parameters:
+        - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressSingleResponse'
+
+    post:
+      tags: [Address]
+      summary: Update an address by ID
+      parameters:
+        - $ref: '#/components/parameters/AddressId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressUpdateResponse'
+
+    delete:
+      tags: [Address]
+      summary: Delete an address by ID
+      parameters:
+        - $ref: '#/components/parameters/AddressId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressDeleteResponse'
+
+  /order:
+    get:
+      tags: [Order]
+      summary: List orders
+      parameters:
+        - in: query
+          name: current
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+
+    post:
+      tags: [Order]
+      summary: Create an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCreateResponse'
+
+  /order/{id}:
+    get:
+      tags: [Order]
+      summary: Get order detail by order id or no_order
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSingleResponse'
+
+  /order/{id}/track:
+    get:
+      tags: [Order]
+      summary: Track order by resi
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackOrderResponse'
+
+
+  /order/cancel:
+    post:
+      tags: [Order]
+      summary: Cancel orders (only when status 'waiting')
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCancelRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCancelResponse'
+
+  /order/regenerate:
+    post:
+      tags: [Order]
+      summary: Regenerate resi tracking number
+      description: Use this if create order failed to generate resi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRegenerateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderRegenerateResponse'
+
+  /order/print:
+    post:
+      tags: [Order]
+      summary: Print shipping labels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderPrintRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPrintResponse'
+
+webhooks:
+  orderStatus:
+    post:
+      tags: [Webhook]
+      summary: Status pengiriman berubah
+      description: Dipanggil saat ada perubahan status pengiriman.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookStatusPayload'
+      responses:
+        '200':
+          description: OK
+
+  orderPickup:
+    post:
+      tags: [Webhook]
+      summary: Pesanan siap diambil kurir
+      description: Dipanggil saat pesanan baru siap diambil kurir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPickupPayload'
+      responses:
+        '200':
+          description: OK
+
+  orderUpdated:
+    post:
+      tags: [Webhook]
+      summary: Data pesanan berubah
+      description: Dipanggil saat data pesanan diubah.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookUpdatedPayload'
+      responses:
+        '200':
+          description: OK
+
+  orderPartialCost:
+    post:
+      tags: [Webhook]
+      summary: Biaya kirim berubah
+      description: Dipanggil saat biaya kirim mengalami perubahan (partial cost).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPartialCostPayload'
+      responses:
+        '200':
+          description: OK
+
+components:
+  securitySchemes:
+    LincahAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API token as a Bearer token: `Authorization: Bearer <token>`.
+        Get this token from Profile Settings -> Open API.
+    PartnerIdAuth:
+      type: apiKey
+      in: header
+      name: partner-id
+      description: |
+        Lincah partner id from partner dashboard.
+        Kalau belum punya Partner ID sendiri untuk testing di sini, boleh pakai default: `6a4617ceb8fd8dd8aa41906e` (dev).
+
+    PartnerId:
+      in: header
+      name: partner-id
+      required: true
+      schema: { type: string }
+      description: Lincah partner id from partner dashboard
+    AddressId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string }
+    OrderId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string }
+
+  schemas:
+    AddressCreateRequest:
+      type: object
+      required: [name, address, district]
+      properties:
+        name:
+          type: string
+          description: Address name
+        address:
+          type: string
+          description: Address description
+        district:
+          type: string
+          description: District code
+        contact:
+          type: object
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+        geoloc:
+          type: object
+          properties:
+            lat:
+              type: string
+            long:
+              type: string
+
+    AddressCreateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            _id:
+              type: string
+            name:
+              type: string
+            address:
+              type: string
+            contact:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+            district:
+              type: object
+              properties:
+                id:
+                  type: string
+                code:
+                  type: string
+                province:
+                  type: string
+                city:
+                  type: string
+                district:
+                  type: string
+
+    AddressUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        district:
+          type: string
+        contact:
+          type: object
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+        geoloc:
+          type: object
+          properties:
+            lat:
+              type: string
+            long:
+              type: string
+
+    AddressUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            _id:
+              type: string
+            name:
+              type: string
+            address:
+              type: string
+            contact:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+            district:
+              type: object
+              properties:
+                id:
+                  type: string
+                code:
+                  type: string
+                province:
+                  type: string
+                city_type:
+                  type: string
+                city:
+                  type: string
+                district:
+                  type: string
+
+    AddressDeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+
+    OrderCreateRequest:
+      type: object
+      required: [sender_type, address_ref, name, phone, address, destination, type, courier, courier_service, weight, quantity, product_name]
+      properties:
+        sender_type:
+          type: string
+          description: Type of service (e.g. picked up)
+        address_ref:
+          type: string
+          description: Address sender reference id
+        name:
+          type: string
+          description: Receiver name
+        phone:
+          type: string
+          description: Receiver phone
+        address:
+          type: string
+          description: Receiver address
+        destination:
+          type: string
+          description: Destination district code
+        geoloc:
+          type: object
+          properties:
+            lat:
+              type: string
+            long:
+              type: string
+        type:
+          type: string
+          enum: [cod, regular]
+        courier:
+          type: string
+          description: Courier code
+        courier_service:
+          type: string
+          description: Type of courier service
+        cod_price:
+          type: integer
+          description: Mandatory when type == 'cod'
+        product_price:
+          type: integer
+          description: Mandatory when type == 'regular'
+        weight:
+          type: integer
+          description: Product weight (kg)
+        quantity:
+          type: integer
+          description: Product quantity
+        volume:
+          type: string
+          description: Product volume format PxLxT
+        product_name:
+          type: string
+        note:
+          type: string
+        email:
+          type: string
+          description: Receiver email
+        picked_up_time:
+          type: string
+          format: date-time
+          description: Mandatory when sender_type == 'picked up'
+        sender_name:
+          type: string
+        sender_phone:
+          type: string
+        print_name:
+          type: string
+        print_phone:
+          type: string
+        isInsurance:
+          type: boolean
+
+    OrderCreateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            no_order:
+              type: string
+            user:
+              type: string
+            name:
+              type: string
+            phone:
+              type: string
+            address:
+              type: string
+            ongkir:
+              type: object
+              properties:
+                fee:
+                  type: number
+                feeReal:
+                  type: number
+                discount:
+                  type: number
+                discountValue:
+                  type: number
+                insurance:
+                  type: number
+            weight:
+              type: number
+            courier:
+              type: string
+            courier_service:
+              type: string
+            quantity:
+              type: integer
+            product_price:
+              type: number
+            product_name:
+              type: string
+            note:
+              type: string
+            status:
+              type: string
+            date:
+              type: object
+              properties:
+                create:
+                  type: string
+                  format: date-time
+                confirm:
+                  type: string
+                  format: date-time
+            type:
+              type: string
+            destination_text:
+              type: string
+            destination_id:
+              type: string
+            sender_type:
+              type: string
+            sender:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                address:
+                  type: string
+                origin_id:
+                  type: string
+                origin_text:
+                  type: string
+                zipcode:
+                  type: string
+                geoloc:
+                  type: object
+                  properties:
+                    lat:
+                      type: string
+                    long:
+                      type: string
+            picked_up_time:
+              type: string
+              format: date-time
+            resi:
+              type: string
+            tlc:
+              type: string
+
+    OrderCancelRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          description: Order IDs to cancel
+
+    OrderCancelResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+
+    OrderRegenerateRequest:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          description: Order ID
+
+    OrderRegenerateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+
+    WebhookPayloadBase:
+      type: object
+      properties:
+        event:
+          type: string
+          description: Nama event webhook
+        topic:
+          type: string
+          example: order
+        data:
+          type: object
+
+    WebhookStatusPayload:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [order.status]
+        topic:
+          type: string
+          example: order
+        data:
+          $ref: '#/components/schemas/WebhookStatusData'
+
+    WebhookStatusData:
+      type: object
+      properties:
+        orderId:
+          type: string
+        status:
+          type: string
+          enum: [delivered, onDelivery, onHold, onProcess, onReturn, pickup]
+        noOrder:
+          type: string
+          example: INV/2021/05/12345
+        awb:
+          type: string
+          example: JP00012345678
+        courier:
+          type: string
+          example: JNE
+        service:
+          type: string
+          example: REG
+        pod:
+          type: string
+          nullable: true
+          description: Proof of delivery image path
+        note:
+          type: string
+          nullable: true
+
+    WebhookPickupPayload:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [order.pickup]
+        topic:
+          type: string
+          example: order
+        data:
+          $ref: '#/components/schemas/WebhookPickupData'
+
+    WebhookPickupData:
+      type: object
+      properties:
+        orderId:
+          type: string
+        noOrder:
+          type: string
+        awb:
+          type: string
+
+    WebhookUpdatedPayload:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [order.updated]
+        topic:
+          type: string
+          example: order
+        data:
+          $ref: '#/components/schemas/WebhookUpdatedData'
+
+    WebhookUpdatedData:
+      type: object
+      properties:
+        orderId:
+          type: string
+        noOrder:
+          type: string
+
+    WebhookPartialCostPayload:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [order.partialCost]
+        topic:
+          type: string
+          example: order
+        data:
+          $ref: '#/components/schemas/WebhookPartialCostData'
+
+    WebhookPartialCostData:
+      type: object
+      properties:
+        orderId:
+          type: string
+        noOrder:
+          type: string
+        cost:
+          type: number
+          description: Biaya kirim baru
+
+    MeResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: object
+          properties:
+            id: { type: string }
+            email: { type: string }
+            phone: { type: string }
+            name: { type: string }
+    BalanceResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: object
+          properties:
+            balance: { type: number }
+    ProvinceListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              _id: { type: string }
+              code: { type: string }
+              name: { type: string }
+    CityListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string }
+              name: { type: string }
+              province: { type: string }
+              type: { type: string }
+              id: { type: string }
+    DistrictListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string }
+              province_id: { type: string }
+              province: { type: string }
+              city_type: { type: string }
+              city: { type: string }
+              name: { type: string }
+              id: { type: string }
+              fullName: { type: string }
+    CourierListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string }
+              name: { type: string }
+              image: { type: string }
+              cod: { type: boolean }
+              senderType:
+                type: array
+                items: { type: string }
+              service:
+                type: array
+                items: { type: string }
+              serviceAvailable:
+                type: array
+                items: { type: string }
+    OngkirRequest:
+      type: object
+      required: [isPickup, isCod, dimensions, weight, origin, destination]
+      properties:
+        isPickup: { type: boolean }
+        isCod: { type: boolean }
+        dimensions:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: { type: number }
+          description: "Default jika null: [1,1,1]"
+          example: [1, 1, 1]
+        weight: { type: number, description: Weight in grams }
+        packagePrice: { type: number }
+        origin: { $ref: '#/components/schemas/LocationPoint' }
+        destination: { $ref: '#/components/schemas/LocationPoint' }
+        logistics:
+          type: array
+          items: { type: string }
+        services:
+          type: array
+          items: { type: string }
+    LocationPoint:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        longitude: { type: number }
+        latitude: { type: number }
+    LincahOngkirResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items: { type: object }
+    InsuranceRequest:
+      type: object
+      required: [amount, courier]
+      properties:
+        amount: { type: number }
+        courier: { type: string }
+    InsuranceResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: object
+          properties:
+            insurance_fee: { type: number }
+    AddressSearchResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        page: { type: string }
+        total: { type: integer }
+        data:
+          type: array
+          items: { type: object }
+    AddressSingleResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: object }
+    OrderListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        page: { type: string }
+        total: { type: integer }
+        data:
+          type: array
+          items: { type: object }
+    OrderSingleResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: object }
+    TrackOrderResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        order: { type: object }
+        data:
+          type: array
+          items: { type: object }
+    OrderPrintRequest:
+      type: object
+      required: [ids, type]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items: { type: string }
+        type:
+          type: string
+          enum: [label-1, label-2, label-4, label-6, thermal-1010, thermal-1015]
+        onlyNonPrint:
+          type: boolean
+          default: false
+        mask:
+          type: boolean
+          default: false
+    OrderPrintResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        awb: { type: string }
+        handover: { type: string }
