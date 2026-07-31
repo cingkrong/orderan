@@ -236,6 +236,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const [costCached, setCostCached] = useState(false);
 
   // Custom courier inline form
+  const [showCustomCourier, setShowCustomCourier] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState<number | "">("");
   const [savePreset, setSavePreset] = useState(false);
@@ -1179,44 +1180,64 @@ function OrderForm({ existingId }: { existingId?: string }) {
               </div>
 
 
-              {/* Custom courier inline */}
-              <div className="border rounded-md p-3 bg-muted/30 space-y-2">
+              {/* Custom courier inline toggle */}
+              <div className="border rounded-md p-3 bg-muted/30 space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">Jasa kirim custom</Label>
-                  <span className="text-[10px] text-muted-foreground">Tidak ada di pilihan ekspedisi? Input manual di sini</span>
+                  <div>
+                    <Label className="text-sm font-medium cursor-pointer" onClick={() => setShowCustomCourier(!showCustomCourier)}>
+                      Jasa Kirim Custom / Manual
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Input ongkir manual untuk kurir toko, Gojek, Grab, dll.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={showCustomCourier}
+                    onCheckedChange={(on) => {
+                      setShowCustomCourier(on);
+                      if (!on && form.courier === "custom") {
+                        setForm((f) => ({ ...f, courier: "", service: "", shipping_cost: 0 }));
+                      }
+                    }}
+                  />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2">
-                  <Input
-                    placeholder="Nama ekspedisi (mis. Gojek, Grab, Kurir Toko)"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                  />
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="Ongkir (Rp)"
-                    value={customPrice}
-                    onChange={(e) => setCustomPrice(e.target.value === "" ? "" : Number(e.target.value))}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={applyCustomCourier}
-                    disabled={!customName.trim() || customPrice === "" || savingPreset}
-                  >
-                    {savingPreset ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
-                    Gunakan
-                  </Button>
-                </div>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={savePreset}
-                    onChange={(e) => setSavePreset(e.target.checked)}
-                    className="size-3"
-                  />
-                  Simpan sebagai preset (muncul otomatis di order berikutnya)
-                </label>
+
+                {showCustomCourier && (
+                  <div className="pt-3 border-t space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2">
+                      <Input
+                        placeholder="Nama ekspedisi (mis. Gojek, Grab, Kurir Toko)"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="Ongkir (Rp)"
+                        value={customPrice}
+                        onChange={(e) => setCustomPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={applyCustomCourier}
+                        disabled={!customName.trim() || customPrice === "" || savingPreset}
+                      >
+                        {savingPreset ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
+                        Gunakan
+                      </Button>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={savePreset}
+                        onChange={(e) => setSavePreset(e.target.checked)}
+                        className="rounded border-input"
+                      />
+                      Simpan sebagai preset (muncul otomatis di order berikutnya)
+                    </label>
+                  </div>
+                )}
               </div>
 
 
