@@ -134,20 +134,61 @@ export const getOrdersByIds = createServerFn({ method: "POST" })
 
 async function ensureCustomer(
   supabase: { from: (t: string) => any },
-  payload: { name: string; phone: string },
+  payload: {
+    name: string;
+    phone: string;
+    full_address?: string;
+    destination_subdistrict_id?: string;
+    destination_label?: string;
+    city?: string;
+    province?: string;
+    district?: string;
+    postal_code?: string;
+  },
 ): Promise<string | null> {
   if (!payload.phone) return null;
+
+  const lastAddress = {
+    full_address: payload.full_address || "",
+    destination_subdistrict_id: payload.destination_subdistrict_id || "",
+    destination_label: payload.destination_label || "",
+    city: payload.city || "",
+    province: payload.province || "",
+    district: payload.district || "",
+    postal_code: payload.postal_code || "",
+  };
+
   const { data: existing } = await supabase
     .from("customers")
-    .select("id")
+    .select("id, total_orders")
     .eq("phone", payload.phone)
     .maybeSingle();
-  if (existing?.id) return existing.id;
+
+  if (existing?.id) {
+    await supabase
+      .from("customers")
+      .update({
+        name: payload.name || undefined,
+        last_address: lastAddress,
+        last_order_at: new Date().toISOString(),
+        total_orders: (existing.total_orders || 0) + 1,
+      })
+      .eq("id", existing.id);
+    return existing.id;
+  }
+
   const { data: created, error } = await supabase
     .from("customers")
-    .insert({ name: payload.name, phone: payload.phone })
+    .insert({
+      name: payload.name,
+      phone: payload.phone,
+      last_address: lastAddress,
+      last_order_at: new Date().toISOString(),
+      total_orders: 1,
+    })
     .select("id")
     .single();
+
   if (error) return null;
   return created?.id ?? null;
 }
@@ -164,6 +205,13 @@ export const saveOrder = createServerFn({ method: "POST" })
     const customer_id = await ensureCustomer(context.supabase as any, {
       name: orderRest.customer_name,
       phone: orderRest.phone,
+      full_address: orderRest.full_address,
+      destination_subdistrict_id: orderRest.destination_subdistrict_id,
+      destination_label: orderRest.destination_label,
+      city: orderRest.city,
+      province: orderRest.province,
+      district: orderRest.district,
+      postal_code: orderRest.postal_code,
     });
 
     const orderPayload = {

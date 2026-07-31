@@ -361,14 +361,27 @@ export async function autoSubmitOrderToLincah(supabase: any, orderId: string) {
 
     const rawCourier = String(order.courier || "jne").replace(/^lincah:/i, "").toLowerCase();
     const courierCode = rawCourier === "custom" ? "jne" : rawCourier;
-    const serviceCode = order.service || "REG";
+    let serviceCode = order.service || "REG";
+
+    // Normalize service names for Lincah OpenAPI requirements
+    if (courierCode === "jne") {
+      serviceCode = serviceCode.replace(/23$/i, "").trim(); // REG23 -> REG, YES23 -> YES
+    } else if (courierCode === "ninja") {
+      if (serviceCode === "NSTD" || serviceCode.toLowerCase().includes("std")) {
+        serviceCode = "Standard";
+      }
+    } else if (courierCode === "ide" || courierCode === "idexpress") {
+      if (serviceCode === "iDSTD" || serviceCode.toLowerCase().includes("std")) {
+        serviceCode = "STD";
+      }
+    }
 
     let addressRef: string | undefined = undefined;
     try {
       const addrRes = await fetchLincah(config, "/address");
       const addrList = Array.isArray(addrRes.data) ? addrRes.data : [];
       if (addrList.length > 0) {
-        addressRef = addrList[0]._id || addrList[0].id;
+        addressRef = addrList[0].id || addrList[0]._id;
       }
     } catch {}
 

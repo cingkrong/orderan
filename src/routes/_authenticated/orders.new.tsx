@@ -202,16 +202,20 @@ function OrderForm({ existingId }: { existingId?: string }) {
     try {
       const c = await fetchCustomer({ data: { phone } });
       if (c) {
+        const addr = (c.last_address as any) || {};
         setForm((f) => ({
           ...f,
-          customer_name: f.customer_name || c.name,
-          full_address: f.full_address || (c.last_address as any)?.full_address || "",
-          city: f.city || (c.last_address as any)?.city || "",
-          province: f.province || (c.last_address as any)?.province || "",
-          district: f.district || (c.last_address as any)?.district || "",
-          postal_code: f.postal_code || (c.last_address as any)?.postal_code || "",
-          destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
-          destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
+          customer_name: c.name || f.customer_name,
+          full_address: addr.full_address || f.full_address,
+          city: addr.city || f.city,
+          province: addr.province || f.province,
+          district: addr.district || f.district,
+          postal_code: addr.postal_code || f.postal_code,
+          destination_subdistrict_id: addr.destination_subdistrict_id || f.destination_subdistrict_id,
+          destination_label: addr.destination_label || f.destination_label,
+          shipping_cost: 0,
+          courier: "",
+          service: "",
         }));
         toast.info(`Data ${c.name} dimuat`);
       }
@@ -822,17 +826,21 @@ function OrderForm({ existingId }: { existingId?: string }) {
                         type="button"
                         className="w-full text-left p-2.5 hover:bg-accent border-b last:border-0 text-xs transition"
                         onClick={() => {
+                          const addr = (c.last_address as any) || {};
                           setForm((f) => ({
                             ...f,
                             customer_name: c.name,
-                            phone: f.phone || c.phone,
-                            full_address: f.full_address || (c.last_address as any)?.full_address || "",
-                            city: f.city || (c.last_address as any)?.city || "",
-                            province: f.province || (c.last_address as any)?.province || "",
-                            district: f.district || (c.last_address as any)?.district || "",
-                            postal_code: f.postal_code || (c.last_address as any)?.postal_code || "",
-                            destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
-                            destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
+                            phone: c.phone || f.phone,
+                            full_address: addr.full_address || f.full_address,
+                            city: addr.city || f.city,
+                            province: addr.province || f.province,
+                            district: addr.district || f.district,
+                            postal_code: addr.postal_code || f.postal_code,
+                            destination_subdistrict_id: addr.destination_subdistrict_id || f.destination_subdistrict_id,
+                            destination_label: addr.destination_label || f.destination_label,
+                            shipping_cost: 0,
+                            courier: "",
+                            service: "",
                           }));
                           setShowCustomerDropdown(false);
                           toast.info(`Pelanggan "${c.name}" dipilih`);
