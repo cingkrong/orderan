@@ -29,7 +29,6 @@ export function useWeightUnit(): {
   const format = (g: number | null | undefined) => {
     const v = g ?? 0;
     if (unit === "kg") return `${(v / 1000).toFixed(2)} kg`;
-    if (v >= 1000) return `${(v / 1000).toFixed(2)} kg`;
     return `${v} g`;
   };
   return { unit, toDisplay, toGrams, format };

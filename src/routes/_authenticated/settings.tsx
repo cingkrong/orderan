@@ -205,6 +205,24 @@ function SettingsPage() {
         </p>
       </div>
 
+      {/* Profil Pengguna Card Banner */}
+      <Card className="p-4 bg-gradient-to-r from-primary/10 via-background to-accent/20 border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-full bg-primary text-primary-foreground font-bold text-sm grid place-items-center">
+            {form.sender_name ? form.sender_name.charAt(0).toUpperCase() : "U"}
+          </div>
+          <div>
+            <div className="font-bold text-sm">Profil Akun & Toko</div>
+            <div className="text-xs text-muted-foreground">
+              {form.sender_name || "Akun Pengguna"} • {form.sender_phone || "Belum ada telp"}
+            </div>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" asChild>
+          <a href="/profile">Lihat Profil Lengkap</a>
+        </Button>
+      </Card>
+
       {/* Identitas Pengirim & Toko */}
       <Card className="p-5 space-y-4 shadow-sm border-border">
         <h2 className="font-semibold text-base">Identitas Pengirim & Toko</h2>

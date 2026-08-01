@@ -240,11 +240,12 @@ export const getLincahOngkir = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const config = await getLincahConfig(context.supabase);
+    const weightKg = Math.max(0.1, Number((data.weight_g / 1000).toFixed(3)));
     const payload = {
       isPickup: true,
       isCod: data.is_cod,
       dimensions: [1, 1, 1],
-      weight: Math.max(1, data.weight_g),
+      weight: weightKg,
       packagePrice: data.package_price,
       origin: { code: data.origin_code },
       destination: { code: data.destination_code },

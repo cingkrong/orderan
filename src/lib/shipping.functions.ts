@@ -248,11 +248,13 @@ export const getShippingCost = createServerFn({ method: "POST" })
             } catch {}
           }
 
+          const weightKg = Math.max(0.1, Number((weightG / 1000).toFixed(3)));
+
           const lincahPayload = {
             isPickup: true,
             isCod: isCod,
             dimensions: [1, 1, 1],
-            weight: weightG,
+            weight: weightKg,
             packagePrice: 0,
             origin: { code: lincahOrigin },
             destination: { code: data.destination_subdistrict_id },

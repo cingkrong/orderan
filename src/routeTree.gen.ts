@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedLabelsRouteImport } from './routes/_authenticated/labels'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticated/shipping'
@@ -52,6 +53,11 @@ const AuthenticatedCustomersRoute = AuthenticatedCustomersRouteImport.update({
 const AuthenticatedLabelsRoute = AuthenticatedLabelsRouteImport.update({
   id: '/labels',
   path: '/labels',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/labels': typeof AuthenticatedLabelsRoute
+  '/profile': typeof AuthenticatedProfileRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shipping': typeof AuthenticatedShippingRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/labels': typeof AuthenticatedLabelsRoute
+  '/profile': typeof AuthenticatedProfileRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shipping': typeof AuthenticatedShippingRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/_authenticated/labels': typeof AuthenticatedLabelsRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/customers'
     | '/labels'
+    | '/profile'
     | '/reports'
     | '/settings'
     | '/shipping'
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/customers'
     | '/labels'
+    | '/profile'
     | '/reports'
     | '/settings'
     | '/shipping'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/customers'
     | '/_authenticated/labels'
+    | '/_authenticated/profile'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/shipping'
@@ -311,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/labels'
       fullPath: '/labels'
       preLoaderRoute: typeof AuthenticatedLabelsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports': {
@@ -438,6 +457,7 @@ const AuthenticatedCustomersRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRouteWithChildren
   AuthenticatedLabelsRoute: typeof AuthenticatedLabelsRoute
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
@@ -458,6 +478,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCustomersRoute: AuthenticatedCustomersRouteWithChildren,
   AuthenticatedLabelsRoute: AuthenticatedLabelsRoute,
+  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedShippingRoute: AuthenticatedShippingRoute,

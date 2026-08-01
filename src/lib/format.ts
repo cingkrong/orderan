@@ -11,9 +11,9 @@ export const formatIDR = (n: number | string | null | undefined): string => {
 export const formatNumber = (n: number | null | undefined) =>
   new Intl.NumberFormat("id-ID").format(n ?? 0);
 
-export const formatWeight = (g: number | null | undefined) => {
+export const formatWeight = (g: number | null | undefined, unit: "g" | "kg" = "g") => {
   const v = g ?? 0;
-  if (v >= 1000) return `${(v / 1000).toFixed(2)} kg`;
+  if (unit === "kg") return `${(v / 1000).toFixed(2)} kg`;
   return `${v} g`;
 };
 

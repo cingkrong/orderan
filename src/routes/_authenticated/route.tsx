@@ -16,6 +16,7 @@ import {
   Wallet,
   TrendingUp,
   Warehouse,
+  UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ const NAV: NavItem[] = [
   { to: "/expenses", label: "Pengeluaran", icon: Wallet },
   { to: "/reports", label: "Laporan L/R", icon: TrendingUp },
   { to: "/warehouses", label: "Gudang", icon: Warehouse },
+  { to: "/profile", label: "Profil Saya", icon: UserCircle },
   { to: "/settings", label: "Pengaturan", icon: Settings },
 ];
 
@@ -112,15 +114,24 @@ function ProtectedLayout() {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-sidebar-border">
-          <div className="px-3 py-2 text-xs text-sidebar-foreground/60 truncate">
-            {user.email}
-          </div>
+        <div className="p-3 border-t border-sidebar-border space-y-1">
+          <Link
+            to="/profile"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-md hover:bg-sidebar-accent text-sm text-sidebar-foreground"
+          >
+            <div className="size-7 rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold grid place-items-center">
+              {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium truncate">{user.email}</div>
+              <div className="text-[10px] text-sidebar-foreground/60">Lihat Profil</div>
+            </div>
+          </Link>
           <button
             onClick={signOut}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
-            <LogOut className="size-4" /> Keluar
+            <LogOut className="size-3.5" /> Keluar
           </button>
         </div>
       </aside>

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatIDR, formatWeight } from "@/lib/format";
+import { formatIDR } from "@/lib/format";
+import { useWeightUnit } from "@/hooks/use-weight-unit";
 
 export const Route = createFileRoute("/_authenticated/products/")({
   component: ProductsPage,
@@ -18,6 +19,7 @@ function ProductsPage() {
   const del = useServerFn(deleteProduct);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["products"], queryFn: () => fetchAll() });
+  const { format: wFormat } = useWeightUnit();
 
   const removeMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
@@ -75,8 +77,8 @@ function ProductsPage() {
                   const totalStock = variants.length ? variants.reduce((s, v) => s + Number(v.stock ?? 0), 0) : p.stock;
                   const weights = variants.map((v) => Number(v.weight_g));
                   const weightLabel = weights.length && Math.min(...weights) !== Math.max(...weights)
-                    ? `${formatWeight(Math.min(...weights))}–${formatWeight(Math.max(...weights))}`
-                    : formatWeight(weights[0] ?? p.weight_g);
+                    ? `${wFormat(Math.min(...weights))}–${wFormat(Math.max(...weights))}`
+                    : wFormat(weights[0] ?? p.weight_g);
                   const priceLabel = minP === maxP ? formatIDR(minP) : `${formatIDR(minP)}–${formatIDR(maxP)}`;
                   return (
                     <tr key={p.id} className="border-t">

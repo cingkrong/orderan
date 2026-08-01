@@ -144,52 +144,77 @@ async function ensureCustomer(
     province?: string;
     district?: string;
     postal_code?: string;
+    tags?: string[];
+    spent?: number;
+    isNewOrder?: boolean;
   },
 ): Promise<string | null> {
-  if (!payload.phone) return null;
+  const phone = (payload.phone || "").trim();
+  if (!phone) return null;
 
-  const lastAddress = {
-    full_address: payload.full_address || "",
-    destination_subdistrict_id: payload.destination_subdistrict_id || "",
-    destination_label: payload.destination_label || "",
-    city: payload.city || "",
-    province: payload.province || "",
-    district: payload.district || "",
-    postal_code: payload.postal_code || "",
-  };
+  const lastAddress = payload.full_address
+    ? {
+        full_address: payload.full_address || "",
+        destination_subdistrict_id: payload.destination_subdistrict_id || "",
+        destination_label: payload.destination_label || "",
+        city: payload.city || "",
+        province: payload.province || "",
+        district: payload.district || "",
+        postal_code: payload.postal_code || "",
+      }
+    : undefined;
 
   const { data: existing } = await supabase
     .from("customers")
-    .select("id, total_orders")
-    .eq("phone", payload.phone)
+    .select("id, total_orders, total_spent, tags, last_address")
+    .eq("phone", phone)
     .maybeSingle();
 
+  const newTags = payload.tags || [];
+
   if (existing?.id) {
+    const existingTags: string[] = Array.isArray(existing.tags) ? existing.tags : [];
+    const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
+
+    const updatePayload: Record<string, any> = {
+      name: payload.name || undefined,
+      last_order_at: new Date().toISOString(),
+      tags: mergedTags,
+    };
+    if (lastAddress) {
+      updatePayload.last_address = lastAddress;
+    }
+    if (payload.isNewOrder) {
+      updatePayload.total_orders = (existing.total_orders || 0) + 1;
+      updatePayload.total_spent = (existing.total_spent || 0) + (payload.spent || 0);
+    }
+
     await supabase
       .from("customers")
-      .update({
-        name: payload.name || undefined,
-        last_address: lastAddress,
-        last_order_at: new Date().toISOString(),
-        total_orders: (existing.total_orders || 0) + 1,
-      })
+      .update(updatePayload)
       .eq("id", existing.id);
+
     return existing.id;
   }
 
   const { data: created, error } = await supabase
     .from("customers")
     .insert({
-      name: payload.name,
-      phone: payload.phone,
-      last_address: lastAddress,
+      name: payload.name || "Customer",
+      phone: phone,
+      last_address: lastAddress || null,
       last_order_at: new Date().toISOString(),
-      total_orders: 1,
+      total_orders: payload.isNewOrder !== false ? 1 : 0,
+      total_spent: payload.spent || 0,
+      tags: newTags,
     })
     .select("id")
     .single();
 
-  if (error) return null;
+  if (error) {
+    console.warn("Failed to create customer:", error.message);
+    return null;
+  }
   return created?.id ?? null;
 }
 
@@ -201,7 +226,9 @@ export const saveOrder = createServerFn({ method: "POST" })
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const weight_g = items.reduce((s, i) => s + i.weight_g * i.qty, 0);
     const total = subtotal + (orderRest.shipping_cost ?? 0);
+    const isNewOrder = !id;
 
+    // 1. Save/update primary customer
     const customer_id = await ensureCustomer(context.supabase as any, {
       name: orderRest.customer_name,
       phone: orderRest.phone,
@@ -212,7 +239,38 @@ export const saveOrder = createServerFn({ method: "POST" })
       province: orderRest.province,
       district: orderRest.district,
       postal_code: orderRest.postal_code,
+      spent: total,
+      isNewOrder,
     });
+
+    // 2. Save/update recipient if phone is different
+    if (orderRest.recipient_phone && orderRest.recipient_phone.trim() !== orderRest.phone.trim()) {
+      await ensureCustomer(context.supabase as any, {
+        name: orderRest.recipient_name || orderRest.customer_name,
+        phone: orderRest.recipient_phone,
+        full_address: orderRest.full_address,
+        destination_subdistrict_id: orderRest.destination_subdistrict_id,
+        destination_label: orderRest.destination_label,
+        city: orderRest.city,
+        province: orderRest.province,
+        district: orderRest.district,
+        postal_code: orderRest.postal_code,
+        tags: ["Penerima"],
+        spent: 0,
+        isNewOrder,
+      });
+    }
+
+    // 3. Save/update dropshipper if order is dropship
+    if (orderRest.is_dropship && orderRest.dropship_phone && orderRest.dropship_name) {
+      await ensureCustomer(context.supabase as any, {
+        name: orderRest.dropship_name,
+        phone: orderRest.dropship_phone,
+        tags: ["Dropshipper"],
+        spent: total,
+        isNewOrder,
+      });
+    }
 
     const orderPayload = {
       ...orderRest,

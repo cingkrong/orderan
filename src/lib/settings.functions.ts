@@ -15,7 +15,7 @@ function extractLincahFromCustom(customCouriers: any): Record<string, any> | nul
 /** Helper: inject lincah config into custom_couriers JSONB array under __lincah key */
 function injectLincahIntoCustom(
   customCouriers: any[],
-  lincahData: { lincah_couriers?: string[]; lincah_api_key?: string; lincah_partner_id?: string; lincah_env?: string },
+  lincahData: { lincah_couriers?: string[]; lincah_api_key?: string; lincah_partner_id?: string; lincah_env?: string; label_paper_size?: string },
 ): any[] {
   const filtered = (customCouriers || []).filter((c: any) => !c?.__lincah);
   return [...filtered, { __lincah: lincahData }];
@@ -55,7 +55,8 @@ export const getSettings = createServerFn({ method: "GET" })
       lincah_api_key: localConfig.lincah_api_key ?? (data as any)?.lincah_api_key ?? embeddedLincah?.lincah_api_key ?? "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD",
       lincah_partner_id: localConfig.lincah_partner_id ?? (data as any)?.lincah_partner_id ?? embeddedLincah?.lincah_partner_id ?? "6a4617ceb8fd8dd8aa41906e",
       lincah_env: localConfig.lincah_env ?? (data as any)?.lincah_env ?? embeddedLincah?.lincah_env ?? "development",
-      label_paper_size: (data as any)?.label_paper_size ?? embeddedLincah?.label_paper_size ?? "100x150",
+      label_paper_size: localConfig.label_paper_size ?? (data as any)?.label_paper_size ?? embeddedLincah?.label_paper_size ?? "100x150",
+      weight_unit: (data as any)?.weight_unit === "kg" ? "kg" : "g",
     };
   });
 
@@ -95,6 +96,7 @@ export const updateSettings = createServerFn({ method: "POST" })
       lincah_env: data.lincah_env,
       lincah_couriers: data.lincah_couriers,
       active_couriers: data.active_couriers,
+      label_paper_size: data.label_paper_size,
     });
 
     // 2. Try updating full settings in Supabase (upsert row with id: 1)
@@ -104,16 +106,17 @@ export const updateSettings = createServerFn({ method: "POST" })
 
     if (!error) return { ok: true };
 
-    console.warn("Full settings update failed, trying without lincah columns:", error.message);
+    console.warn("Full settings update failed, trying without lincah/extra columns:", error.message);
 
-    // 3. Fallback: strip lincah_ columns and embed them inside custom_couriers JSONB
-    const { lincah_api_key, lincah_partner_id, lincah_env, lincah_couriers, custom_couriers, ...baseData } = data;
+    // 3. Fallback: strip lincah_ columns and label_paper_size and embed them inside custom_couriers JSONB
+    const { lincah_api_key, lincah_partner_id, lincah_env, lincah_couriers, label_paper_size, custom_couriers, ...baseData } = data;
 
     const enrichedCustom = injectLincahIntoCustom(custom_couriers || [], {
       lincah_couriers,
       lincah_api_key,
       lincah_partner_id,
       lincah_env,
+      label_paper_size,
     });
 
     const { error: err2 } = await context.supabase
