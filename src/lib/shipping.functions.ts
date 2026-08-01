@@ -315,19 +315,24 @@ export const getShippingCost = createServerFn({ method: "POST" })
           });
 
           if (services.length > 0 && services.some((s) => s.value > 0)) {
-            await context.supabase
-              .from("shipping_rate_cache")
-              .upsert(
-                {
-                  origin_subdistrict_id: cacheKey.origin,
-                  destination_subdistrict_id: cacheKey.dest,
-                  weight_bucket: cacheKey.bucket,
-                  couriers: cacheKey.couriers,
-                  services,
-                  fetched_at: new Date().toISOString(),
-                },
-                { onConflict: "origin_subdistrict_id,destination_subdistrict_id,weight_bucket,couriers" },
-              );
+            try {
+              const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+              await supabaseAdmin
+                .from("shipping_rate_cache")
+                .upsert(
+                  {
+                    origin_subdistrict_id: cacheKey.origin,
+                    destination_subdistrict_id: cacheKey.dest,
+                    weight_bucket: cacheKey.bucket,
+                    couriers: cacheKey.couriers,
+                    services,
+                    fetched_at: new Date().toISOString(),
+                  },
+                  { onConflict: "origin_subdistrict_id,destination_subdistrict_id,weight_bucket,couriers" },
+                );
+            } catch (cacheErr) {
+              console.warn("Failed to cache shipping rates:", cacheErr);
+            }
           }
         } catch (lincahErr) {
           console.error("Lincah rate calculation failed:", lincahErr);
