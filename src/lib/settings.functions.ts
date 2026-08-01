@@ -55,6 +55,7 @@ export const getSettings = createServerFn({ method: "GET" })
       lincah_api_key: localConfig.lincah_api_key ?? (data as any)?.lincah_api_key ?? embeddedLincah?.lincah_api_key ?? "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD",
       lincah_partner_id: localConfig.lincah_partner_id ?? (data as any)?.lincah_partner_id ?? embeddedLincah?.lincah_partner_id ?? "6a4617ceb8fd8dd8aa41906e",
       lincah_env: localConfig.lincah_env ?? (data as any)?.lincah_env ?? embeddedLincah?.lincah_env ?? "development",
+      label_paper_size: (data as any)?.label_paper_size ?? embeddedLincah?.label_paper_size ?? "100x150",
     };
   });
 
@@ -80,6 +81,7 @@ const settingsSchema = z.object({
   lincah_partner_id: z.string().optional().default("6a4617ceb8fd8dd8aa41906e"),
   lincah_env: z.enum(["development", "production"]).optional().default("development"),
   lincah_couriers: z.array(z.string()).optional().default(["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana"]),
+  label_paper_size: z.enum(["100x100", "100x150"]).optional().default("100x150"),
 });
 
 export const updateSettings = createServerFn({ method: "POST" })

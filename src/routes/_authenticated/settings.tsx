@@ -66,6 +66,7 @@ function SettingsPage() {
     lincah_api_key: "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD",
     lincah_partner_id: "6a4617ceb8fd8dd8aa41906e",
     lincah_env: "development" as "development" | "production",
+    label_paper_size: "100x150" as "100x100" | "100x150",
   });
 
   const [lincahStatus, setLincahStatus] = useState<{
@@ -95,6 +96,7 @@ function SettingsPage() {
         lincah_api_key: (data as any).lincah_api_key ?? "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD",
         lincah_partner_id: (data as any).lincah_partner_id ?? "6a4617ceb8fd8dd8aa41906e",
         lincah_env: (data as any).lincah_env === "production" ? "production" : "development",
+        label_paper_size: (data as any).label_paper_size === "100x100" ? "100x100" : "100x150",
       });
     }
   }, [data]);
@@ -266,6 +268,24 @@ function SettingsPage() {
                 }`}
               >
                 {u === "g" ? "Gram (g)" : "Kilogram (kg)"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-xs font-semibold">Ukuran Kertas Label Pengiriman (Default)</Label>
+          <div className="mt-1 flex gap-2">
+            {(["100x150", "100x100"] as const).map((sz) => (
+              <button
+                key={sz}
+                type="button"
+                onClick={() => setForm({ ...form, label_paper_size: sz })}
+                className={`px-4 py-2 text-xs rounded-md border transition-all ${
+                  form.label_paper_size === sz ? "border-primary bg-primary/5 font-semibold text-primary" : "hover:bg-accent text-muted-foreground"
+                }`}
+              >
+                {sz === "100x150" ? "📄 Thermal 100 × 150 mm (Standar)" : "📄 Thermal 100 × 100 mm (Square)"}
               </button>
             ))}
           </div>
