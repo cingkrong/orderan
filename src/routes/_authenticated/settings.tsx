@@ -158,7 +158,6 @@ function SettingsPage() {
       return {
         ...f,
         lincah_couriers: updated,
-        active_couriers: updated,
       };
     });
   }
@@ -171,7 +170,6 @@ function SettingsPage() {
       return {
         ...f,
         active_couriers: updated,
-        lincah_couriers: updated,
       };
     });
   }
@@ -199,24 +197,95 @@ function SettingsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pengaturan</h1>
-        <p className="text-muted-foreground text-sm mt-1">Info pengirim, gudang, Lincah.id API, & pemilahan ekspedisi terintegrasi</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pengaturan OMS</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Pengaturan umum toko, identitas pengirim pada label, Lincah.id API, dan kurir custom.
+        </p>
       </div>
 
-      {/* Pengaturan Lincah.id Platform */}
-      <Card className="p-5 space-y-4 border-primary/20 bg-card shadow-sm">
+      {/* Identitas Pengirim & Toko */}
+      <Card className="p-5 space-y-4 shadow-sm border-border">
+        <h2 className="font-semibold text-base">Identitas Pengirim & Toko</h2>
+        <p className="text-xs text-muted-foreground">Informasi ini dicetak pada label pengiriman pesanan.</p>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs font-semibold">Nama Toko / Pengirim</Label>
+            <Input
+              value={form.sender_name}
+              onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
+              placeholder="cth. Maularis Official Store"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Telepon Pengirim</Label>
+            <Input
+              value={form.sender_phone}
+              onChange={(e) => setForm({ ...form, sender_phone: e.target.value })}
+              placeholder="081234567890"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Kota Pengirim</Label>
+            <Input
+              value={form.sender_city}
+              onChange={(e) => setForm({ ...form, sender_city: e.target.value })}
+              placeholder="cth. Surakarta"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">URL Logo Toko (Opsional)</Label>
+            <Input
+              value={form.logo_url}
+              onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
+              placeholder="https://..."
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-xs font-semibold">Alamat Lengkap Pengirim</Label>
+          <Textarea
+            rows={2}
+            value={form.sender_address}
+            onChange={(e) => setForm({ ...form, sender_address: e.target.value })}
+            placeholder="Alamat fisik pengirim..."
+          />
+        </div>
+
+        <div>
+          <Label className="text-xs font-semibold">Satuan Berat Sistem</Label>
+          <div className="mt-1 flex gap-2">
+            {(["g", "kg"] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => setForm({ ...form, weight_unit: u })}
+                className={`px-4 py-2 text-xs rounded-md border transition-all ${
+                  form.weight_unit === u ? "border-primary bg-primary/5 font-semibold text-primary" : "hover:bg-accent text-muted-foreground"
+                }`}
+              >
+                {u === "g" ? "Gram (g)" : "Kilogram (kg)"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Pengaturan Lincah.id API */}
+      <Card className="p-5 space-y-4 border-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
               <KeyRound className="size-5" />
             </div>
             <div>
-              <h2 className="font-semibold text-base">Pengaturan Lincah.id API</h2>
-              <p className="text-xs text-muted-foreground">Kredensial API Key & Partner ID dapat disesuaikan bebas di sini</p>
+              <h2 className="font-semibold text-base">Kredensial Lincah.id Open API</h2>
+              <p className="text-xs text-muted-foreground">Digunakan untuk Booking Penjemputan, Cek Ongkir, & Resi Instant</p>
             </div>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${form.lincah_env === "production" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border border-amber-500/20"}`}>
-            {form.lincah_env === "production" ? "Production" : "Sandbox (Development)"}
+            {form.lincah_env === "production" ? "Production" : "Sandbox"}
           </span>
         </div>
 
@@ -226,258 +295,172 @@ function SettingsPage() {
             <Input
               value={form.lincah_api_key}
               onChange={(e) => setForm({ ...form, lincah_api_key: e.target.value })}
-              placeholder="Masukkan API Key Lincah.id..."
               className="mt-1 font-mono text-xs"
+              placeholder="Masukkan API Key Lincah..."
             />
-            <p className="text-[11px] text-muted-foreground mt-1">Diperoleh dari Profile Settings → Open API di Lincah</p>
           </div>
           <div>
             <Label className="text-xs font-semibold">Partner ID</Label>
             <Input
               value={form.lincah_partner_id}
               onChange={(e) => setForm({ ...form, lincah_partner_id: e.target.value })}
-              placeholder="Masukkan Partner ID Lincah.id..."
               className="mt-1 font-mono text-xs"
+              placeholder="Masukkan Partner ID Lincah..."
             />
-            <p className="text-[11px] text-muted-foreground mt-1">Partner ID dari Dashboard Lincah</p>
           </div>
         </div>
 
         <div>
-          <Label className="text-xs font-semibold">Lingkungan API (Environment)</Label>
-          <div className="mt-1.5 flex gap-3">
+          <Label className="text-xs font-semibold">Environment / Server API</Label>
+          <div className="mt-1.5 grid sm:grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={() => setForm({ ...form, lincah_env: "development" })}
-              className={`flex-1 py-2 px-3 text-xs rounded-md border text-center transition-all ${form.lincah_env === "development" ? "border-amber-500 bg-amber-500/10 font-semibold text-amber-700 dark:text-amber-400" : "hover:bg-accent"}`}
+              className={`p-3 rounded-lg border text-left transition-all ${
+                form.lincah_env === "development"
+                  ? "border-amber-500 bg-amber-500/10 font-semibold text-amber-900 dark:text-amber-300 shadow-xs"
+                  : "hover:bg-accent text-muted-foreground"
+              }`}
             >
-              🛠️ Sandbox / Development (`dev-api.lincah.id`)
+              <div className="text-xs font-bold">🛠️ Sandbox (Development)</div>
+              <div className="text-[11px] font-mono mt-0.5 opacity-80">https://dev-api.lincah.id/openapi</div>
             </button>
+
             <button
               type="button"
               onClick={() => setForm({ ...form, lincah_env: "production" })}
-              className={`flex-1 py-2 px-3 text-xs rounded-md border text-center transition-all ${form.lincah_env === "production" ? "border-emerald-500 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400" : "hover:bg-accent"}`}
+              className={`p-3 rounded-lg border text-left transition-all ${
+                form.lincah_env === "production"
+                  ? "border-emerald-500 bg-emerald-500/10 font-semibold text-emerald-900 dark:text-emerald-300 shadow-xs"
+                  : "hover:bg-accent text-muted-foreground"
+              }`}
             >
-              🚀 Production (`api.lincah.id`)
+              <div className="text-xs font-bold">🚀 Production (Live)</div>
+              <div className="text-[11px] font-mono mt-0.5 opacity-80">https://api.lincah.id/openapi</div>
             </button>
           </div>
         </div>
 
-        <div className="pt-2 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between pt-1">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleTestLincah}
             disabled={testingConnection}
-            className="gap-2"
+            className="text-xs"
           >
-            {testingConnection ? (
-              <RefreshCw className="size-4 animate-spin" />
-            ) : (
-              <CheckCircle2 className="size-4 text-emerald-500" />
-            )}
-            {testingConnection ? "Memeriksa Koneksi..." : "Cek Koneksi & Saldo Lincah"}
+            {testingConnection ? "Memeriksa..." : "Uji Koneksi Lincah.id"}
           </Button>
 
           {lincahStatus.tested && lincahStatus.success && (
-            <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded border border-emerald-200 dark:border-emerald-800">
-              <CheckCircle2 className="size-4 shrink-0" />
-              <div>
-                <span>Terhubung: {lincahStatus.user?.name || lincahStatus.user?.email}</span>
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-emerald-200 dark:bg-emerald-800 font-mono text-[11px]">
-                  Saldo: {formatIDR(lincahStatus.balance ?? 0)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {lincahStatus.tested && !lincahStatus.success && (
-            <div className="flex items-center gap-2 text-xs text-destructive font-medium bg-destructive/10 p-2 rounded border border-destructive/20">
-              <ShieldAlert className="size-4 shrink-0" />
-              <span>Gagal: {lincahStatus.error}</span>
-            </div>
+            <span className="text-xs text-emerald-600 font-medium">
+              ✓ Terhubung ({formatIDR(lincahStatus.balance ?? 0)})
+            </span>
           )}
         </div>
       </Card>
 
-      {/* Ekspedisi Terintegrasi Lincah.id */}
-      <Card className="p-5 space-y-4 border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/10">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
-            <Zap className="size-5" />
+      {/* Jasa Kirim Aktif */}
+      <Card className="p-5 space-y-4 shadow-sm border-sky-500/20 bg-sky-50/10 dark:bg-sky-950/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-sky-500/10 text-sky-600">
+              <Truck className="size-5" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-base">Jasa Kirim Aktif</h2>
+              <p className="text-xs text-muted-foreground">Aktifkan ekspedisi yang ingin ditampilkan saat input pesanan & cek ongkir.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-semibold text-base">Ekspedisi Terintegrasi Lincah.id (Otomatis)</h2>
-            <p className="text-xs text-muted-foreground">
-              Mendukung fitur Booking Penjemputan Otomatis, Resi Instant, dan Tracking Real-Time via Lincah.id API.
-            </p>
-          </div>
+          <span className="text-xs font-medium text-muted-foreground">
+            {form.lincah_couriers.length}/{lincahAvailableList.length} aktif
+          </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">
-          {lincahAvailableList.map((c: any) => {
-            const code = c.code.toLowerCase();
-            const on = form.lincah_couriers.includes(code);
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {lincahAvailableList.map((c) => {
+            const isActive = form.lincah_couriers.includes(c.code);
             return (
-              <label
-                key={code}
-                className={`flex items-center gap-2.5 rounded-lg border p-2.5 cursor-pointer transition-all ${on ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-medium" : "hover:bg-accent opacity-75"}`}
-              >
-                <Checkbox
-                  checked={on}
-                  onCheckedChange={(v) => toggleLincahCourier(code, !!v)}
-                />
-                <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                  {c.image ? (
-                    <img src={c.image} alt={c.name} className="size-5 object-contain shrink-0" />
-                  ) : (
-                    <Truck className="size-4 text-emerald-600 shrink-0" />
-                  )}
-                  <span className="text-xs">{c.name || COURIER_LABEL[code] || code.toUpperCase()}</span>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* Ekspedisi Non-Lincah / Manual */}
-      <Card className="p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-muted text-muted-foreground">
-            <SlidersHorizontal className="size-5" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-base">Ekspedisi Non-Lincah / Manual (Direct)</h2>
-            <p className="text-xs text-muted-foreground">
-              Ekspedisi standar (Input manual & nomor resi manual).
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
-          {COURIERS.map((c) => {
-            const on = form.active_couriers.includes(c);
-            return (
-              <label key={c} className={`flex items-center gap-2 rounded-md border p-2.5 cursor-pointer hover:bg-accent ${on ? "border-primary font-medium" : "opacity-75"}`}>
-                <Checkbox checked={on} onCheckedChange={(v) => toggleNonLincahCourier(c, !!v)} />
-                <span className="text-xs">{COURIER_LABEL[c]}</span>
-              </label>
-            );
-          })}
-        </div>
-      </Card>
-
-      <Card className="p-5 space-y-4">
-        <h2 className="font-semibold">Pengirim (dicetak pada label)</h2>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div><Label>Nama bisnis / pengirim</Label><Input value={form.sender_name} onChange={(e) => setForm({ ...form, sender_name: e.target.value })} /></div>
-          <div><Label>Telepon</Label><Input value={form.sender_phone} onChange={(e) => setForm({ ...form, sender_phone: e.target.value })} /></div>
-          <div><Label>Kota</Label><Input value={form.sender_city} onChange={(e) => setForm({ ...form, sender_city: e.target.value })} /></div>
-          <div><Label>URL Logo (opsional)</Label><Input value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} placeholder="https://..." /></div>
-        </div>
-        <div><Label>Alamat</Label><Textarea rows={2} value={form.sender_address} onChange={(e) => setForm({ ...form, sender_address: e.target.value })} /></div>
-        <div>
-          <Label>Satuan berat</Label>
-          <div className="mt-1 flex gap-2">
-            {(["g", "kg"] as const).map((u) => (
               <button
-                key={u}
+                key={c.code}
                 type="button"
-                onClick={() => setForm({ ...form, weight_unit: u })}
-                className={`px-4 py-2 text-sm rounded-md border ${form.weight_unit === u ? "border-primary bg-primary/5 font-medium" : "hover:bg-accent"}`}
+                onClick={() => toggleLincahCourier(c.code, !isActive)}
+                className={`relative p-3 rounded-lg border text-left text-xs transition-all ${
+                  isActive
+                    ? "border-sky-500 bg-sky-500/10 text-sky-900 dark:text-sky-200 font-semibold shadow-xs"
+                    : "border-border/60 text-muted-foreground hover:bg-accent opacity-60"
+                }`}
               >
-                {u === "g" ? "Gram (g)" : "Kilogram (kg)"}
+                <div className="flex items-center justify-between">
+                  <span className="font-bold uppercase">{c.code}</span>
+                  <div className={`w-8 h-4 rounded-full flex items-center transition-all ${isActive ? "bg-sky-500 justify-end" : "bg-muted justify-start"}`}>
+                    <div className="w-3.5 h-3.5 rounded-full bg-white shadow-sm mx-0.5" />
+                  </div>
+                </div>
+                <div className="mt-0.5 text-[11px] opacity-80">{c.name}</div>
               </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Menentukan satuan input & tampilan berat di seluruh sistem. Data disimpan tetap dalam gram.
-          </p>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => setForm({ ...form, lincah_couriers: lincahAvailableList.map(c => c.code) })}
+          >
+            Aktifkan Semua
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => setForm({ ...form, lincah_couriers: [] })}
+          >
+            Nonaktifkan Semua
+          </Button>
         </div>
       </Card>
 
-      <Card className="p-5 space-y-4">
-        <h2 className="font-semibold">Asal pengiriman (Gudang Utama)</h2>
-        <p className="text-sm text-muted-foreground">
-          Cari kecamatan asal gudang. Digunakan untuk perhitungan ongkir otomatis.
-        </p>
-        <div>
-          <Label>Asal gudang</Label>
-          {form.origin_subdistrict_id ? (
-            <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-              <div>
-                <div className="font-medium">{form.origin_label}</div>
-                <div className="text-xs text-muted-foreground">ID: {form.origin_subdistrict_id}</div>
-              </div>
-              <Button type="button" size="sm" variant="ghost"
-                onClick={() => setForm((f) => ({ ...f, origin_subdistrict_id: "", origin_label: "" }))}>
-                Ganti
-              </Button>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Input
-                placeholder="Ketikan minimal 3 huruf awal kecamatan..."
-                value={originQ}
-                onChange={(e) => setOriginQ(e.target.value)}
-                className="rounded-none border-0 border-b focus-visible:ring-0"
-              />
-              <div className="max-h-72 overflow-auto">
-                {(originResults.data ?? []).map((d: Destination) => (
-                  <button key={d.id} type="button" className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
-                    onClick={() => { setForm((f) => ({ ...f, origin_subdistrict_id: d.id, origin_label: d.label })); setOriginQ(""); }}>
-                    <div className="font-medium">{d.district_name || d.subdistrict_name}, {d.city_name}</div>
-                    <div className="text-xs text-muted-foreground">{d.province_name} {d.zip_code ? `· ${d.zip_code}` : ""}</div>
-                  </button>
-
-                ))}
-                {originQ.trim().length >= 3 && !originResults.isLoading && (originResults.data?.length ?? 0) === 0 && (
-                  <div className="p-3 text-sm text-muted-foreground">Tidak ada hasil</div>
-                )}
-                {originQ.trim().length < 3 && (
-                  <div className="p-3 text-sm text-muted-foreground">Ketik minimal 3 huruf…</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-5 space-y-4">
+      {/* Ekspedisi Custom */}
+      <Card className="p-5 space-y-4 shadow-sm border-border">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold">Ekspedisi Custom</h2>
-            <p className="text-sm text-muted-foreground">Kurir manual (mis. ojek, kurir toko) dengan tarif tetap.</p>
+            <h2 className="font-semibold text-base">Ekspedisi Custom / Manual</h2>
+            <p className="text-xs text-muted-foreground">Kurir khusus toko (mis. Kurir Internal, Ojek Online) dengan tarif tetap.</p>
           </div>
-          <Button size="sm" variant="outline" onClick={addCustom}><Plus className="size-4 mr-1" />Tambah</Button>
+          <Button size="sm" variant="outline" onClick={addCustom} className="text-xs">
+            <Plus className="size-3.5 mr-1" /> Tambah
+          </Button>
         </div>
+
         {form.custom_couriers.length === 0 && (
-          <p className="text-sm text-muted-foreground py-4 text-center">Belum ada ekspedisi custom</p>
+          <p className="text-xs text-muted-foreground py-3 text-center">Belum ada ekspedisi custom ditambahkan</p>
         )}
+
         <div className="space-y-2">
           {form.custom_couriers.map((c, i) => (
             <div key={i} className="grid grid-cols-12 gap-2 items-end border rounded-md p-3">
               <div className="col-span-12 sm:col-span-4">
-                <Label className="text-xs">Nama</Label>
-                <Input value={c.name} placeholder="mis. Kurir Toko" onChange={(e) => updateCustom(i, { name: e.target.value })} />
+                <Label className="text-xs font-semibold">Nama Ekspedisi</Label>
+                <Input value={c.name} placeholder="cth. Kurir Toko Solo" onChange={(e) => updateCustom(i, { name: e.target.value })} className="text-xs" />
               </div>
               <div className="col-span-6 sm:col-span-3">
-                <Label className="text-xs">Harga (Rp)</Label>
-                <Input type="number" value={c.price} onChange={(e) => updateCustom(i, { price: Number(e.target.value) })} />
-                <p className="text-xs text-muted-foreground mt-1">{formatIDR(c.price)}</p>
+                <Label className="text-xs font-semibold">Ongkir (Rp)</Label>
+                <Input type="number" value={c.price} onChange={(e) => updateCustom(i, { price: Number(e.target.value) })} className="text-xs font-mono" />
               </div>
-              <div className="col-span-6 sm:col-span-2">
-                <Label className="text-xs">Estimasi (hari)</Label>
-                <Input value={c.etd ?? ""} onChange={(e) => updateCustom(i, { etd: e.target.value })} placeholder="1-2" />
+              <div className="col-span-6 sm:col-span-4">
+                <Label className="text-xs font-semibold">Keterangan</Label>
+                <Input value={c.description ?? ""} onChange={(e) => updateCustom(i, { description: e.target.value })} placeholder="Same-day delivery" className="text-xs" />
               </div>
-              <div className="col-span-10 sm:col-span-2">
-                <Label className="text-xs">Keterangan</Label>
-                <Input value={c.description ?? ""} onChange={(e) => updateCustom(i, { description: e.target.value })} placeholder="Same-day" />
-              </div>
-              <div className="col-span-2 sm:col-span-1 flex justify-end">
-                <Button variant="ghost" size="icon" onClick={() => removeCustom(i)}><Trash2 className="size-4" /></Button>
+              <div className="col-span-12 sm:col-span-1 flex justify-end">
+                <Button variant="ghost" size="icon" onClick={() => removeCustom(i)} className="size-8 text-destructive">
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
             </div>
           ))}
@@ -486,7 +469,7 @@ function SettingsPage() {
 
       <div className="flex justify-end">
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? "Menyimpan…" : "Simpan pengaturan"}
+          {save.isPending ? "Menyimpan..." : "Simpan Pengaturan"}
         </Button>
       </div>
     </div>

@@ -6,10 +6,18 @@ import { getLincahConfig, loadLocalLincahConfig } from "./lincah.functions";
 const DEFAULT_COURIERS = "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana";
 const CACHE_TTL_HOURS = 24;
 
+function extractLincahFromCustom(customCouriers: any): Record<string, any> | null {
+  if (Array.isArray(customCouriers)) {
+    const entry = customCouriers.find((c: any) => c?.__lincah);
+    return entry?.__lincah ?? null;
+  }
+  return null;
+}
+
 export const LINCAH_DISCOUNT_TABLE = [
-  { courier_code: "jne", courier_name: "JNE Reguler / YES", service_pattern: "REG|YES|CTC", is_cod: true, discount_percent: 30, cod_fee_percent: 3.33, special_terms: "Return Fee gratis Jawa–Bali & diskon 50% luar Jawa–Bali & Cashback 30%" },
-  { courier_code: "jne", courier_name: "JNE Reguler / YES", service_pattern: "REG|YES|CTC", is_cod: false, discount_percent: 25, cod_fee_percent: 0, special_terms: "Tersedia Flat Rate, Return Fee gratis Jawa–Bali & diskon 50% luar Jawa–Bali" },
-  { courier_code: "jne", courier_name: "JNE Trucking (JTR)", service_pattern: "JTR|TRUCK", is_cod: false, discount_percent: 5, cod_fee_percent: 0, special_terms: "Return Fee gratis Jawa-Bali dan diskon 50% luar Jawa-Bali" },
+  { courier_code: "jne", courier_name: "JNE Reguler / YES", service_pattern: "REG|YES|CTC", is_cod: true, discount_percent: 30, cod_fee_percent: 3.33, special_terms: "Return Fee gratis Jawa–Bali dan diskon 50% luar Jawa–Bali & Cashback 30% (tersedia Flat Rate di beberapa wilayah)" },
+  { courier_code: "jne", courier_name: "JNE Reguler / YES", service_pattern: "REG|YES|CTC", is_cod: false, discount_percent: 25, cod_fee_percent: 0, special_terms: "Tersedia Flat Rate di beberapa wilayah, Return Fee gratis Jawa–Bali & diskon 50% luar Jawa - Bali." },
+  { courier_code: "jne", courier_name: "JNE / Trucking", service_pattern: "JTR|TRUCK", is_cod: false, discount_percent: 5, cod_fee_percent: 0, special_terms: "Return Fee gratis Jawa - Bali dan diskon 50% luar Jawa - Bali." },
   { courier_code: "jnt", courier_name: "J&T Express", service_pattern: "EZ|REG|EXPRESS", is_cod: true, discount_percent: 25, cod_fee_percent: 3.33, special_terms: "Return Fee tidak gratis" },
   { courier_code: "jnt", courier_name: "J&T Express", service_pattern: "EZ|REG|EXPRESS", is_cod: false, discount_percent: 25, cod_fee_percent: 0, special_terms: "Return Fee tidak gratis" },
   { courier_code: "jnt", courier_name: "J&T Cargo", service_pattern: "CARGO", is_cod: false, discount_percent: 20, cod_fee_percent: 0, special_terms: "Return Fee tidak gratis" },
@@ -17,8 +25,8 @@ export const LINCAH_DISCOUNT_TABLE = [
   { courier_code: "sap", courier_name: "SAPX", service_pattern: ".*", is_cod: false, discount_percent: 40, cod_fee_percent: 0, special_terms: "Return Fee gratis" },
   { courier_code: "ninja", courier_name: "Ninja Express", service_pattern: ".*", is_cod: true, discount_percent: 50, cod_fee_percent: 3.33, special_terms: "Return Fee gratis" },
   { courier_code: "ninja", courier_name: "Ninja Express", service_pattern: ".*", is_cod: false, discount_percent: 40, cod_fee_percent: 0, special_terms: "Return Fee gratis" },
-  { courier_code: "ide", courier_name: "ID Express", service_pattern: ".*", is_cod: true, discount_percent: 30, cod_fee_percent: 3.33, special_terms: "Tersedia flat rate di beberapa wilayah & Return Fee gratis" },
-  { courier_code: "ide", courier_name: "ID Express", service_pattern: ".*", is_cod: false, discount_percent: 20, cod_fee_percent: 0, special_terms: "Tersedia flat rate di beberapa wilayah & Return Fee gratis" },
+  { courier_code: "ide", courier_name: "ID Express", service_pattern: ".*", is_cod: true, discount_percent: 30, cod_fee_percent: 3.33, special_terms: "tersedia flat rate di beberapa wilayah & Return Fee gratis" },
+  { courier_code: "ide", courier_name: "ID Express", service_pattern: ".*", is_cod: false, discount_percent: 20, cod_fee_percent: 0, special_terms: "tersedia flat rate di beberapa wilayah & Return Fee gratis" },
   { courier_code: "anteraja", courier_name: "AnterAja", service_pattern: ".*", is_cod: true, discount_percent: 30, cod_fee_percent: 3.33, special_terms: "Return Fee Gratis" },
   { courier_code: "anteraja", courier_name: "AnterAja", service_pattern: ".*", is_cod: false, discount_percent: 25, cod_fee_percent: 0, special_terms: "Return Fee Gratis" },
   { courier_code: "lion", courier_name: "Lion Parcel", service_pattern: ".*", is_cod: true, discount_percent: 20, cod_fee_percent: 3.33, special_terms: "Return Fee Gratis" },
@@ -260,6 +268,8 @@ export const getShippingCost = createServerFn({ method: "POST" })
             body: JSON.stringify(lincahPayload),
           });
           const json = await res.json();
+          // DEBUG: Log raw Lincah API response to determine price format
+          console.log("[LINCAH ONGKIR RAW RESPONSE]", JSON.stringify(json.data?.slice?.(0, 2) ?? json, null, 2));
           const lincahList = Array.isArray(json.data) ? json.data : [];
           services = lincahList.flatMap((c: any) => {
             const courierCode = String(c.code || c.courier || "lincah").toLowerCase();
@@ -270,15 +280,23 @@ export const getShippingCost = createServerFn({ method: "POST" })
               const costObj = typeof rItem.cost === "object" ? rItem.cost : null;
               const rawOriginal = costObj ? (costObj.value ?? 0) : Number(rItem.cost || rItem.price || rItem.value || 0);
               const rawAfter = costObj && costObj.afterDiscount !== undefined ? costObj.afterDiscount : rawOriginal;
-
-              // Lincah API returns amounts in milli-Rupiah (e.g. 15000000 = Rp 15.000)
-              const originalVal = rawOriginal > 100000 ? Math.round(rawOriginal / 1000) : rawOriginal;
-              const finalVal = rawAfter > 100000 ? Math.round(rawAfter / 1000) : rawAfter;
-
-              // Trust Lincah API discount directly — do NOT re-apply internal discount table
-              const discPercent = costObj?.discountValue !== undefined ? Number(costObj.discountValue) : 0;
-
               const rule = resolveLincahDiscount(courierCode, serviceName, isCod);
+
+              // DEBUG: Log raw Lincah API values to determine actual format
+              console.log(`[LINCAH RAW] ${courierCode}/${serviceName}: rawOriginal=${rawOriginal}, rawAfter=${rawAfter}, costObj=`, JSON.stringify(costObj));
+
+              // Use raw values directly from Lincah API — they are already in Rupiah
+              // Lincah Open API returns cost.value in standard Rupiah (e.g. 6000 = Rp 6.000)
+              let originalVal = rawOriginal;
+              let finalVal = rawAfter;
+              let discPercent = costObj?.discountValue !== undefined ? Number(costObj.discountValue) : 0;
+
+              // If Lincah API didn't return afterDiscount or returned same price, apply official Lincah discount table
+              if ((finalVal === originalVal || discPercent === 0) && rule.discount_percent > 0 && originalVal > 0) {
+                discPercent = rule.discount_percent;
+                finalVal = Math.round(originalVal * (1 - discPercent / 100));
+              }
+
               const etdVal = costObj?.etd || rItem.etd || rItem.estimate || "-";
 
               return {
@@ -346,5 +364,5 @@ export const getShippingCost = createServerFn({ method: "POST" })
       });
     }
 
-    return { services, cached };
+    return services;
   });

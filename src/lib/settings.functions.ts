@@ -95,11 +95,10 @@ export const updateSettings = createServerFn({ method: "POST" })
       active_couriers: data.active_couriers,
     });
 
-    // 2. Try updating full settings in Supabase (including all lincah_ columns)
+    // 2. Try updating full settings in Supabase (upsert row with id: 1)
     const { error } = await context.supabase
       .from("settings")
-      .update(data as any)
-      .eq("id", 1);
+      .upsert({ id: 1, ...data } as any);
 
     if (!error) return { ok: true };
 
@@ -117,8 +116,7 @@ export const updateSettings = createServerFn({ method: "POST" })
 
     const { error: err2 } = await context.supabase
       .from("settings")
-      .update({ ...baseData, custom_couriers: enrichedCustom } as any)
-      .eq("id", 1);
+      .upsert({ id: 1, ...baseData, custom_couriers: enrichedCustom } as any);
 
     if (!err2) return { ok: true };
 

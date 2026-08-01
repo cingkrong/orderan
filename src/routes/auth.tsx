@@ -30,7 +30,7 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -38,11 +38,30 @@ function AuthPage() {
             data: { full_name: fullName },
           },
         });
-        if (error) throw error;
-        toast.success("Akun dibuat — Anda sudah masuk");
+        if (signUpError) throw signUpError;
+
+        // Try signing in immediately if user was created or already exists
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          if (signInError.message.toLowerCase().includes("email not confirmed")) {
+            toast.error("Email belum dikonfirmasi di Supabase. Silakan periksa inbox email atau matikan 'Confirm email' di Dashboard Supabase Auth.");
+            setLoading(false);
+            return;
+          }
+          throw signInError;
+        }
+        toast.success("Akun berhasil dibuat & masuk");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (error.message.toLowerCase().includes("email not confirmed")) {
+            toast.error("Email belum dikonfirmasi di Supabase.");
+          } else {
+            throw error;
+          }
+          setLoading(false);
+          return;
+        }
       }
       navigate({ to: "/" });
     } catch (err) {

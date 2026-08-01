@@ -305,10 +305,11 @@ function OrderForm({ existingId }: { existingId?: string }) {
           force_refresh: force,
         },
       });
-      setServices(r.services as any);
-      setCostCached(!!r.cached);
+      const rates = Array.isArray(r) ? r : (r as any)?.services ?? [];
+      setServices(rates);
+      setCostCached(!!(r as any)?.cached);
       if (force) toast.success("Ongkir diperbarui");
-      else if (r.services.length === 0) toast.warning("Tidak ada layanan pengiriman tersedia");
+      else if (rates.length === 0) toast.warning("Tidak ada layanan pengiriman tersedia");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal menghitung ongkir");
     } finally {
