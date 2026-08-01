@@ -48,9 +48,9 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         JsBarcode(barcodeRef.current, code, {
           format: "CODE128",
           displayValue: false,
-          height: is100x100 ? 32 : 44,
+          height: is100x100 ? 30 : 38,
           margin: 0,
-          width: is100x100 ? 1.3 : 1.6,
+          width: is100x100 ? 1.3 : 1.5,
         });
       } catch {
         /* ignore */
@@ -58,7 +58,7 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
     }
     if (qrRef.current) {
       QRCode.toCanvas(qrRef.current, data.order_number, {
-        width: is100x100 ? 45 : 55,
+        width: is100x100 ? 44 : 50,
         margin: 0,
       }).catch(() => {});
     }
@@ -77,7 +77,7 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
   else if (courierBrand === "IDE") courierBrand = "IDexpress";
   else if (courierBrand === "ANTERAJA") courierBrand = "AnterAja";
 
-  const serviceName = (data.service || (isCustom ? "CUSTOM" : "REG")).toUpperCase();
+  const serviceName = (data.service || (isCustom ? "CUSTOM" : "EZ")).toUpperCase();
 
   // Weight formatting
   const weightKg = (data.weight_g || 1000) / 1000;
@@ -88,87 +88,86 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
   const senderPhone = data.is_dropship ? (data.dropship_phone || data.sender.phone) : data.sender.phone;
   const senderCity = data.sender.city ? (data.sender.city.startsWith("Kota") || data.sender.city.startsWith("Kab") ? data.sender.city : `Kota ${data.sender.city}`) : "Kota Surakarta";
 
-  // Routing / Sorting code
+  // Sorting code
   const sortingCode = data.routing_code || `${data.postal_code || '550'}-${data.order_number.slice(-8).toUpperCase()}`;
 
   return (
     <div
-      className={`label-page bg-white text-black border border-black flex flex-col justify-between select-none ${is100x100 ? 'size-100x100' : 'size-100x150'}`}
+      className={`label-page bg-white text-black border border-gray-300 flex flex-col justify-between select-none ${is100x100 ? 'size-100x100' : 'size-100x150'}`}
       style={{
         width: "100mm",
         height: is100x100 ? "100mm" : "150mm",
-        padding: is100x100 ? "2mm" : "3mm",
-        fontFamily: "Arial, Helvetica, sans-serif",
+        padding: is100x100 ? "2.5mm 3.5mm" : "3.5mm 4.5mm",
+        fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
         boxSizing: "border-box",
         overflow: "hidden",
+        color: "#000",
       }}
     >
       <div className="flex flex-col h-full justify-between">
-        {/* SECTION 1: STORE HEADER */}
-        <div className="flex items-center justify-between border-b-2 border-black pb-1">
+        {/* HEADER: STORE LOGO */}
+        <div className="border-b border-gray-300 pb-1 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             {data.sender.logo_url ? (
               <img
                 src={data.sender.logo_url}
                 alt="Logo"
-                style={{ height: is100x100 ? "6mm" : "8mm", maxWidth: "35mm", objectFit: "contain" }}
+                style={{ height: "6.5mm", maxWidth: "40mm", objectFit: "contain" }}
               />
             ) : (
-              <div className="flex items-center gap-1 font-black tracking-tight text-red-600" style={{ fontSize: is100x100 ? "11pt" : "13pt" }}>
-                <span>🛒</span>
-                <span className="text-black uppercase">{data.sender.name || "MAULARIS"}</span>
+              <div className="flex items-center gap-1 font-bold tracking-tight text-red-600" style={{ fontSize: "13.5pt" }}>
+                <span className="text-[11.5pt]">🛒</span>
+                <span className="text-[#c62828] font-extrabold uppercase">{data.sender.name || "MAULARIS"}</span>
               </div>
             )}
           </div>
-          {typeof data.shipping_cost === "number" && data.shipping_cost > 0 && (
-            <div className="text-right font-bold text-[8pt]">
-              {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(data.shipping_cost)}
-            </div>
-          )}
         </div>
 
-        {/* SECTION 2: COURIER LOGO & BARCODE */}
-        <div className="grid grid-cols-12 border-b border-black py-1 items-center">
-          {/* Left: Courier & Service */}
-          <div className="col-span-5 flex flex-col items-center justify-center pr-1 border-r border-black text-center">
-            <div className="font-black italic tracking-tighter uppercase leading-none" style={{ fontSize: is100x100 ? "11pt" : "13pt" }}>
-              {courierBrand}
+        {/* COURIER & BARCODE ROW */}
+        <div className="grid grid-cols-12 border-b border-gray-300 py-1 items-center">
+          {/* Left Column: Courier Logo & Service Box */}
+          <div className="col-span-4 pr-2 border-r border-gray-300 flex flex-col items-center justify-center">
+            {/* Courier Name/Logo */}
+            <div className="font-extrabold italic text-center leading-none" style={{ fontSize: "12.5pt", fontFamily: "Arial, sans-serif" }}>
+              {courierBrand === "J&T EXPRESS" ? (
+                <span><span className="text-black italic font-black">J&T</span><span className="text-[8.5pt] font-semibold not-italic block tracking-tighter">EXPRESS</span></span>
+              ) : (
+                courierBrand
+              )}
             </div>
-            <div
-              className="mt-1 px-3 py-0.5 border border-black font-bold uppercase tracking-wider text-center"
-              style={{ fontSize: is100x100 ? "8pt" : "9.5pt", minWidth: "18mm" }}
-            >
+            {/* Service Box */}
+            <div className="mt-1 border border-black px-3 py-0.5 font-semibold text-center text-[8.5pt] leading-none min-w-[20mm]">
               {serviceName}
             </div>
           </div>
 
-          {/* Right: Barcode + Resi Number */}
-          <div className="col-span-7 flex flex-col items-center justify-center pl-1">
-            <svg ref={barcodeRef} className="w-full max-w-[55mm]" />
-            <div className="font-mono font-bold tracking-tight text-center mt-0.5" style={{ fontSize: is100x100 ? "8pt" : "9.5pt" }}>
-              No. Resi: <span className="font-extrabold">{code}</span>
+          {/* Right Column: Barcode & Resi No */}
+          <div className="col-span-8 pl-2 flex flex-col items-center justify-center">
+            <svg ref={barcodeRef} className="w-full max-w-[56mm]" />
+            <div className="font-sans text-center mt-0.5 text-[8.5pt]">
+              No. Resi: <span className="font-bold">{code}</span>
             </div>
           </div>
         </div>
 
-        {/* SECTION 3: SENDER & RECIPIENT */}
-        <div className="grid grid-cols-2 border-b border-black py-1 text-[8pt] leading-tight">
-          {/* Sender */}
-          <div className="pr-1.5 border-r border-black">
-            <div className="font-bold text-[7pt] text-gray-700 uppercase mb-0.5">
-              PENGIRIM: {data.is_dropship && <span className="text-black font-black">[DROPSHIP]</span>}
+        {/* PENGIRIM & PENERIMA ROW */}
+        <div className="grid grid-cols-2 border-b border-gray-300 py-1 text-[8pt] leading-tight">
+          {/* Pengirim */}
+          <div className="pr-2 border-r border-gray-300">
+            <div className="text-[7pt] font-normal text-gray-700 uppercase tracking-wide">
+              PENGIRIM: {data.is_dropship && <span className="text-black font-bold">[DROPSHIP]</span>}
             </div>
-            <div className="font-bold text-[9pt] truncate">{senderName}</div>
-            <div>{senderPhone}</div>
-            <div className="truncate">{senderCity}</div>
+            <div className="font-bold text-[8.5pt] mt-0.5 truncate">{senderName}</div>
+            <div className="text-gray-900">{senderPhone}</div>
+            <div className="text-gray-900 truncate">{senderCity}</div>
           </div>
 
-          {/* Recipient */}
-          <div className="pl-1.5">
-            <div className="font-bold text-[7pt] text-gray-700 uppercase mb-0.5">PENERIMA:</div>
-            <div className="font-bold text-[9.5pt] leading-tight truncate">{data.customer_name}</div>
-            <div className="font-semibold">{data.phone}</div>
-            <div className={`line-clamp-${is100x100 ? '2' : '3'} text-[7.5pt] leading-snug mt-0.5 font-normal`}>
+          {/* Penerima */}
+          <div className="pl-2">
+            <div className="text-[7pt] font-normal text-gray-700 uppercase tracking-wide">PENERIMA:</div>
+            <div className="font-bold text-[8.5pt] mt-0.5 truncate">{data.customer_name}</div>
+            <div className="text-gray-900">{data.phone}</div>
+            <div className={`line-clamp-${is100x100 ? '2' : '3'} text-[7.5pt] text-gray-900 leading-snug mt-0.5`}>
               {data.full_address}
               {data.city ? `, ${data.city}` : ""}
               {data.postal_code ? `, ${data.postal_code}` : ""}
@@ -176,17 +175,17 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
           </div>
         </div>
 
-        {/* SECTION 4: ITEMS LIST */}
-        <div className="border-b border-black py-1 text-[8pt]">
-          <div className="flex justify-between font-bold text-[7.5pt] border-b border-gray-300 pb-0.5 mb-0.5">
+        {/* ISI PAKET & JUMLAH TABLE */}
+        <div className="border-b border-gray-300 py-1 text-[8pt]">
+          <div className="flex justify-between font-normal text-[7.5pt] text-gray-900 mb-0.5">
             <span>Isi Paket</span>
             <span>Jumlah</span>
           </div>
           <div className="space-y-0.5">
             {data.items.slice(0, is100x100 ? 2 : 3).map((it, idx) => (
-              <div key={idx} className="flex justify-between items-center text-[7.5pt] leading-tight">
-                <span className="truncate pr-2">{it.name}{it.variant ? ` (${it.variant})` : ""}</span>
-                <span className="font-bold text-right pl-1">{it.qty}</span>
+              <div key={idx} className="flex justify-between items-center text-[8pt]">
+                <span className="truncate pr-2 font-normal text-gray-900">{it.name}{it.variant ? ` (${it.variant})` : ""}</span>
+                <span className="font-normal text-right pl-1">{it.qty}</span>
               </div>
             ))}
             {data.items.length > (is100x100 ? 2 : 3) && (
@@ -197,23 +196,23 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
           </div>
         </div>
 
-        {/* SECTION 5: PACKAGE INFO & ORDER QR */}
-        <div className="grid grid-cols-12 border-b border-black py-1 items-center text-[7.5pt]">
-          {/* Left: Weight, Insurance, Notes */}
-          <div className="col-span-7 pr-1 border-r border-black space-y-0.5">
-            <div className="font-bold">
-              BERAT: <span className="font-extrabold">{weightStr}</span> &nbsp;&nbsp; ASURANSI: <span className="font-bold">{data.insurance ? "Ya" : "No"}</span>
+        {/* BERAT, ASURANSI, CATATAN & ORDER QR */}
+        <div className="grid grid-cols-12 border-b border-gray-300 py-1 items-center text-[8pt]">
+          {/* Left Column: Weight, Insurance, Note */}
+          <div className="col-span-7 pr-2 border-r border-gray-300 space-y-0.5">
+            <div>
+              BERAT: <span className="font-bold">{weightStr}</span> &nbsp;&nbsp;&nbsp; ASURANSI: <span className="font-bold">{data.insurance ? "Ya" : "No"}</span>
             </div>
             <div className="truncate">
               CATATAN: <span className="font-normal">{data.note || "-"}</span>
             </div>
           </div>
 
-          {/* Right: Order Number & QR Code */}
-          <div className="col-span-5 pl-1 flex items-center justify-between">
-            <div className="pr-1">
-              <div className="text-[6.5pt] text-gray-600 font-bold uppercase">No Order:</div>
-              <div className="font-mono font-bold text-[8pt] tracking-tighter truncate max-w-[28mm]">
+          {/* Right Column: Order No & QR Code */}
+          <div className="col-span-5 pl-2 flex items-center justify-between">
+            <div>
+              <div className="text-[7.5pt] text-gray-900 font-normal">No Order:</div>
+              <div className="font-sans font-bold text-[8pt] tracking-tight truncate max-w-[28mm]">
                 {data.order_number}
               </div>
             </div>
@@ -221,8 +220,8 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
           </div>
         </div>
 
-        {/* SECTION 6: BOTTOM ROUTING / SORTING CODE */}
-        <div className="pt-1 text-center font-black tracking-wider uppercase leading-none" style={{ fontSize: is100x100 ? "14pt" : "18pt" }}>
+        {/* BOTTOM SORTING CODE */}
+        <div className="py-0.5 text-center font-bold tracking-normal text-black leading-none" style={{ fontSize: is100x100 ? "13pt" : "16pt" }}>
           {sortingCode}
         </div>
       </div>
