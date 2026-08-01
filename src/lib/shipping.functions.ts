@@ -316,8 +316,7 @@ export const getShippingCost = createServerFn({ method: "POST" })
 
           if (services.length > 0 && services.some((s) => s.value > 0)) {
             try {
-              const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-              await supabaseAdmin
+              await context.supabase
                 .from("shipping_rate_cache")
                 .upsert(
                   {

@@ -96,9 +96,7 @@ export const updateSettings = createServerFn({ method: "POST" })
     });
 
     // 2. Try updating full settings in Supabase (upsert row with id: 1)
-    // Use supabaseAdmin (service role) to bypass RLS policy
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { error } = await context.supabase
       .from("settings")
       .upsert({ id: 1, ...data } as any);
 
@@ -116,7 +114,7 @@ export const updateSettings = createServerFn({ method: "POST" })
       lincah_env,
     });
 
-    const { error: err2 } = await supabaseAdmin
+    const { error: err2 } = await context.supabase
       .from("settings")
       .upsert({ id: 1, ...baseData, custom_couriers: enrichedCustom } as any);
 
