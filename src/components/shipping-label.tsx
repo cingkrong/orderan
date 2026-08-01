@@ -48,9 +48,9 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         JsBarcode(barcodeRef.current, code, {
           format: "CODE128",
           displayValue: false,
-          height: is100x100 ? 30 : 38,
+          height: is100x100 ? 28 : 36,
           margin: 0,
-          width: is100x100 ? 1.3 : 1.5,
+          width: is100x100 ? 1.25 : 1.45,
         });
       } catch {
         /* ignore */
@@ -58,7 +58,7 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
     }
     if (qrRef.current) {
       QRCode.toCanvas(qrRef.current, data.order_number, {
-        width: is100x100 ? 44 : 50,
+        width: is100x100 ? 42 : 48,
         margin: 0,
       }).catch(() => {});
     }
@@ -93,18 +93,19 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
 
   return (
     <div
-      className={`label-page bg-white text-black border border-gray-300 flex flex-col justify-between select-none ${is100x100 ? 'size-100x100' : 'size-100x150'}`}
+      className={`label-page bg-white text-black border border-gray-400 select-none ${is100x100 ? 'size-100x100' : 'size-100x150'}`}
       style={{
         width: "100mm",
         height: is100x100 ? "100mm" : "150mm",
-        padding: is100x100 ? "2.5mm 3.5mm" : "3.5mm 4.5mm",
+        padding: "3.5mm 4.5mm",
         fontFamily: "'Segoe UI', Roboto, Arial, sans-serif",
         boxSizing: "border-box",
         overflow: "hidden",
         color: "#000",
       }}
     >
-      <div className="flex flex-col h-full justify-between">
+      {/* Compact natural height container (not stretched full page) */}
+      <div className="flex flex-col w-full text-black">
         {/* HEADER: STORE LOGO */}
         <div className="border-b border-gray-300 pb-1 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -112,11 +113,11 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
               <img
                 src={data.sender.logo_url}
                 alt="Logo"
-                style={{ height: "6.5mm", maxWidth: "40mm", objectFit: "contain" }}
+                style={{ height: "6mm", maxWidth: "38mm", objectFit: "contain" }}
               />
             ) : (
-              <div className="flex items-center gap-1 font-bold tracking-tight text-red-600" style={{ fontSize: "13.5pt" }}>
-                <span className="text-[11.5pt]">🛒</span>
+              <div className="flex items-center gap-1 font-bold tracking-tight text-red-600" style={{ fontSize: "13pt" }}>
+                <span className="text-[11pt]">🛒</span>
                 <span className="text-[#c62828] font-extrabold uppercase">{data.sender.name || "MAULARIS"}</span>
               </div>
             )}
@@ -124,26 +125,24 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         </div>
 
         {/* COURIER & BARCODE ROW */}
-        <div className="grid grid-cols-12 border-b border-gray-300 py-1 items-center">
+        <div className="grid grid-cols-12 border-b border-gray-300 py-1.5 items-center">
           {/* Left Column: Courier Logo & Service Box */}
           <div className="col-span-4 pr-2 border-r border-gray-300 flex flex-col items-center justify-center">
-            {/* Courier Name/Logo */}
-            <div className="font-extrabold italic text-center leading-none" style={{ fontSize: "12.5pt", fontFamily: "Arial, sans-serif" }}>
+            <div className="font-extrabold italic text-center leading-none" style={{ fontSize: "12pt", fontFamily: "Arial, sans-serif" }}>
               {courierBrand === "J&T EXPRESS" ? (
-                <span><span className="text-black italic font-black">J&T</span><span className="text-[8.5pt] font-semibold not-italic block tracking-tighter">EXPRESS</span></span>
+                <span><span className="text-black italic font-black">J&T</span><span className="text-[8pt] font-semibold not-italic block tracking-tighter">EXPRESS</span></span>
               ) : (
                 courierBrand
               )}
             </div>
-            {/* Service Box */}
-            <div className="mt-1 border border-black px-3 py-0.5 font-semibold text-center text-[8.5pt] leading-none min-w-[20mm]">
+            <div className="mt-1 border border-black px-3 py-0.5 font-semibold text-center text-[8.5pt] leading-none min-w-[18mm]">
               {serviceName}
             </div>
           </div>
 
           {/* Right Column: Barcode & Resi No */}
           <div className="col-span-8 pl-2 flex flex-col items-center justify-center">
-            <svg ref={barcodeRef} className="w-full max-w-[56mm]" />
+            <svg ref={barcodeRef} className="w-full max-w-[54mm]" />
             <div className="font-sans text-center mt-0.5 text-[8.5pt]">
               No. Resi: <span className="font-bold">{code}</span>
             </div>
@@ -151,7 +150,7 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         </div>
 
         {/* PENGIRIM & PENERIMA ROW */}
-        <div className="grid grid-cols-2 border-b border-gray-300 py-1 text-[8pt] leading-tight">
+        <div className="grid grid-cols-2 border-b border-gray-300 py-1.5 text-[8pt] leading-tight">
           {/* Pengirim */}
           <div className="pr-2 border-r border-gray-300">
             <div className="text-[7pt] font-normal text-gray-700 uppercase tracking-wide">
@@ -176,7 +175,7 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         </div>
 
         {/* ISI PAKET & JUMLAH TABLE */}
-        <div className="border-b border-gray-300 py-1 text-[8pt]">
+        <div className="border-b border-gray-300 py-1.5 text-[8pt]">
           <div className="flex justify-between font-normal text-[7.5pt] text-gray-900 mb-0.5">
             <span>Isi Paket</span>
             <span>Jumlah</span>
@@ -197,7 +196,7 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         </div>
 
         {/* BERAT, ASURANSI, CATATAN & ORDER QR */}
-        <div className="grid grid-cols-12 border-b border-gray-300 py-1 items-center text-[8pt]">
+        <div className="grid grid-cols-12 border-b border-gray-300 py-1.5 items-center text-[8pt]">
           {/* Left Column: Weight, Insurance, Note */}
           <div className="col-span-7 pr-2 border-r border-gray-300 space-y-0.5">
             <div>
@@ -221,7 +220,7 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         </div>
 
         {/* BOTTOM SORTING CODE */}
-        <div className="py-0.5 text-center font-bold tracking-normal text-black leading-none" style={{ fontSize: is100x100 ? "13pt" : "16pt" }}>
+        <div className="pt-2 pb-1 text-center font-bold tracking-normal text-black leading-none" style={{ fontSize: is100x100 ? "13pt" : "16pt" }}>
           {sortingCode}
         </div>
       </div>
