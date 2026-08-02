@@ -208,6 +208,35 @@ function CustomerDetailPage() {
   const tier = getLoyaltyTier(totalSpent, totalOrders);
   const waPhone = formatWaPhone(c.phone);
 
+  const isDs = tags.some((t) => t.toLowerCase().includes("dropship"));
+  const isReseller = tags.some((t) => t.toLowerCase().includes("reseller"));
+  const isGrosir = tags.some((t) => t.toLowerCase().includes("grosir"));
+  const isPenerima = tags.some((t) => t.toLowerCase().includes("penerima"));
+
+  const customerTypeLabel = isDs
+    ? "📦 Dropshipper"
+    : isReseller
+      ? "🏪 Reseller"
+      : isGrosir
+        ? "🛍️ Pembeli Grosir"
+        : isPenerima
+          ? "📍 Penerima Pengiriman"
+          : "👤 Pelanggan Retail";
+
+  const customerTypeBadgeColor = isDs
+    ? "bg-blue-100 text-blue-700 border-blue-300"
+    : isReseller
+      ? "bg-amber-100 text-amber-700 border-amber-300"
+      : isGrosir
+        ? "bg-purple-100 text-purple-700 border-purple-300"
+        : "bg-emerald-100 text-emerald-700 border-emerald-300";
+
+  const waMessage = isDs
+    ? `Halo Kak ${c.name}, berikut update data transaksi & pesanan dropship Anda di toko kami!`
+    : isReseller
+      ? `Halo Kak ${c.name}, berikut update katalog & order reseller Anda!`
+      : `Halo Kak ${c.name}, terima kasih sudah berbelanja di toko kami!`;
+
   const lastOrderDate = orders[0]?.created_at
     ? new Date(orders[0].created_at)
     : c.created_at
@@ -228,15 +257,27 @@ function CustomerDetailPage() {
             <div className="size-14 rounded-full bg-primary text-primary-foreground font-bold text-xl grid place-items-center shadow-sm">
               {c.name.charAt(0).toUpperCase()}
             </div>
-            <div>
+            <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{c.name}</h1>
-                <Badge variant="outline" className={cn("text-xs font-semibold", tier.color)}>
+                <Badge variant="outline" className={cn("text-xs font-semibold px-2.5 py-0.5", customerTypeBadgeColor)}>
+                  {customerTypeLabel}
+                </Badge>
+                <Badge variant="outline" className={cn("text-xs font-semibold px-2.5 py-0.5", tier.color)}>
                   <Award className="size-3 mr-1" />
                   {tier.label}
                 </Badge>
               </div>
-              <p className="text-muted-foreground text-sm font-mono mt-0.5">{c.phone}</p>
+              <p className="text-muted-foreground text-sm font-mono">{c.phone}</p>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {tags.map((t) => (
+                    <Badge key={t} variant="secondary" className="text-[10px] px-2 py-0">
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -249,7 +290,7 @@ function CustomerDetailPage() {
             asChild
           >
             <a
-              href={`https://wa.me/${waPhone}?text=${encodeURIComponent(`Halo Kak ${c.name}, terima kasih sudah berbelanja di toko kami!`)}`}
+              href={`https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}`}
               target="_blank"
               rel="noreferrer"
             >
