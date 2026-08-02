@@ -36,7 +36,12 @@ export const LINCAH_DISCOUNT_TABLE = [
   { courier_code: "paxel", courier_name: "Paxel", service_pattern: ".*", is_cod: false, discount_percent: 0, cod_fee_percent: 0, special_terms: "Return Fee tidak gratis" },
 ];
 
-export function resolveLincahDiscount(courierCode: string, serviceName: string, isCod: boolean) {
+export function resolveLincahDiscount(
+  courierCode: string,
+  serviceName: string,
+  isCod: boolean,
+  customDiscountMap?: Record<string, { cod_discount?: number; non_cod_discount?: number }>,
+) {
   const code = (courierCode || "").toLowerCase().trim();
   const service = (serviceName || "").toUpperCase().trim();
 
@@ -51,18 +56,30 @@ export function resolveLincahDiscount(courierCode: string, serviceName: string, 
     return reg.test(service);
   });
 
-  if (match) {
-    return {
-      discount_percent: match.discount_percent,
-      cod_fee_percent: match.cod_fee_percent,
-      special_terms: match.special_terms,
-    };
+  const officialMax = match ? match.discount_percent : isCod ? 25 : 20;
+  const codFee = match ? match.cod_fee_percent : isCod ? 3.33 : 0;
+  const terms = match ? match.special_terms : "";
+
+  // Check custom seller store discount setting
+  let effectiveDiscount = officialMax;
+  if (customDiscountMap && customDiscountMap[code]) {
+    const customVal = isCod
+      ? customDiscountMap[code].cod_discount
+      : customDiscountMap[code].non_cod_discount;
+    if (typeof customVal === "number" && !isNaN(customVal)) {
+      // RULE: Custom seller discount CANNOT exceed official Lincah maximum cap!
+      effectiveDiscount = Math.min(Math.max(0, customVal), officialMax);
+    }
   }
 
+  const sellerMarginProfitPercent = officialMax - effectiveDiscount;
+
   return {
-    discount_percent: isCod ? 25 : 20,
-    cod_fee_percent: isCod ? 3.33 : 0,
-    special_terms: "",
+    discount_percent: effectiveDiscount,
+    official_max_discount: officialMax,
+    seller_margin_percent: sellerMarginProfitPercent,
+    cod_fee_percent: codFee,
+    special_terms: terms,
   };
 }
 
@@ -273,6 +290,9 @@ export const getShippingCost = createServerFn({ method: "POST" })
           // DEBUG: Log raw Lincah API response to determine price format
           console.log("[LINCAH ONGKIR RAW RESPONSE]", JSON.stringify(json.data?.slice?.(0, 2) ?? json, null, 2));
           const lincahList = Array.isArray(json.data) ? json.data : [];
+          const customCouriersData = (settings?.custom_couriers as Record<string, any>) ?? {};
+          const customDiscountMap = customCouriersData.__courier_discounts ?? {};
+
           services = lincahList.flatMap((c: any) => {
             const courierCode = String(c.code || c.courier || "lincah").toLowerCase();
             const courierName = String(c.name || courierCode.toUpperCase());
@@ -282,7 +302,7 @@ export const getShippingCost = createServerFn({ method: "POST" })
               const costObj = typeof rItem.cost === "object" ? rItem.cost : null;
               const rawOriginal = costObj ? (costObj.value ?? 0) : Number(rItem.cost || rItem.price || rItem.value || 0);
               const rawAfter = costObj && costObj.afterDiscount !== undefined ? costObj.afterDiscount : rawOriginal;
-              const rule = resolveLincahDiscount(courierCode, serviceName, isCod);
+              const rule = resolveLincahDiscount(courierCode, serviceName, isCod, customDiscountMap);
 
               // DEBUG: Log raw Lincah API values to determine actual format
               console.log(`[LINCAH RAW] ${courierCode}/${serviceName}: rawOriginal=${rawOriginal}, rawAfter=${rawAfter}, costObj=`, JSON.stringify(costObj));

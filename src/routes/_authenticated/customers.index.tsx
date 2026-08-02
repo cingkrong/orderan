@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -20,10 +20,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { formatIDR } from "@/lib/format";
-import { Search, RefreshCw, Users, UserCheck, Truck, ShoppingBag, Plus, UserPlus } from "lucide-react";
+import { Search, RefreshCw, Users, UserCheck, Truck, ShoppingBag, Plus, UserPlus, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/customers")({
+export const Route = createFileRoute("/_authenticated/customers/")({
   component: CustomersPage,
 });
 
@@ -239,20 +239,21 @@ function CustomersPage() {
                 <th className="p-3 font-medium text-right">Pesanan</th>
                 <th className="p-3 font-medium text-right">Total Belanja</th>
                 <th className="p-3 font-medium">Alamat Terakhir</th>
+                <th className="p-3 font-medium text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={5} className="p-3">
+                    <td colSpan={6} className="p-3">
                       <Skeleton className="h-8" />
                     </td>
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-muted-foreground">
+                  <td colSpan={6} className="p-10 text-center text-muted-foreground">
                     {activeTab === "dropshipper"
                       ? "Belum ada data dropshipper tersimpan"
                       : "Tidak ada pelanggan ditemukan"}
@@ -270,7 +271,14 @@ function CustomersPage() {
                     >
                       <td className="p-3">
                         <div className="font-medium flex items-center gap-2">
-                          {c.name}
+                          <Link
+                            to="/customers/$id"
+                            params={{ id: c.id }}
+                            className="hover:underline text-primary font-semibold"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {c.name}
+                          </Link>
                           {isDs && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500 text-blue-600 bg-blue-50">
                               Dropshipper
@@ -302,6 +310,19 @@ function CustomersPage() {
                       </td>
                       <td className="p-3 text-xs text-muted-foreground max-w-xs truncate">
                         {addr || "—"}
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs text-primary"
+                          asChild
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Link to="/customers/$id" params={{ id: c.id }}>
+                            Detail CRM <ChevronRight className="size-3.5 ml-1" />
+                          </Link>
+                        </Button>
                       </td>
                     </tr>
                   );
@@ -392,7 +413,7 @@ function CustomersPage() {
                 <Label className="text-xs font-semibold">Kecamatan</Label>
                 <Input
                   className="mt-1 text-xs"
-                  placeholder="Kecamatan"
+                  placeholder="cth. Banjarsari"
                   value={newForm.district}
                   onChange={(e) => setNewForm({ ...newForm, district: e.target.value })}
                 />
@@ -401,7 +422,7 @@ function CustomersPage() {
                 <Label className="text-xs font-semibold">Kota / Kabupaten</Label>
                 <Input
                   className="mt-1 text-xs"
-                  placeholder="Kota / Kab"
+                  placeholder="cth. Surakarta"
                   value={newForm.city}
                   onChange={(e) => setNewForm({ ...newForm, city: e.target.value })}
                 />

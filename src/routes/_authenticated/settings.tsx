@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
+import { CourierLogo } from "@/components/courier-logo";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getSettings, updateSettings } from "@/lib/settings.functions";
-import { searchDestinations, type Destination } from "@/lib/shipping.functions";
+import { searchDestinations, LINCAH_DISCOUNT_TABLE, type Destination } from "@/lib/shipping.functions";
 import { checkLincahConnection, getLincahCouriers } from "@/lib/lincah.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal, Percent, Coins, Info } from "lucide-react";
 import { toast } from "sonner";
 import { COURIERS, COURIER_LABEL, formatIDR } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -69,6 +72,10 @@ function SettingsPage() {
     label_paper_size: "100x150" as "100x100" | "100x150",
   });
 
+  const [courierDiscounts, setCourierDiscounts] = useState<
+    Record<string, { cod_discount?: number; non_cod_discount?: number }>
+  >({});
+
   const [lincahStatus, setLincahStatus] = useState<{
     tested: boolean;
     success?: boolean;
@@ -98,14 +105,36 @@ function SettingsPage() {
         lincah_env: (data as any).lincah_env === "production" ? "production" : "development",
         label_paper_size: (data as any).label_paper_size === "100x100" ? "100x100" : "100x150",
       });
+
+      if ((data as any).courier_discounts) {
+        setCourierDiscounts((data as any).courier_discounts);
+      }
     }
   }, [data]);
 
   const save = useMutation({
-    mutationFn: () =>
-      update({
-        data: { ...form, logo_url: form.logo_url || null },
-      }),
+    mutationFn: () => {
+      // Validate: custom store discount CANNOT exceed official Lincah maximum!
+      const validatedDiscounts: Record<string, { cod_discount?: number; non_cod_discount?: number }> = {};
+      Object.entries(courierDiscounts).forEach(([code, val]) => {
+        const codRule = LINCAH_DISCOUNT_TABLE.find((r) => r.courier_code === code && r.is_cod);
+        const nonCodRule = LINCAH_DISCOUNT_TABLE.find((r) => r.courier_code === code && !r.is_cod);
+        const maxCod = codRule ? codRule.discount_percent : 25;
+        const maxNonCod = nonCodRule ? nonCodRule.discount_percent : 20;
+
+        const safeCod = typeof val.cod_discount === "number" ? Math.min(val.cod_discount, maxCod) : maxCod;
+        const safeNonCod = typeof val.non_cod_discount === "number" ? Math.min(val.non_cod_discount, maxNonCod) : maxNonCod;
+        validatedDiscounts[code] = { cod_discount: safeCod, non_cod_discount: safeNonCod };
+      });
+
+      return update({
+        data: {
+          ...form,
+          courier_discounts: validatedDiscounts,
+          logo_url: form.logo_url || null,
+        },
+      });
+    },
     onSuccess: (res: any) => {
       if (res?.warning) {
         toast.warning(res.warning, { duration: 6000 });
@@ -431,7 +460,10 @@ function SettingsPage() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold uppercase">{c.code}</span>
+                  <div className="flex items-center gap-1.5">
+                    <CourierLogo courier={c.code} size="sm" />
+                    <span className="font-bold uppercase">{c.code}</span>
+                  </div>
                   <div className={`w-8 h-4 rounded-full flex items-center transition-all ${isActive ? "bg-sky-500 justify-end" : "bg-muted justify-start"}`}>
                     <div className="w-3.5 h-3.5 rounded-full bg-white shadow-sm mx-0.5" />
                   </div>
@@ -461,6 +493,149 @@ function SettingsPage() {
           >
             Nonaktifkan Semua
           </Button>
+        </div>
+      </Card>
+
+      {/* DISKON ONGKIR & MARGIN PROFIT SELLER CARD */}
+      <Card className="p-5 space-y-4 shadow-sm border-emerald-500/30 bg-emerald-50/10">
+        <div className="flex items-start justify-between gap-3 border-b pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
+              <Percent className="size-5" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-base">Pengaturan Diskon Ongkir & Margin Seller (Lincah.id)</h2>
+              <p className="text-xs text-muted-foreground">
+                Atur besaran diskon ongkir yang diberikan ke pembeli. Anda dapat mengambil margin profit dari selisih diskon resmi Lincah.id.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-300/60 rounded-lg p-3 text-xs space-y-1">
+          <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-300">
+            <Info className="size-4 shrink-0 text-amber-600" />
+            <span>Ketentuan Batas Maksimal Diskon Ongkir (Lincah.id):</span>
+          </div>
+          <p className="text-muted-foreground leading-relaxed pl-5">
+            Diskon yang Anda berikan ke pembeli <strong>TIDAK BISA MELEBIHI</strong> batas maksimal resmi Lincah.id (misal: Ninja COD maks 50%, SAP COD maks 45%, SiCepat COD maks 35%, JNE COD maks 30%). Jika diisi melebihi batas, sistem akan otomatis membatasi sesuai ketentuan resmi Lincah.id.
+          </p>
+        </div>
+
+        <div className="space-y-3 pt-1">
+          <div className="text-xs font-semibold text-slate-700">Tabel Kurir & Pengaturan Diskon Pembeli:</div>
+
+          <div className="space-y-3">
+            {[
+              { code: "ninja", name: "Ninja Express", maxCod: 50, maxNonCod: 40 },
+              { code: "sap", name: "SAPX", maxCod: 45, maxNonCod: 40 },
+              { code: "sicepat", name: "SiCepat Express", maxCod: 35, maxNonCod: 30 },
+              { code: "jne", name: "JNE Reguler / YES", maxCod: 30, maxNonCod: 25 },
+              { code: "anteraja", name: "AnterAja", maxCod: 30, maxNonCod: 25 },
+              { code: "ide", name: "ID Express", maxCod: 30, maxNonCod: 20 },
+              { code: "jnt", name: "J&T Express", maxCod: 25, maxNonCod: 25 },
+              { code: "lion", name: "Lion Parcel", maxCod: 20, maxNonCod: 20 },
+            ].map((c) => {
+              const currentCod = courierDiscounts[c.code]?.cod_discount ?? c.maxCod;
+              const currentNonCod = courierDiscounts[c.code]?.non_cod_discount ?? c.maxNonCod;
+
+              const isCodExceeded = currentCod > c.maxCod;
+              const isNonCodExceeded = currentNonCod > c.maxNonCod;
+
+              const effectiveCod = Math.min(currentCod, c.maxCod);
+              const effectiveNonCod = Math.min(currentNonCod, c.maxNonCod);
+
+              const marginCod = c.maxCod - effectiveCod;
+              const marginNonCod = c.maxNonCod - effectiveNonCod;
+
+              return (
+                <div key={c.code} className="p-3.5 rounded-lg border bg-background space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+                    <div className="font-bold text-xs uppercase tracking-wide text-slate-800 flex items-center gap-2">
+                      <CourierLogo courier={c.code} size="sm" />
+                      <span>{c.name}</span>
+                      <Badge variant="outline" className="text-[10px] bg-slate-100 font-normal">
+                        Lincah Maks: COD {c.maxCod}% | Non-COD {c.maxNonCod}%
+                      </Badge>
+                    </div>
+
+                    {(marginCod > 0 || marginNonCod > 0) && (
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-[10px] font-semibold flex items-center gap-1">
+                        <Coins className="size-3" />
+                        Profit Margin Seller: +{marginCod}% (COD) / +{marginNonCod}% (Non-COD)
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-semibold mb-1">
+                        <span>Diskon COD Pembeli (%)</span>
+                        <span className="text-[10px] text-muted-foreground">Maks {c.maxCod}%</span>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={c.maxCod}
+                          className={cn("text-xs font-semibold pr-8", isCodExceeded && "border-destructive text-destructive")}
+                          value={currentCod}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setCourierDiscounts((prev) => ({
+                              ...prev,
+                              [c.code]: {
+                                ...prev[c.code],
+                                cod_discount: val,
+                              },
+                            }));
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
+                      </div>
+                      {isCodExceeded && (
+                        <p className="text-[10px] text-destructive mt-0.5 font-medium">
+                          ❌ Melebihi batas Lincah (Maks {c.maxCod}%). Otomatis dibatasi {c.maxCod}%.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-semibold mb-1">
+                        <span>Diskon Non-COD Pembeli (%)</span>
+                        <span className="text-[10px] text-muted-foreground">Maks {c.maxNonCod}%</span>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={c.maxNonCod}
+                          className={cn("text-xs font-semibold pr-8", isNonCodExceeded && "border-destructive text-destructive")}
+                          value={currentNonCod}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setCourierDiscounts((prev) => ({
+                              ...prev,
+                              [c.code]: {
+                                ...prev[c.code],
+                                non_cod_discount: val,
+                              },
+                            }));
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
+                      </div>
+                      {isNonCodExceeded && (
+                        <p className="text-[10px] text-destructive mt-0.5 font-medium">
+                          ❌ Melebihi batas Lincah (Maks {c.maxNonCod}%). Otomatis dibatasi {c.maxNonCod}%.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Card>
 

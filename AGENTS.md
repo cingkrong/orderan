@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- **Git Push Policy**: Hanya lakukan `git push` ke GitHub apabila USER secara eksplisit meminta/memerintahkan (misal: "push ke github", "upload ke github"). Jangan melakukan `git push` secara otomatis tanpa perintah dari USER.

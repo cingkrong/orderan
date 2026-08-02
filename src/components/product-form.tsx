@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { getProduct, upsertProduct } from "@/lib/products.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { StorageImage } from "@/components/storage-image";
+import { StorageImage, useSignedImage } from "@/components/storage-image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Star, Upload, X, Loader2, Copy } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, Loader2, Copy, Video, Film, Package } from "lucide-react";
 import { toast } from "sonner";
-import { useWeightUnit } from "@/hooks/use-weight-unit";
-
 
 type VariantForm = {
   id?: string;
@@ -42,15 +40,40 @@ type VariantForm = {
 
 type WholesaleTier = { min_qty: number; price: number };
 
+type MediaItem = {
+  path: string;
+  type: "image" | "video";
+};
+
+function parseMediaList(raw?: string | null): MediaItem[] {
+  if (!raw) return [];
+  if (raw.startsWith("[") || raw.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+  const isVid = Boolean(raw.match(/\.(mp4|webm|mov|avi)$/i));
+  return [{ path: raw, type: isVid ? "video" : "image" }];
+}
+
+function serializeMediaList(items: MediaItem[]): string | null {
+  if (items.length === 0) return null;
+  if (items.length === 1 && items[0].type === "image") return items[0].path;
+  return JSON.stringify(items);
+}
+
 type ProductFormState = {
   id?: string;
   name: string;
   description: string;
   category: string;
   product_type: "stock" | "preorder";
+  variant_enabled: boolean;
+  discount_enabled: boolean;
   wholesale_enabled: boolean;
   wholesale_tiers: WholesaleTier[];
-  discount_type: string;
+  discount_type: "percent" | "fixed";
   discount_value: number;
   storefront_visible: boolean;
   show_stock: boolean;
@@ -65,7 +88,7 @@ const emptyVariant = (isFirst = true): VariantForm => ({
   price: 0,
   cost: 0,
   dropship_price: 0,
-  weight_g: 0,
+  weight_g: 100, // Default 100 gram
   stock: 0,
   is_default: isFirst,
   image_url: null,
@@ -74,14 +97,16 @@ const emptyVariant = (isFirst = true): VariantForm => ({
 const empty: ProductFormState = {
   name: "",
   description: "",
-  category: "",
+  category: "Fashion",
   product_type: "stock",
+  variant_enabled: false,
+  discount_enabled: false,
   wholesale_enabled: false,
   wholesale_tiers: [],
-  discount_type: "",
+  discount_type: "percent",
   discount_value: 0,
-  storefront_visible: false,
-  show_stock: false,
+  storefront_visible: true,
+  show_stock: true,
   variants: [emptyVariant()],
 };
 
@@ -113,26 +138,6 @@ function generateSku(name: string, color: string, size: string, idx: number) {
   return parts.join("-");
 }
 
-function FormSection({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 md:gap-6 py-6 border-b last:border-b-0">
-      <div>
-        <h3 className="font-semibold text-primary">{title}</h3>
-        {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
-      </div>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
 export function ProductForm({ id }: { id?: string }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -140,7 +145,6 @@ export function ProductForm({ id }: { id?: string }) {
   const upsert = useServerFn(upsertProduct);
 
   const [form, setForm] = useState<ProductFormState>(empty);
-  const [createAnother, setCreateAnother] = useState(false);
 
   const loadQ = useQuery({
     queryKey: ["product", id],
@@ -151,7 +155,7 @@ export function ProductForm({ id }: { id?: string }) {
   useEffect(() => {
     if (!loadQ.data) return;
     const d: any = loadQ.data;
-    const variants: VariantForm[] =
+    const rawVariants: VariantForm[] =
       (d.variants ?? []).length > 0
         ? d.variants.map((v: any) => ({
             id: v.id,
@@ -162,47 +166,65 @@ export function ProductForm({ id }: { id?: string }) {
             price: Number(v.price),
             cost: Number(v.cost ?? 0),
             dropship_price: Number(v.dropship_price ?? 0),
-            weight_g: v.weight_g,
-            stock: v.stock,
+            weight_g: Number(v.weight_g ?? 100),
+            stock: Number(v.stock ?? 0),
             is_default: !!v.is_default,
             image_url: v.image_url ?? null,
           }))
         : [emptyVariant()];
-    if (!variants.some((v) => v.is_default)) variants[0].is_default = true;
+    if (!rawVariants.some((v) => v.is_default)) rawVariants[0].is_default = true;
+
+    const hasMultipleVariants =
+      rawVariants.length > 1 || Boolean(rawVariants[0]?.color || rawVariants[0]?.size);
+
     setForm({
       id: d.id,
       name: d.name ?? "",
       description: d.description ?? "",
-      category: d.category ?? "",
+      category: d.category ?? "Fashion",
       product_type: d.product_type ?? "stock",
+      variant_enabled: hasMultipleVariants,
+      discount_enabled: Boolean(d.discount_type && Number(d.discount_value) > 0),
       wholesale_enabled: !!d.wholesale_enabled,
       wholesale_tiers: Array.isArray(d.wholesale_tiers) ? d.wholesale_tiers : [],
-      discount_type: d.discount_type ?? "",
+      discount_type: d.discount_type === "fixed" ? "fixed" : "percent",
       discount_value: Number(d.discount_value ?? 0),
       storefront_visible: !!d.storefront_visible,
       show_stock: !!d.show_stock,
-      variants,
+      variants: rawVariants,
     });
   }, [loadQ.data]);
 
   const save = useMutation({
     mutationFn: async () => {
-      const variants = form.variants.map((v, idx) => ({
-        id: v.id,
-        label: v.label.trim() || `Variasi ${idx + 1}`,
-        sku: (v.sku && v.sku.trim()) || generateSku(form.name, v.color, v.size, idx),
-        color: v.color || null,
-        size: v.size || null,
-        image_url: v.image_url,
-        price: Number(v.price) || 0,
-        cost: Number(v.cost) || 0,
-        dropship_price: Number(v.dropship_price) || 0,
-        weight_g: Number(v.weight_g) || 0,
-        stock: Number(v.stock) || 0,
-        is_default: v.is_default,
-        sort_order: idx,
-      }));
-      const def = variants.find((v) => v.is_default) ?? variants[0];
+      const activeVariants = form.variant_enabled
+        ? form.variants
+        : [form.variants[0] || emptyVariant()];
+
+      const variantsPayload = activeVariants.map((v, idx) => {
+        const colorLabel = v.color ? `Warna: ${v.color}` : "";
+        const sizeLabel = v.size ? `Ukuran: ${v.size}` : "";
+        const autoLabel = [colorLabel, sizeLabel].filter(Boolean).join(" - ") || `Variasi ${idx + 1}`;
+
+        return {
+          id: v.id,
+          label: v.label.trim() || autoLabel,
+          sku: (v.sku && v.sku.trim()) || generateSku(form.name, v.color, v.size, idx),
+          color: v.color || null,
+          size: v.size || null,
+          image_url: v.image_url,
+          price: Number(v.price) || 0,
+          cost: Number(v.cost) || 0,
+          dropship_price: Number(v.dropship_price) || 0,
+          weight_g: Number(v.weight_g) || 100, // Stored strictly in grams
+          stock: Number(v.stock) || 0,
+          is_default: v.is_default,
+          sort_order: idx,
+        };
+      });
+
+      const def = variantsPayload.find((v) => v.is_default) ?? variantsPayload[0];
+
       return upsert({
         data: {
           id: form.id,
@@ -211,32 +233,27 @@ export function ProductForm({ id }: { id?: string }) {
           category: form.category || null,
           product_type: form.product_type,
           sku: def.sku,
-          variant: variants.length > 1 ? `${variants.length} variasi` : def.label,
+          variant: variantsPayload.length > 1 ? `${variantsPayload.length} variasi` : def.label,
           price: def.price,
           cost: def.cost,
           weight_g: def.weight_g,
-          stock: variants.reduce((s, v) => s + v.stock, 0),
+          stock: variantsPayload.reduce((s, v) => s + v.stock, 0),
           wholesale_enabled: form.wholesale_enabled,
-          wholesale_tiers: form.wholesale_tiers,
-          discount_type: form.discount_type || null,
-          discount_value: form.discount_type ? Number(form.discount_value) || 0 : null,
+          wholesale_tiers: form.wholesale_enabled ? form.wholesale_tiers : [],
+          discount_type: form.discount_enabled ? form.discount_type : null,
+          discount_value: form.discount_enabled ? Number(form.discount_value) || 0 : null,
           storefront_visible: form.storefront_visible,
           show_stock: form.show_stock,
-          variants,
+          variants: variantsPayload,
         },
       });
     },
     onSuccess: () => {
-      toast.success("Produk disimpan");
+      toast.success("Produk berhasil disimpan");
       qc.invalidateQueries({ queryKey: ["products"] });
-      if (createAnother && !id) {
-        setForm(empty);
-        setCreateAnother(false);
-      } else {
-        navigate({ to: "/products" });
-      }
+      navigate({ to: "/products" });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal menyimpan produk"),
   });
 
   function updateVariant(idx: number, patch: Partial<VariantForm>) {
@@ -285,7 +302,7 @@ export function ProductForm({ id }: { id?: string }) {
   function addTier() {
     setForm((f) => ({
       ...f,
-      wholesale_tiers: [...f.wholesale_tiers, { min_qty: 1, price: 0 }],
+      wholesale_tiers: [...f.wholesale_tiers, { min_qty: 2, price: 0 }],
     }));
   }
 
@@ -305,262 +322,502 @@ export function ProductForm({ id }: { id?: string }) {
 
   if (id && loadQ.isLoading) return <Skeleton className="h-96" />;
 
+  const primaryVariant = form.variants[0] || emptyVariant();
+
   return (
-    <div className="max-w-5xl mx-auto pb-24">
-      <div className="mb-4">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">
-          {id ? "Ubah Produk" : "Buat Produk"}
-        </h1>
+    <div className="space-y-6 pb-20">
+      {/* BREADCRUMB HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{id ? "Ubah Produk" : "Form Tambah Produk"}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Home / Produk / {id ? "Form Ubah Produk" : "Form Tambah Produk"}
+          </p>
+        </div>
       </div>
 
-      <Card className="p-0 divide-y">
-        {/* GENERAL */}
-        <div className="px-5">
-          <FormSection title="General" hint="Informasi umum produk">
-            <div>
-              <Label>
-                Judul produk<span className="text-destructive">*</span>
-              </Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="cth. Kaos Polos Premium"
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+        {/* LEFT COLUMN: MAIN FORM */}
+        <div className="space-y-6">
+          <Card className="p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-4">
+              <div>
+                <Label className="text-xs font-semibold">
+                  Nama Produk<span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  className="mt-1"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="cth. Jilbab Madaniah"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Jenis Produk</Label>
+                <Select
+                  value={form.product_type}
+                  onValueChange={(v) =>
+                    setForm({ ...form, product_type: v as "stock" | "preorder" })
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Pilih Jenis" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stock">Barang Stock Sendiri</SelectItem>
+                    <SelectItem value="preorder">Barang Pre-Order</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
             <div>
-              <Label>
-                Deskripsi<span className="text-destructive">*</span>
-              </Label>
+              <Label className="text-xs font-semibold">Keterangan Produk</Label>
               <Textarea
-                rows={8}
+                rows={4}
+                className="mt-1 text-xs"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Deskripsikan produk Anda…"
+                placeholder="Berbahan Diamond..."
               />
             </div>
-            <div>
-              <Label>
-                Kategori<span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Kategori" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </FormSection>
-        </div>
 
-        {/* INVENTORI */}
-        <div className="px-5">
-          <FormSection title="Inventori" hint="Atur stok produk">
-            <div className="flex items-center gap-6">
-              <Label className="text-muted-foreground">Jenis Produk</Label>
-              <RadioGroup
-                value={form.product_type}
-                onValueChange={(v) =>
-                  setForm({ ...form, product_type: v as "stock" | "preorder" })
-                }
-                className="flex gap-6"
-              >
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <RadioGroupItem value="stock" id="pt-stock" />
-                  <span className="text-sm">Produk stok sendiri</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <RadioGroupItem value="preorder" id="pt-preorder" />
-                  <span className="text-sm">Produk Pre-Order</span>
-                </label>
-              </RadioGroup>
-            </div>
-          </FormSection>
-        </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs font-semibold">
+                  Berat (Satuan Gram)<span className="text-destructive">*</span>
+                </Label>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    className="pr-16"
+                    value={primaryVariant.weight_g}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) || 0;
+                      setForm((f) => ({
+                        ...f,
+                        variants: f.variants.map((v) => ({ ...v, weight_g: val })),
+                      }));
+                    }}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground bg-muted px-2 py-1 rounded">
+                    gram
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Diukur penuh dalam gram (cth: 130 gram = 0.13 kg pada API ongkir).
+                </p>
+              </div>
 
-        {/* VARIAN */}
-        <div className="px-5">
-          <FormSection title="Varian Produk" hint="Atur varian produk">
-            <div className="space-y-3">
-              {form.variants.map((v, idx) => (
-                <VariantRow
-                  key={v.id ?? `new-${idx}`}
-                  variant={v}
-                  index={idx}
-                  productName={form.name}
-                  onChange={(patch) => updateVariant(idx, patch)}
-                  onSetDefault={() => setDefault(idx)}
-                  onDuplicate={() => duplicateVariant(idx)}
-                  onRemove={() => removeVariant(idx)}
-                />
-              ))}
-              <Button variant="outline" size="sm" onClick={addVariant}>
-                <Plus className="size-4 mr-1" /> Tambah Varian
-              </Button>
-            </div>
-          </FormSection>
-        </div>
-
-        {/* HARGA GROSIR */}
-        <div className="px-5">
-          <FormSection
-            title="Harga Grosir"
-            hint="Atur harga grosir pada produk, misal: jumlah pembelian 1 - 10 harga Rp15.000, 11 - 20 harga Rp12.000"
-          >
-            <div>
-              <Label className="text-muted-foreground">Rentang Harga Grosir</Label>
-              <div className="mt-2 space-y-2">
-                {form.wholesale_tiers.map((t, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-12">Min qty</span>
-                    <Input
-                      type="number"
-                      className="w-24"
-                      value={t.min_qty}
-                      onChange={(e) => updateTier(idx, { min_qty: Number(e.target.value) })}
-                    />
-                    <span className="text-xs text-muted-foreground">Harga</span>
-                    <Input
-                      type="number"
-                      className="w-40"
-                      value={t.price}
-                      onChange={(e) => updateTier(idx, { price: Number(e.target.value) })}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeTier(idx)}
-                      className="h-8 w-8"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+              {form.discount_enabled && (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">Diskon Produk</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant={form.discount_type === "percent" ? "default" : "outline"}
+                        size="sm"
+                        className="h-6 text-[10px] px-2"
+                        onClick={() => setForm({ ...form, discount_type: "percent" })}
+                      >
+                        % Persen
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={form.discount_type === "fixed" ? "default" : "outline"}
+                        size="sm"
+                        className="h-6 text-[10px] px-2"
+                        onClick={() => setForm({ ...form, discount_type: "fixed" })}
+                      >
+                        Rp Potongan
+                      </Button>
+                    </div>
                   </div>
+
+                  <div className="relative mt-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="pr-12"
+                      value={form.discount_value}
+                      onChange={(e) =>
+                        setForm({ ...form, discount_value: Number(e.target.value) || 0 })
+                      }
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                      {form.discount_type === "percent" ? "%" : "Rp"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* MULTI-MEDIA GALLERY UPLOADER (WHEN VARIAN IS OFF) */}
+          {!form.variant_enabled && (
+            <Card className="p-5 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div>
+                  <h2 className="font-bold text-base">Galeri Foto & Video Produk (Opsional)</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Unggah beberapa foto atau video produk. Jika kosong, thumbnail default akan digunakan secara otomatis.
+                  </p>
+                </div>
+              </div>
+
+              <MainGalleryUploader
+                rawImageUrl={primaryVariant.image_url}
+                onChange={(newRawUrl) => updateVariant(0, { image_url: newRawUrl })}
+              />
+            </Card>
+          )}
+
+          {/* SINGLE / MULTI VARIANT TABLE */}
+          <Card className="p-5 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h2 className="font-bold text-base">
+                {form.variant_enabled ? "Daftar Varian Produk (Warna & Ukuran)" : "Harga & Stok Produk"}
+              </h2>
+              {form.variant_enabled && (
+                <Button variant="outline" size="sm" onClick={addVariant}>
+                  <Plus className="size-4 mr-1" /> Tambah Varian
+                </Button>
+              )}
+            </div>
+
+            {form.variant_enabled ? (
+              <div className="space-y-4">
+                {form.variants.map((v, idx) => (
+                  <VariantRow
+                    key={v.id ?? `new-${idx}`}
+                    variant={v}
+                    index={idx}
+                    productName={form.name}
+                    onChange={(patch) => updateVariant(idx, patch)}
+                    onSetDefault={() => setDefault(idx)}
+                    onDuplicate={() => duplicateVariant(idx)}
+                    onRemove={() => removeVariant(idx)}
+                  />
                 ))}
+              </div>
+            ) : (
+              /* SINGLE VARIANT FORM FIELDS */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold">SKU Produk</Label>
+                  <Input
+                    className="mt-1 font-mono text-xs"
+                    value={primaryVariant.sku}
+                    placeholder={generateSku(form.name, "", "", 0)}
+                    onChange={(e) => updateVariant(0, { sku: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold">Harga Beli (HPP)</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      Rp
+                    </span>
+                    <Input
+                      type="number"
+                      className="pl-8"
+                      value={primaryVariant.cost}
+                      onChange={(e) => updateVariant(0, { cost: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold">Harga Normal / Retail</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      Rp
+                    </span>
+                    <Input
+                      type="number"
+                      className="pl-8 font-semibold"
+                      value={primaryVariant.price}
+                      onChange={(e) => updateVariant(0, { price: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold">Harga Dropshipper</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      Rp
+                    </span>
+                    <Input
+                      type="number"
+                      className="pl-8"
+                      value={primaryVariant.dropship_price}
+                      onChange={(e) => updateVariant(0, { dropship_price: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold">Jumlah Stok</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="mt-1 font-semibold"
+                    value={primaryVariant.stock}
+                    onChange={(e) => updateVariant(0, { stock: Number(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* HARGA GROSIR CARD (WHEN TOGGLED ON) */}
+          {form.wholesale_enabled && (
+            <Card className="p-5 space-y-4 border-l-4 border-l-amber-500">
+              <div className="flex items-center justify-between border-b pb-3">
+                <h2 className="font-bold text-base">Setting Harga Grosir (Grosir Tier)</h2>
                 <Button variant="outline" size="sm" onClick={addTier}>
-                  Tambah Harga
+                  <Plus className="size-4 mr-1" /> Tambah Tier Grosir
                 </Button>
               </div>
-              <div className="mt-3 flex items-center gap-2">
+
+              <div className="space-y-3">
+                {form.wholesale_tiers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Belum ada rentang grosir. Klik "Tambah Tier Grosir" untuk mengatur harga khusus grosir berdasarkan minimal pembelian.
+                  </p>
+                ) : (
+                  form.wholesale_tiers.map((t, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-muted/30 p-3 rounded-lg border">
+                      <div className="flex-1 grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-[11px] font-semibold">Minimal Pembelian (Qty)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            className="mt-1 text-xs font-semibold"
+                            value={t.min_qty}
+                            onChange={(e) => updateTier(idx, { min_qty: Number(e.target.value) || 1 })}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] font-semibold">Harga Satuan Grosir (Rp)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            className="mt-1 text-xs font-semibold text-emerald-600"
+                            value={t.price}
+                            onChange={(e) => updateTier(idx, { price: Number(e.target.value) || 0 })}
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeTier(idx)}
+                        className="text-destructive self-end mb-1"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: PRODUCT SETTING SIDEBAR */}
+        <div className="space-y-4">
+          <Card className="p-5 space-y-5 border-t-4 border-t-primary">
+            <div>
+              <h2 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                PRODUCT SETTING
+              </h2>
+            </div>
+
+            <div className="space-y-4 divide-y divide-border">
+              {/* TOGGLE VARIAN */}
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <div className="text-sm font-semibold">Varian</div>
+                  <p className="text-[11px] text-muted-foreground">Warna & Ukuran Size</p>
+                </div>
+                <Switch
+                  checked={form.variant_enabled}
+                  onCheckedChange={(v) => setForm({ ...form, variant_enabled: v })}
+                />
+              </div>
+
+              {/* TOGGLE DISKON */}
+              <div className="flex items-center justify-between pt-4">
+                <div>
+                  <div className="text-sm font-semibold">Diskon</div>
+                  <p className="text-[11px] text-muted-foreground">Persentase (%) / Rp</p>
+                </div>
+                <Switch
+                  checked={form.discount_enabled}
+                  onCheckedChange={(v) => setForm({ ...form, discount_enabled: v })}
+                />
+              </div>
+
+              {/* TOGGLE HARGA GROSIR */}
+              <div className="flex items-center justify-between pt-4">
+                <div>
+                  <div className="text-sm font-semibold">Harga Grosir</div>
+                  <p className="text-[11px] text-muted-foreground">Min Order Qty</p>
+                </div>
                 <Switch
                   checked={form.wholesale_enabled}
                   onCheckedChange={(v) => setForm({ ...form, wholesale_enabled: v })}
                 />
-                <span className="text-sm">Aktifkan Grosir</span>
               </div>
             </div>
-          </FormSection>
-        </div>
 
-        {/* PROMOSI */}
-        <div className="px-5">
-          <FormSection title="Promosi" hint="Atur harga spesial untuk produk ini">
-            <div>
-              <Label className="text-muted-foreground">Jenis diskon</Label>
-              <Select
-                value={form.discount_type || "none"}
-                onValueChange={(v) =>
-                  setForm({ ...form, discount_type: v === "none" ? "" : v })
-                }
+            <div className="pt-2">
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base shadow-sm"
+                onClick={() => save.mutate()}
+                disabled={!form.name || save.isPending}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih salah satu opsi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Tanpa diskon</SelectItem>
-                  <SelectItem value="percent">Persentase (%)</SelectItem>
-                  <SelectItem value="fixed">Nominal (Rp)</SelectItem>
-                </SelectContent>
-              </Select>
-              {form.discount_type && (
-                <div className="mt-2">
-                  <Label className="text-xs">
-                    Nilai diskon ({form.discount_type === "percent" ? "%" : "Rp"})
-                  </Label>
-                  <Input
-                    type="number"
-                    value={form.discount_value}
-                    onChange={(e) =>
-                      setForm({ ...form, discount_value: Number(e.target.value) })
-                    }
-                    className="w-40"
-                  />
-                </div>
-              )}
+                {save.isPending ? "Menyimpan..." : "Simpan Produk"}
+              </Button>
             </div>
-          </FormSection>
-        </div>
-
-        {/* STOREFRONT */}
-        <div className="px-5">
-          <FormSection title="Storefront">
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <Switch
-                  checked={form.storefront_visible}
-                  onCheckedChange={(v) => setForm({ ...form, storefront_visible: v })}
-                />
-                <div>
-                  <div className="text-sm font-medium">Tampilkan</div>
-                  <p className="text-xs text-muted-foreground">
-                    Produk akan muncul di Storefront
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Switch
-                  checked={form.show_stock}
-                  onCheckedChange={(v) => setForm({ ...form, show_stock: v })}
-                />
-                <div>
-                  <div className="text-sm font-medium">Tampilkan jumlah stok</div>
-                  <p className="text-xs text-muted-foreground">
-                    Jika aktif, jumlah stok akan ditampilkan. Jika tidak aktif ditampilkan
-                    "Stok tersedia" atau "Stok habis"
-                  </p>
-                </div>
-              </div>
-            </div>
-          </FormSection>
-        </div>
-      </Card>
-
-      {/* STICKY FOOTER */}
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur z-20">
-        <div className="max-w-5xl mx-auto px-5 py-3 flex items-center gap-2">
-          <Button
-            onClick={() => {
-              setCreateAnother(false);
-              save.mutate();
-            }}
-            disabled={!form.name || save.isPending}
-          >
-            {save.isPending && !createAnother ? "Menyimpan…" : id ? "Simpan" : "Buat"}
-          </Button>
-          {!id && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCreateAnother(true);
-                save.mutate();
-              }}
-              disabled={!form.name || save.isPending}
-            >
-              Buat & buat lainnya
-            </Button>
-          )}
-          <Button variant="ghost" asChild>
-            <Link to="/products">Batal</Link>
-          </Button>
+          </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+{/* COMPONENT: MULTI-MEDIA GALLERY UPLOADER */}
+function MainGalleryUploader({
+  rawImageUrl,
+  onChange,
+}: {
+  rawImageUrl?: string | null;
+  onChange: (val: string | null) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const mediaList = parseMediaList(rawImageUrl);
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+
+    const newItems: MediaItem[] = [];
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const isVideo = file.type.startsWith("video/") || Boolean(file.name.match(/\.(mp4|webm|mov|avi)$/i));
+        const maxMb = isVideo ? 50 : 10;
+
+        if (file.size > maxMb * 1024 * 1024) {
+          toast.error(`Ukuran ${file.name} melebihi ${maxMb} MB`);
+          continue;
+        }
+
+        const ext = file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
+        const path = `${crypto.randomUUID()}.${ext}`;
+
+        const { error } = await supabase.storage.from("product-images").upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+
+        if (error) throw error;
+        newItems.push({ path, type: isVideo ? "video" : "image" });
+      }
+
+      const updated = [...mediaList, ...newItems];
+      onChange(serializeMediaList(updated));
+      toast.success(`${newItems.length} berkas media diunggah`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengunggah berkas");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function removeMedia(idx: number) {
+    const next = mediaList.filter((_, i) => i !== idx);
+    onChange(serializeMediaList(next));
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+        {mediaList.map((item, idx) => (
+          <MediaItemCard key={item.path} item={item} onRemove={() => removeMedia(idx)} />
+        ))}
+
+        {/* UPLOAD TRIGGER CARD */}
+        <div
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          className="h-28 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors p-2 text-center"
+        >
+          {uploading ? (
+            <Loader2 className="size-6 animate-spin text-primary" />
+          ) : (
+            <>
+              <Upload className="size-5 text-primary mb-1" />
+              <span className="text-[11px] font-semibold text-primary">Upload Foto/Video</span>
+              <span className="text-[9px] text-muted-foreground mt-0.5">JPG, PNG, MP4</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleFiles}
+      />
+    </div>
+  );
+}
+
+function MediaItemCard({ item, onRemove }: { item: MediaItem; onRemove: () => void }) {
+  const { url, isVideo } = useSignedImage(item.path);
+
+  return (
+    <div className="relative h-28 rounded-lg border overflow-hidden bg-background group">
+      {isVideo ? (
+        <div className="h-full w-full bg-black relative flex items-center justify-center">
+          {url ? (
+            <video src={url} className="h-full w-full object-cover" muted />
+          ) : (
+            <Film className="size-6 text-white/60 animate-pulse" />
+          )}
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <Video className="size-6 text-white" />
+          </div>
+        </div>
+      ) : (
+        <StorageImage path={item.path} className="h-full w-full object-cover" />
+      )}
+
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-1 right-1 p-1 rounded-full bg-background/90 text-destructive border shadow-sm hover:bg-background"
+        title="Hapus"
+      >
+        <X className="size-3" />
+      </button>
     </div>
   );
 }
@@ -584,15 +841,13 @@ function VariantRow({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const { unit, toDisplay, toGrams } = useWeightUnit();
-
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ukuran gambar maks 5 MB");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ukuran gambar maks 10 MB");
       return;
     }
     setUploading(true);
@@ -609,9 +864,9 @@ function VariantRow({
         await supabase.storage.from("product-images").remove([variant.image_url]);
       }
       onChange({ image_url: path });
-      toast.success("Gambar diunggah");
+      toast.success("Foto varian diunggah");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal unggah");
+      toast.error(err instanceof Error ? err.message : "Gagal unggah foto");
     } finally {
       setUploading(false);
     }
@@ -624,13 +879,13 @@ function VariantRow({
   }
 
   return (
-    <div className="rounded-md border p-3 bg-muted/20">
-      <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_auto] gap-3">
+    <div className="rounded-lg border p-4 bg-muted/20 space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-[120px_1fr_auto] gap-4 items-start">
         {/* IMAGE */}
         <div>
-          <Label className="text-xs">Foto</Label>
+          <Label className="text-xs font-semibold">Foto Varian (Opsional)</Label>
           <div
-            className="mt-1 relative h-28 rounded-md border border-dashed bg-background flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+            className="mt-1 relative h-24 rounded-md border border-dashed bg-background flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
             onClick={() => !uploading && fileRef.current?.click()}
           >
             {variant.image_url ? (
@@ -646,7 +901,7 @@ function VariantRow({
                     e.stopPropagation();
                     removeImage();
                   }}
-                  className="absolute top-1 right-1 rounded-full bg-background/90 border p-0.5 hover:bg-background"
+                  className="absolute top-1 right-1 rounded-full bg-background/90 border p-0.5 hover:bg-background text-destructive"
                 >
                   <X className="size-3" />
                 </button>
@@ -654,10 +909,10 @@ function VariantRow({
             ) : uploading ? (
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             ) : (
-              <div className="text-center text-xs text-muted-foreground px-2">
-                <Upload className="size-4 mx-auto mb-1" />
-                Seret & Jatuhkan berkas atau{" "}
-                <span className="text-primary underline">Jelajahi</span>
+              <div className="text-center text-[10px] text-muted-foreground p-1 flex flex-col items-center">
+                <Package className="size-5 text-muted-foreground/40 mb-1" />
+                <span className="text-[10px] text-primary">Upload Foto</span>
+                <span className="text-[9px] text-muted-foreground/60">atau Thumbnail Default</span>
               </div>
             )}
           </div>
@@ -670,120 +925,119 @@ function VariantRow({
           />
         </div>
 
-        {/* FIELDS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {/* FIELDS GRID */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
-            <Label className="text-xs">Warna</Label>
+            <Label className="text-xs font-semibold">Warna</Label>
             <Input
+              className="mt-1 text-xs"
               value={variant.color}
               onChange={(e) => onChange({ color: e.target.value })}
-              placeholder="cth. Merah"
+              placeholder="cth. Merah / Hitam"
             />
           </div>
+
           <div>
-            <Label className="text-xs">Ukuran</Label>
+            <Label className="text-xs font-semibold">Ukuran (Size)</Label>
             <Input
+              className="mt-1 text-xs"
               value={variant.size}
               onChange={(e) => onChange({ size: e.target.value })}
-              placeholder="cth. XL"
+              placeholder="cth. S / M / L / XL"
             />
           </div>
+
           <div>
-            <Label className="text-xs">
-              Berat<span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
+            <Label className="text-xs font-semibold">SKU Varian</Label>
+            <Input
+              className="mt-1 font-mono text-xs"
+              value={variant.sku}
+              placeholder={generateSku(productName, variant.color, variant.size, index)}
+              onChange={(e) => onChange({ sku: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold">Harga Beli (HPP)</Label>
+            <div className="relative mt-1">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                Rp
+              </span>
               <Input
                 type="number"
-                step={unit === "kg" ? "0.001" : "1"}
-                value={toDisplay(variant.weight_g)}
-                onChange={(e) => onChange({ weight_g: toGrams(Number(e.target.value)) })}
+                className="pl-7 text-xs"
+                value={variant.cost}
+                onChange={(e) => onChange({ cost: Number(e.target.value) || 0 })}
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                {unit === "kg" ? "Kg" : "Gram"}
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold">Harga Normal / Retail</Label>
+            <div className="relative mt-1">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                Rp
+              </span>
+              <Input
+                type="number"
+                className="pl-7 text-xs font-semibold"
+                value={variant.price}
+                onChange={(e) => onChange({ price: Number(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold">Harga Dropshipper</Label>
+            <div className="relative mt-1">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                Rp
+              </span>
+              <Input
+                type="number"
+                className="pl-7 text-xs"
+                value={variant.dropship_price}
+                onChange={(e) => onChange({ dropship_price: Number(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold">Berat (Gram)</Label>
+            <div className="relative mt-1">
+              <Input
+                type="number"
+                min={0}
+                className="pr-12 text-xs"
+                value={variant.weight_g}
+                onChange={(e) => onChange({ weight_g: Number(e.target.value) || 0 })}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
+                gram
               </span>
             </div>
           </div>
 
           <div>
-            <Label className="text-xs">
-              SKU<span className="text-destructive">*</span>
-            </Label>
-            <Input
-              value={variant.sku}
-              placeholder={generateSku(productName, variant.color, variant.size, index)}
-              onChange={(e) => onChange({ sku: e.target.value })}
-              onBlur={() => {
-                if (!variant.sku.trim()) {
-                  onChange({ sku: generateSku(productName, variant.color, variant.size, index) });
-                }
-              }}
-            />
-          </div>
-          <div>
-            <Label className="text-xs">
-              Harga Beli (HPP)<span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                Rp
-              </span>
-              <Input
-                type="number"
-                className="pl-8"
-                value={variant.cost}
-                onChange={(e) => onChange({ cost: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">
-              Harga Normal<span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                Rp
-              </span>
-              <Input
-                type="number"
-                className="pl-8"
-                value={variant.price}
-                onChange={(e) => onChange({ price: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Harga Dropshipper</Label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                Rp
-              </span>
-              <Input
-                type="number"
-                className="pl-8"
-                value={variant.dropship_price}
-                onChange={(e) => onChange({ dropship_price: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Stok</Label>
+            <Label className="text-xs font-semibold">Stok Varian</Label>
             <Input
               type="number"
+              min={0}
+              className="mt-1 text-xs font-bold"
               value={variant.stock}
-              onChange={(e) => onChange({ stock: Number(e.target.value) })}
+              onChange={(e) => onChange({ stock: Number(e.target.value) || 0 })}
             />
           </div>
         </div>
 
         {/* ACTIONS */}
-        <div className="flex md:flex-col items-center gap-1">
+        <div className="flex md:flex-col items-center gap-1 self-center">
           <Button
             type="button"
             size="icon"
             variant={variant.is_default ? "default" : "ghost"}
             onClick={onSetDefault}
-            title="Jadikan default"
+            title="Jadikan Varian Utama"
             className="h-8 w-8"
           >
             <Star className={`size-4 ${variant.is_default ? "fill-current" : ""}`} />
@@ -793,7 +1047,7 @@ function VariantRow({
             size="icon"
             variant="ghost"
             onClick={onDuplicate}
-            title="Duplikat"
+            title="Duplikat Varian"
             className="h-8 w-8"
           >
             <Copy className="size-4" />
@@ -803,7 +1057,7 @@ function VariantRow({
             size="icon"
             variant="ghost"
             onClick={onRemove}
-            title="Hapus"
+            title="Hapus Varian"
             className="h-8 w-8 text-destructive"
           >
             <Trash2 className="size-4" />

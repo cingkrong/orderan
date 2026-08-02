@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import JsBarcode from "jsbarcode";
 import QRCode from "qrcode";
+import { CourierLogo } from "@/components/courier-logo";
 
 export type LabelData = {
   order_number: string;
@@ -127,15 +128,12 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         {/* COURIER & BARCODE ROW */}
         <div className="grid grid-cols-12 border-b border-gray-300 py-1.5 items-center">
           {/* Left Column: Courier Logo & Service Box */}
-          <div className="col-span-4 pr-2 border-r border-gray-300 flex flex-col items-center justify-center">
-            <div className="font-extrabold italic text-center leading-none" style={{ fontSize: "12pt", fontFamily: "Arial, sans-serif" }}>
-              {courierBrand === "J&T EXPRESS" ? (
-                <span><span className="text-black italic font-black">J&T</span><span className="text-[8pt] font-semibold not-italic block tracking-tighter">EXPRESS</span></span>
-              ) : (
-                courierBrand
-              )}
+          <div className="col-span-4 pr-2 border-r border-gray-300 flex flex-col items-center justify-center space-y-1">
+            <CourierLogo courier={data.courier} size="md" />
+            <div className="font-extrabold italic text-center leading-none text-[10pt]" style={{ fontFamily: "Arial, sans-serif" }}>
+              {courierBrand}
             </div>
-            <div className="mt-1 border border-black px-3 py-0.5 font-semibold text-center text-[8.5pt] leading-none min-w-[18mm]">
+            <div className="border border-black px-2 py-0.5 font-semibold text-center text-[8pt] leading-none min-w-[18mm]">
               {serviceName}
             </div>
           </div>

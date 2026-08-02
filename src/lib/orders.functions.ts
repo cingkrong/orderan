@@ -223,6 +223,30 @@ export const saveOrder = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => orderInput.parse(d))
   .handler(async ({ data, context }) => {
     const { items, id, ...orderRest } = data;
+
+    // Validate stock for all items
+    for (const it of items) {
+      if (it.variant_id) {
+        const { data: v } = await context.supabase
+          .from("product_variants")
+          .select("id, stock, product_id, label, products(name, product_type)")
+          .eq("id", it.variant_id)
+          .maybeSingle();
+
+        if (v) {
+          const productType = (v as any).products?.product_type;
+          const isPreorder = productType === "preorder";
+          const currentStock = Number(v.stock ?? 0);
+          if (!isPreorder && it.qty > currentStock) {
+            const variantName = it.variant || v.label || "";
+            throw new Error(
+              `Jumlah pesanan "${it.name}${variantName ? ` (${variantName})` : ""}" (${it.qty}) melebihi stok yang tersedia (${currentStock})`,
+            );
+          }
+        }
+      }
+    }
+
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const weight_g = items.reduce((s, i) => s + i.weight_g * i.qty, 0);
     const total = subtotal + (orderRest.shipping_cost ?? 0);

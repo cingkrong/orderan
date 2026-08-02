@@ -15,8 +15,10 @@ import {
   Plus,
   Wallet,
   TrendingUp,
+  BarChart3,
   Warehouse,
   UserCircle,
+  Plug,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +40,8 @@ const NAV: NavItem[] = [
   { to: "/shipping", label: "Pengiriman", icon: Truck },
   { to: "/products", label: "Produk", icon: Package },
   { to: "/customers", label: "Pelanggan", icon: Users },
+  { to: "/analyzer", label: "Analyzer", icon: BarChart3 },
+  { to: "/integrations", label: "Integrasi Addons", icon: Plug },
   { to: "/labels", label: "Label", icon: Printer },
   { to: "/expenses", label: "Pengeluaran", icon: Wallet },
   { to: "/reports", label: "Laporan L/R", icon: TrendingUp },

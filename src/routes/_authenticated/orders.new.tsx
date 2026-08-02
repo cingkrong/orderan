@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { CourierLogo } from "@/components/courier-logo";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -350,6 +351,23 @@ function OrderForm({ existingId }: { existingId?: string }) {
     if (!form.destination_subdistrict_id) return toast.error("Pilih kecamatan tujuan pengiriman terlebih dahulu");
     if (!form.warehouse_id) return toast.error("Pilih gudang asal pengiriman terlebih dahulu");
     if (!form.service || !form.courier) return toast.error("Pilih ekspedisi dan layanan pengiriman terlebih dahulu");
+
+    // Stock limit validation before submitting order
+    const productsList: any[] = productsQ.data ?? [];
+    for (const item of form.items) {
+      if (item.product_id && item.variant_id) {
+        const p = productsList.find((x: any) => x.id === item.product_id);
+        const v = (p?.variants ?? []).find((x: any) => x.id === item.variant_id);
+        if (p && v && !isPreorder(p)) {
+          const availStock = Number(v.stock ?? 0);
+          if (item.qty > availStock) {
+            return toast.error(
+              `Jumlah pesanan "${item.name} (${item.variant})": ${item.qty} melebihi stok yang tersedia (${availStock})`,
+            );
+          }
+        }
+      }
+    }
 
     // Save any "Item custom → Simpan ke katalog" flagged items to the product catalog first.
     let items = form.items;
@@ -1132,6 +1150,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="font-medium flex items-center gap-1.5 flex-wrap">
+                              {!s.custom && <CourierLogo courier={s.courier_code} size="sm" />}
                               <span>
                                 {s.custom
                                   ? s.service

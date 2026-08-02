@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { CourierLogo } from "@/components/courier-logo";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -188,7 +189,14 @@ function OrdersList() {
                       <Badge variant="secondary" className={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge>
                     </td>
                     <td className="p-3 text-xs">
-                      {o.courier ? `${COURIER_LABEL[o.courier] ?? o.courier} ${o.service ?? ""}` : "—"}
+                      {o.courier ? (
+                        <div className="flex items-center gap-1.5">
+                          <CourierLogo courier={o.courier} size="sm" />
+                          <span className="font-medium text-xs">{COURIER_LABEL[o.courier] ?? o.courier} {o.service ?? ""}</span>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="p-3 text-right font-medium tabular-nums">{formatIDR(o.total)}</td>
                     <td className="p-3 text-xs">{o.source ?? "—"}</td>

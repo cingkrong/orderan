@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { CourierLogo } from "@/components/courier-logo";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -204,8 +205,11 @@ function OrderDetail() {
 
           <Card className="p-5 space-y-3">
             <h2 className="font-semibold">Shipping</h2>
-            <div className="text-sm space-y-1">
-              <div>{order.courier ? COURIER_LABEL[order.courier] ?? order.courier : "—"} {order.service}</div>
+            <div className="text-sm space-y-1.5">
+              <div className="flex items-center gap-2">
+                <CourierLogo courier={order.courier} size="sm" />
+                <span className="font-semibold text-xs">{order.courier ? COURIER_LABEL[order.courier] ?? order.courier : "—"} {order.service}</span>
+              </div>
               {order.eta && <div className="text-muted-foreground text-xs">Estimasi: {order.eta} hari</div>}
               {order.tracking_number ? (
                 <div className="font-mono text-xs bg-muted p-2 rounded">{order.tracking_number}</div>

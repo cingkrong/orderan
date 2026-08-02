@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getCustomer, updateCustomerDetails } from "@/lib/customers.functions";
+import { searchDestinations, Destination } from "@/lib/shipping.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,8 @@ import {
   UserCheck,
   Truck,
   ExternalLink,
+  Loader2,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
@@ -96,6 +99,18 @@ function CustomerDetailPage() {
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [destinationSubdistrictId, setDestinationSubdistrictId] = useState("");
+  const [destinationLabel, setDestinationLabel] = useState("");
+  const [cityQ, setCityQ] = useState("");
+  const [showKecamatanSearch, setShowKecamatanSearch] = useState(false);
+
+  const searchDestFn = useServerFn(searchDestinations);
+  const citiesQuery = useQuery({
+    queryKey: ["destinations-search", cityQ],
+    queryFn: () => searchDestFn({ data: { q: cityQ } }),
+    enabled: cityQ.trim().length >= 3,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     if (data?.customer) {
@@ -112,6 +127,8 @@ function CustomerDetailPage() {
         setCity(addr.city ?? "");
         setProvince(addr.province ?? "");
         setPostalCode(addr.postal_code ?? "");
+        setDestinationSubdistrictId(addr.destination_subdistrict_id ?? "");
+        setDestinationLabel(addr.destination_label ?? "");
       }
     }
   }, [data?.customer]);
@@ -124,6 +141,8 @@ function CustomerDetailPage() {
         city,
         province,
         postal_code: postalCode,
+        destination_subdistrict_id: destinationSubdistrictId,
+        destination_label: destinationLabel,
       };
       return updateCustomerFn({
         data: {
@@ -437,13 +456,121 @@ function CustomerDetailPage() {
                   />
                 </div>
 
+                <div>
+                  <Label className="text-xs font-semibold block mb-1">
+                    Kecamatan Pengiriman / Wilayah Lincah API
+                  </Label>
+                  {destinationSubdistrictId || destinationLabel || district ? (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border p-3 bg-muted/20 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-slate-800 truncate">
+                          {destinationLabel || `${district}, ${city}, ${province} ${postalCode}`}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          Kecamatan: <span className="font-medium text-foreground">{district || "—"}</span>
+                          {destinationSubdistrictId && (
+                            <span className="ml-2 px-1.5 py-0.2 rounded bg-muted font-mono text-[10px]">
+                              ID: {destinationSubdistrictId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs shrink-0"
+                        onClick={() => {
+                          setShowKecamatanSearch(true);
+                          setCityQ(district || "");
+                        }}
+                      >
+                        Ganti Kecamatan
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {(!destinationSubdistrictId && !destinationLabel && !district) || showKecamatanSearch ? (
+                    <div className="mt-2 space-y-2 rounded-lg border p-3 bg-background shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-[11px] font-semibold text-primary">Cari Kecamatan (Ketik min. 3 huruf)</Label>
+                        {showKecamatanSearch && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1.5 text-[10px]"
+                            onClick={() => setShowKecamatanSearch(false)}
+                          >
+                            Batal
+                          </Button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <Input
+                          placeholder="Ketikan nama kecamatan, cth: Banjarsari..."
+                          value={cityQ}
+                          onChange={(e) => setCityQ(e.target.value)}
+                          className="text-xs pr-8"
+                        />
+                        {citiesQuery.isFetching ? (
+                          <Loader2 className="size-4 animate-spin text-primary absolute right-2.5 top-1/2 -translate-y-1/2" />
+                        ) : (
+                          <Search className="size-4 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2" />
+                        )}
+                      </div>
+
+                      {cityQ.trim().length >= 3 && (
+                        <div className="max-h-48 overflow-y-auto border rounded-md divide-y bg-popover">
+                          {citiesQuery.isFetching && (
+                            <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
+                              <Loader2 className="size-3.5 animate-spin text-primary" />
+                              Mencari wilayah kecamatan...
+                            </div>
+                          )}
+                          {!citiesQuery.isFetching && (citiesQuery.data ?? []).length === 0 && (
+                            <div className="p-3 text-xs text-muted-foreground text-center">
+                              Kecamatan tidak ditemukan. Coba ketik nama lain.
+                            </div>
+                          )}
+                          {!citiesQuery.isFetching &&
+                            (citiesQuery.data ?? []).map((c: Destination) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                className="w-full text-left p-2.5 hover:bg-accent text-xs transition-colors flex flex-col gap-0.5"
+                                onClick={() => {
+                                  setDistrict(c.subdistrict_name || c.district_name);
+                                  setCity(c.city_name);
+                                  setProvince(c.province_name);
+                                  setPostalCode(c.zip_code);
+                                  setDestinationSubdistrictId(c.id);
+                                  setDestinationLabel(c.label);
+                                  setShowKecamatanSearch(false);
+                                  setCityQ("");
+                                  toast.success(`Kecamatan "${c.subdistrict_name || c.district_name}" dipilih`);
+                                }}
+                              >
+                                <div className="font-semibold text-foreground">{c.label}</div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  ID: {c.id} · Kode Pos: {c.zip_code || "—"}
+                                </div>
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs font-semibold">Kecamatan</Label>
+                    <Label className="text-xs font-semibold">Nama Kecamatan</Label>
                     <Input
                       className="mt-1 text-xs"
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
+                      placeholder="cth. Banjarsari"
                     />
                   </div>
                   <div>
@@ -452,6 +579,7 @@ function CustomerDetailPage() {
                       className="mt-1 text-xs"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
+                      placeholder="cth. Surakarta"
                     />
                   </div>
                 </div>
