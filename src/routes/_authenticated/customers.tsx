@@ -2,15 +2,25 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { listCustomers, syncCustomersFromOrders } from "@/lib/customers.functions";
+import { listCustomers, syncCustomersFromOrders, createCustomer } from "@/lib/customers.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { formatIDR } from "@/lib/format";
-import { Search, RefreshCw, Users, UserCheck, Truck, ShoppingBag } from "lucide-react";
+import { Search, RefreshCw, Users, UserCheck, Truck, ShoppingBag, Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/customers")({
@@ -20,12 +30,27 @@ export const Route = createFileRoute("/_authenticated/customers")({
 function CustomersPage() {
   const fetchAll = useServerFn(listCustomers);
   const syncFn = useServerFn(syncCustomersFromOrders);
+  const createFn = useServerFn(createCustomer);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["customers"], queryFn: () => fetchAll() });
   const [q, setQ] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "regular" | "dropshipper">("all");
+  const [openAddModal, setOpenAddModal] = useState(false);
+
+  // Form state for creating customer
+  const [newForm, setNewForm] = useState({
+    name: "",
+    phone: "",
+    tagType: "Pelanggan",
+    full_address: "",
+    district: "",
+    city: "",
+    province: "",
+    postal_code: "",
+    notes: "",
+  });
 
   const syncMutation = useMutation({
     mutationFn: () => syncFn(),
@@ -35,6 +60,49 @@ function CustomersPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Gagal sinkronisasi data");
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => {
+      const tags = [newForm.tagType];
+      return createFn({
+        data: {
+          name: newForm.name,
+          phone: newForm.phone,
+          tags,
+          notes: newForm.notes || null,
+          last_address: {
+            full_address: newForm.full_address,
+            district: newForm.district,
+            city: newForm.city,
+            province: newForm.province,
+            postal_code: newForm.postal_code,
+          },
+        },
+      });
+    },
+    onSuccess: (created) => {
+      toast.success("Pelanggan baru berhasil ditambahkan!");
+      setOpenAddModal(false);
+      setNewForm({
+        name: "",
+        phone: "",
+        tagType: "Pelanggan",
+        full_address: "",
+        district: "",
+        city: "",
+        province: "",
+        postal_code: "",
+        notes: "",
+      });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      if (created?.id) {
+        navigate({ to: "/customers/$id", params: { id: created.id } });
+      }
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Gagal menambah pelanggan");
     },
   });
 
@@ -77,18 +145,23 @@ function CustomersPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pelanggan & Dropshipper</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Daftar pelanggan dan dropshipper yang otomatis tersimpan dari pesanan
+            Daftar pelanggan dan dropshipper tersimpan di sistem CRM
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => syncMutation.mutate()}
-          disabled={syncMutation.isPending}
-          className="self-start sm:self-auto"
-        >
-          <RefreshCw className={`size-4 mr-2 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-          {syncMutation.isPending ? "Menyinkronkan..." : "Sync dari Pesanan"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+          >
+            <RefreshCw className={`size-4 mr-2 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+            {syncMutation.isPending ? "Menyinkronkan..." : "Sync dari Pesanan"}
+          </Button>
+
+          <Button onClick={() => setOpenAddModal(true)}>
+            <UserPlus className="size-4 mr-2" /> Tambah Pelanggan
+          </Button>
+        </div>
       </div>
 
       {/* METRIC STATS CARDS */}
@@ -238,6 +311,146 @@ function CustomersPage() {
           </table>
         </div>
       </Card>
+
+      {/* DIALOG MODAL TAMBAH PELANGGAN BARU */}
+      <Dialog open={openAddModal} onOpenChange={setOpenAddModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <UserPlus className="size-5 text-primary" />
+              Tambah Pelanggan / Dropshipper Baru
+            </DialogTitle>
+            <DialogDescription>
+              Isikan data kontak dan alamat pelanggan baru untuk disimpan ke sistem CRM.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              createMutation.mutate();
+            }}
+            className="space-y-4 py-2"
+          >
+            <div>
+              <Label className="text-xs font-semibold">
+                Nama Lengkap<span className="text-destructive">*</span>
+              </Label>
+              <Input
+                required
+                className="mt-1"
+                placeholder="cth. Budi Santoso"
+                value={newForm.name}
+                onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">
+                Nomor Telepon / WhatsApp<span className="text-destructive">*</span>
+              </Label>
+              <Input
+                required
+                className="mt-1 font-mono"
+                placeholder="081234567890"
+                value={newForm.phone}
+                onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold block mb-1">Kategori / Tipe Kontak</Label>
+              <div className="flex flex-wrap gap-2">
+                {["Pelanggan", "Dropshipper", "Reseller", "VIP", "Grosir"].map((t) => (
+                  <Button
+                    key={t}
+                    type="button"
+                    variant={newForm.tagType === t ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setNewForm({ ...newForm, tagType: t })}
+                  >
+                    {t}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Alamat Lengkap Pengiriman</Label>
+              <Textarea
+                rows={2}
+                className="mt-1 text-xs"
+                placeholder="Jalan, No. Rumah, RT/RW, Patokan..."
+                value={newForm.full_address}
+                onChange={(e) => setNewForm({ ...newForm, full_address: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-semibold">Kecamatan</Label>
+                <Input
+                  className="mt-1 text-xs"
+                  placeholder="Kecamatan"
+                  value={newForm.district}
+                  onChange={(e) => setNewForm({ ...newForm, district: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Kota / Kabupaten</Label>
+                <Input
+                  className="mt-1 text-xs"
+                  placeholder="Kota / Kab"
+                  value={newForm.city}
+                  onChange={(e) => setNewForm({ ...newForm, city: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-semibold">Provinsi</Label>
+                <Input
+                  className="mt-1 text-xs"
+                  placeholder="Provinsi"
+                  value={newForm.province}
+                  onChange={(e) => setNewForm({ ...newForm, province: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Kode Pos</Label>
+                <Input
+                  className="mt-1 text-xs font-mono"
+                  placeholder="57139"
+                  value={newForm.postal_code}
+                  onChange={(e) => setNewForm({ ...newForm, postal_code: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Catatan CRM Internal</Label>
+              <Textarea
+                rows={2}
+                className="mt-1 text-xs"
+                placeholder="Catatan khusus pelanggan..."
+                value={newForm.notes}
+                onChange={(e) => setNewForm({ ...newForm, notes: e.target.value })}
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpenAddModal(false)}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending || !newForm.name || !newForm.phone}>
+                {createMutation.isPending ? "Menyimpan..." : "Simpan Pelanggan"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

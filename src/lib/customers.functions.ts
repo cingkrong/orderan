@@ -262,6 +262,58 @@ export const updateCustomerDetails = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const createCustomerSchema = z.object({
+  name: z.string().min(1, "Nama pelanggan wajib diisi"),
+  phone: z.string().min(3, "Nomor telepon minimal 3 karakter"),
+  tags: z.array(z.string()).default([]),
+  notes: z.string().nullable().optional(),
+  last_address: z
+    .object({
+      full_address: z.string().optional(),
+      district: z.string().optional(),
+      city: z.string().optional(),
+      province: z.string().optional(),
+      postal_code: z.string().optional(),
+      destination_subdistrict_id: z.string().optional(),
+      destination_label: z.string().optional(),
+    })
+    .optional(),
+});
+
+export const createCustomer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => createCustomerSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const phone = data.phone.trim();
+    const { data: existing } = await context.supabase
+      .from("customers")
+      .select("id, name")
+      .eq("phone", phone)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error(`Pelanggan dengan nomor ${phone} sudah ada (${existing.name})`);
+    }
+
+    const { data: created, error } = await context.supabase
+      .from("customers")
+      .insert({
+        name: data.name.trim(),
+        phone,
+        tags: data.tags,
+        notes: data.notes || null,
+        last_address: data.last_address || null,
+        total_orders: 0,
+        total_spent: 0,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return created;
+  });
+
 export const syncCustomersFromOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
