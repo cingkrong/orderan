@@ -347,6 +347,13 @@ export async function autoSubmitOrderToLincah(supabase: any, orderId: string) {
 
     if (!order) return { success: false, error: "Order tidak ditemukan" };
 
+    // GUARD: Skip Lincah push for custom/manual couriers
+    const rawCourierCheck = String(order.courier || "").toLowerCase().replace(/^lincah:/i, "");
+    if (rawCourierCheck === "custom" || rawCourierCheck === "manual") {
+      console.log(`[LINCAH] Skipping auto-submit for custom/manual courier order: ${orderId}`);
+      return { success: false, error: "Custom/manual courier — tidak di-push ke Lincah" };
+    }
+
     const config = await getLincahConfig(supabase);
     const { data: settings } = await supabase
       .from("settings")
@@ -361,7 +368,7 @@ export async function autoSubmitOrderToLincah(supabase: any, orderId: string) {
     const isCod = order.payment_status === "cod" || String(order.source).toLowerCase().includes("cod");
 
     const rawCourier = String(order.courier || "jne").replace(/^lincah:/i, "").toLowerCase();
-    const courierCode = rawCourier === "custom" ? "jne" : rawCourier;
+    const courierCode = rawCourier;
     let serviceCode = order.service || "REG";
 
     // Normalize service names for Lincah OpenAPI requirements

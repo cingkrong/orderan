@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CourierLogo } from "@/components/courier-logo";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { saveOrder, getOrder, type OrderInput } from "@/lib/orders.functions";
 import { listProducts, quickCreateProduct } from "@/lib/products.functions";
@@ -184,19 +184,50 @@ function OrderForm({ existingId }: { existingId?: string }) {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
 
+  // Debounced search queries to avoid excessive API calls
+  const [debouncedCustomerQ, setDebouncedCustomerQ] = useState("");
+  const [debouncedRecipientQ, setDebouncedRecipientQ] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCustomerQ(customerSearchQ), 300);
+    return () => clearTimeout(t);
+  }, [customerSearchQ]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedRecipientQ(recipientSearchQ), 300);
+    return () => clearTimeout(t);
+  }, [recipientSearchQ]);
+
   const customerSearchQuery = useQuery({
-    queryKey: ["customers-search-name", customerSearchQ],
-    queryFn: () => fetchCustomerByName({ data: { query: customerSearchQ } }),
-    enabled: customerSearchQ.trim().length >= 1 && showCustomerDropdown,
+    queryKey: ["customers-search-name", debouncedCustomerQ],
+    queryFn: () => fetchCustomerByName({ data: { query: debouncedCustomerQ } }),
+    enabled: debouncedCustomerQ.trim().length >= 1 && showCustomerDropdown,
     staleTime: 10_000,
   });
 
   const recipientSearchQuery = useQuery({
-    queryKey: ["customers-search-recipient", recipientSearchQ],
-    queryFn: () => fetchCustomerByName({ data: { query: recipientSearchQ } }),
-    enabled: recipientSearchQ.trim().length >= 1 && showRecipientDropdown,
+    queryKey: ["customers-search-recipient", debouncedRecipientQ],
+    queryFn: () => fetchCustomerByName({ data: { query: debouncedRecipientQ } }),
+    enabled: debouncedRecipientQ.trim().length >= 1 && showRecipientDropdown,
     staleTime: 10_000,
   });
+
+  // Click-outside handler refs
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const recipientDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+      if (recipientDropdownRef.current && !recipientDropdownRef.current.contains(e.target as Node)) {
+        setShowRecipientDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   async function tryAutofill(phone: string) {
     if (phone.length < 6) return;
@@ -810,7 +841,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
           <Card className="p-5">
             <h2 className="font-semibold mb-4">Pelanggan</h2>
             <div className="space-y-3">
-              <div className="relative">
+              <div className="relative" ref={customerDropdownRef}>
                 <Label>Nama pemesan<span className="text-destructive">*</span></Label>
                 <div className="relative mt-1">
                   <Input
@@ -819,10 +850,22 @@ function OrderForm({ existingId }: { existingId?: string }) {
                       const val = e.target.value;
                       setForm((f) => ({ ...f, customer_name: val }));
                       setCustomerSearchQ(val);
-                      setShowCustomerDropdown(true);
+                      if (val.trim().length >= 1) {
+                        setShowCustomerDropdown(true);
+                      } else {
+                        setShowCustomerDropdown(false);
+                      }
                     }}
-                    onFocus={() => setShowCustomerDropdown(true)}
+                    onFocus={() => {
+                      // Sync search query with current input value on focus
+                      const current = form.customer_name.trim();
+                      if (current.length >= 1) {
+                        setCustomerSearchQ(current);
+                        setShowCustomerDropdown(true);
+                      }
+                    }}
                     placeholder="Nama pemesan / inisial..."
+                    autoComplete="off"
                   />
                   {customerSearchQuery.isFetching && (
                     <Loader2 className="size-4 animate-spin text-primary absolute right-3 top-2.5" />
@@ -834,18 +877,20 @@ function OrderForm({ existingId }: { existingId?: string }) {
                     {customerSearchQuery.isFetching && (
                       <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
                         <Loader2 className="size-3.5 animate-spin text-primary" />
-                        Mencari inisial/nama pelanggan...
+                        Mencari pelanggan...
                       </div>
                     )}
                     {!customerSearchQuery.isFetching && customerSearchQuery.data?.length === 0 && (
-                      <div className="p-3 text-xs text-muted-foreground">Tidak ada pelanggan dengan inisial tersebut</div>
+                      <div className="p-3 text-xs text-muted-foreground">Tidak ada pelanggan ditemukan</div>
                     )}
                     {!customerSearchQuery.isFetching && (customerSearchQuery.data ?? []).map((c: any) => (
                       <button
                         key={c.id}
                         type="button"
                         className="w-full text-left p-2.5 hover:bg-accent border-b last:border-0 text-xs transition"
-                        onClick={() => {
+                        onMouseDown={(e) => {
+                          // Use mouseDown instead of onClick to fire BEFORE onBlur
+                          e.preventDefault();
                           const addr = (c.last_address as any) || {};
                           setForm((f) => ({
                             ...f,
@@ -862,6 +907,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                             courier: "",
                             service: "",
                           }));
+                          setCustomerSearchQ("");
                           setShowCustomerDropdown(false);
                           toast.info(`Pelanggan "${c.name}" dipilih`);
                         }}
@@ -891,7 +937,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
 
               {!sameRecipient && (
                 <div className="space-y-3 rounded-md border p-3 bg-muted/30">
-                  <div className="relative">
+                  <div className="relative" ref={recipientDropdownRef}>
                     <Label>Nama penerima<span className="text-destructive">*</span></Label>
                     <div className="relative mt-1">
                       <Input
@@ -900,10 +946,21 @@ function OrderForm({ existingId }: { existingId?: string }) {
                           const val = e.target.value;
                           setForm((f) => ({ ...f, recipient_name: val }));
                           setRecipientSearchQ(val);
-                          setShowRecipientDropdown(true);
+                          if (val.trim().length >= 1) {
+                            setShowRecipientDropdown(true);
+                          } else {
+                            setShowRecipientDropdown(false);
+                          }
                         }}
-                        onFocus={() => setShowRecipientDropdown(true)}
+                        onFocus={() => {
+                          const current = (form.recipient_name ?? "").trim();
+                          if (current.length >= 1) {
+                            setRecipientSearchQ(current);
+                            setShowRecipientDropdown(true);
+                          }
+                        }}
                         placeholder="Nama penerima / inisial..."
+                        autoComplete="off"
                       />
                       {recipientSearchQuery.isFetching && (
                         <Loader2 className="size-4 animate-spin text-primary absolute right-3 top-2.5" />
@@ -915,18 +972,19 @@ function OrderForm({ existingId }: { existingId?: string }) {
                         {recipientSearchQuery.isFetching && (
                           <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
                             <Loader2 className="size-3.5 animate-spin text-primary" />
-                            Mencari inisial/nama penerima...
+                            Mencari penerima...
                           </div>
                         )}
                         {!recipientSearchQuery.isFetching && recipientSearchQuery.data?.length === 0 && (
-                          <div className="p-3 text-xs text-muted-foreground">Tidak ada penerima dengan inisial tersebut</div>
+                          <div className="p-3 text-xs text-muted-foreground">Tidak ada penerima ditemukan</div>
                         )}
                         {!recipientSearchQuery.isFetching && (recipientSearchQuery.data ?? []).map((c: any) => (
                           <button
                             key={c.id}
                             type="button"
                             className="w-full text-left p-2.5 hover:bg-accent border-b last:border-0 text-xs transition"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
                               setForm((f) => ({
                                 ...f,
                                 recipient_name: c.name,
@@ -939,6 +997,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                                 destination_subdistrict_id: f.destination_subdistrict_id || (c.last_address as any)?.destination_subdistrict_id || "",
                                 destination_label: f.destination_label || (c.last_address as any)?.destination_label || "",
                               }));
+                              setRecipientSearchQ("");
                               setShowRecipientDropdown(false);
                               toast.info(`Penerima "${c.name}" dipilih`);
                             }}

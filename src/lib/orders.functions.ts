@@ -252,7 +252,7 @@ export const saveOrder = createServerFn({ method: "POST" })
     const total = subtotal + (orderRest.shipping_cost ?? 0);
     const isNewOrder = !id;
 
-    // 1. Save/update primary customer
+    // 1. Save/update primary customer (pemesan) — always tagged as "Pelanggan"
     const customer_id = await ensureCustomer(context.supabase as any, {
       name: orderRest.customer_name,
       phone: orderRest.phone,
@@ -263,26 +263,33 @@ export const saveOrder = createServerFn({ method: "POST" })
       province: orderRest.province,
       district: orderRest.district,
       postal_code: orderRest.postal_code,
+      tags: ["Pelanggan"],
       spent: total,
       isNewOrder,
     });
 
-    // 2. Save/update recipient if phone is different
-    if (orderRest.recipient_phone && orderRest.recipient_phone.trim() !== orderRest.phone.trim()) {
-      await ensureCustomer(context.supabase as any, {
-        name: orderRest.recipient_name || orderRest.customer_name,
-        phone: orderRest.recipient_phone,
-        full_address: orderRest.full_address,
-        destination_subdistrict_id: orderRest.destination_subdistrict_id,
-        destination_label: orderRest.destination_label,
-        city: orderRest.city,
-        province: orderRest.province,
-        district: orderRest.district,
-        postal_code: orderRest.postal_code,
-        tags: ["Penerima"],
-        spent: 0,
-        isNewOrder,
-      });
+    // 2. Save/update recipient — always update address data even if same phone
+    const recipientName = orderRest.recipient_name || orderRest.customer_name;
+    const recipientPhone = (orderRest.recipient_phone || orderRest.phone || "").trim();
+    if (recipientPhone) {
+      const isSameAsCustomer = recipientPhone === (orderRest.phone || "").trim();
+      if (!isSameAsCustomer) {
+        // Different phone = separate customer entry for recipient
+        await ensureCustomer(context.supabase as any, {
+          name: recipientName,
+          phone: recipientPhone,
+          full_address: orderRest.full_address,
+          destination_subdistrict_id: orderRest.destination_subdistrict_id,
+          destination_label: orderRest.destination_label,
+          city: orderRest.city,
+          province: orderRest.province,
+          district: orderRest.district,
+          postal_code: orderRest.postal_code,
+          tags: ["Penerima"],
+          spent: 0,
+          isNewOrder,
+        });
+      }
     }
 
     // 3. Save/update dropshipper if order is dropship
@@ -334,11 +341,17 @@ export const saveOrder = createServerFn({ method: "POST" })
     const { error: ierr } = await context.supabase.from("order_items").insert(itemRows);
     if (ierr) throw new Error(ierr.message);
 
-    // Auto submit order to Lincah.id system
-    try {
-      await autoSubmitOrderToLincah(context.supabase as any, orderId!);
-    } catch (lincahErr) {
-      console.warn("Auto Lincah order submit failed:", lincahErr);
+    // Auto submit order to Lincah.id system — SKIP for custom/manual couriers
+    const courierVal = String(orderRest.courier || "").toLowerCase().replace(/^lincah:/i, "");
+    const isCustomCourier = courierVal === "custom" || courierVal === "manual";
+    if (!isCustomCourier) {
+      try {
+        await autoSubmitOrderToLincah(context.supabase as any, orderId!);
+      } catch (lincahErr) {
+        console.warn("Auto Lincah order submit failed:", lincahErr);
+      }
+    } else {
+      console.log(`[ORDER] Skipping Lincah push for custom/manual courier: "${orderRest.courier}"`);
     }
 
     return { id: orderId! };
