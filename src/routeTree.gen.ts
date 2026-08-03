@@ -19,6 +19,7 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticated/shipping'
+import { Route as AuthenticatedTrackingRouteImport } from './routes/_authenticated/tracking'
 import { Route as AuthenticatedWarehousesRouteImport } from './routes/_authenticated/warehouses'
 import { Route as AuthenticatedCustomersIndexRouteImport } from './routes/_authenticated/customers.index'
 import { Route as AuthenticatedCustomersIdRouteImport } from './routes/_authenticated/customers.$id'
@@ -81,6 +82,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 const AuthenticatedShippingRoute = AuthenticatedShippingRouteImport.update({
   id: '/shipping',
   path: '/shipping',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTrackingRoute = AuthenticatedTrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedWarehousesRoute = AuthenticatedWarehousesRouteImport.update({
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shipping': typeof AuthenticatedShippingRoute
+  '/tracking': typeof AuthenticatedTrackingRoute
   '/warehouses': typeof AuthenticatedWarehousesRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/shipping': typeof AuthenticatedShippingRoute
+  '/tracking': typeof AuthenticatedTrackingRoute
   '/warehouses': typeof AuthenticatedWarehousesRoute
   '/': typeof AuthenticatedIndexRoute
   '/customers/$id': typeof AuthenticatedCustomersIdRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
+  '/_authenticated/tracking': typeof AuthenticatedTrackingRoute
   '/_authenticated/warehouses': typeof AuthenticatedWarehousesRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/customers/$id': typeof AuthenticatedCustomersIdRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/shipping'
+    | '/tracking'
     | '/warehouses'
     | '/customers/$id'
     | '/expenses/new'
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/shipping'
+    | '/tracking'
     | '/warehouses'
     | '/'
     | '/customers/$id'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/shipping'
+    | '/_authenticated/tracking'
     | '/_authenticated/warehouses'
     | '/_authenticated/'
     | '/_authenticated/customers/$id'
@@ -384,6 +396,13 @@ declare module '@tanstack/react-router' {
       path: '/shipping'
       fullPath: '/shipping'
       preLoaderRoute: typeof AuthenticatedShippingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tracking': {
+      id: '/_authenticated/tracking'
+      path: '/tracking'
+      fullPath: '/tracking'
+      preLoaderRoute: typeof AuthenticatedTrackingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/warehouses': {
@@ -488,6 +507,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
+  AuthenticatedTrackingRoute: typeof AuthenticatedTrackingRoute
   AuthenticatedWarehousesRoute: typeof AuthenticatedWarehousesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCustomersIdRoute: typeof AuthenticatedCustomersIdRoute
@@ -512,6 +532,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedShippingRoute: AuthenticatedShippingRoute,
+  AuthenticatedTrackingRoute: AuthenticatedTrackingRoute,
   AuthenticatedWarehousesRoute: AuthenticatedWarehousesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCustomersIdRoute: AuthenticatedCustomersIdRoute,

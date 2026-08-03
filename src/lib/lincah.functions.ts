@@ -458,12 +458,35 @@ export const trackLincahOrder = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const config = await getLincahConfig(context.supabase);
-    const res = await fetchLincah(
-      config,
-      `/order/${encodeURIComponent(data.resiOrOrderId)}/track`
-    );
-    return res;
+    const url = `${config.baseUrl}/order/${encodeURIComponent(data.resiOrOrderId)}/track`;
+    const res = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+        "partner-id": config.partnerId,
+      },
+    });
+
+    const json = await res.json().catch(() => ({}));
+    console.log("[TRACK] Raw response for", data.resiOrOrderId, JSON.stringify(json));
+
+    // Jika HTTP error dan tidak ada data sama sekali, baru throw
+    if (!res.ok && !json.data && !json.history && !json.message) {
+      throw new Error(`Lincah API error (${res.status})`);
+    }
+
+    // Jika ada message error tapi tidak ada data → throw dengan pesan yang berguna
+    if (json.success === false && !json.data && !json.history) {
+      throw new Error(
+        json.message ||
+        json.error ||
+        `Resi tidak ditemukan atau tidak dapat dilacak (${res.status})`
+      );
+    }
+
+    return json;
   });
+
 
 export const printLincahLabel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
