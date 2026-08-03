@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { getOrder, updateOrderStatus, setTracking, markLabelPrinted } from "@/lib/orders.functions";
 import { getSettings } from "@/lib/settings.functions";
+import { trackLincahOrder } from "@/lib/lincah.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShippingLabel } from "@/components/shipping-label";
 import { OrderHistoryCard } from "@/components/history-cards";
 import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/format";
-import { Pencil, Printer } from "lucide-react";
+import { Pencil, Printer, Truck, RefreshCw, AlertCircle, MapPin, PackageSearch } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -212,7 +213,9 @@ function OrderDetail() {
               </div>
               {order.eta && <div className="text-muted-foreground text-xs">Estimasi: {order.eta} hari</div>}
               {order.tracking_number ? (
-                <div className="font-mono text-xs bg-muted p-2 rounded">{order.tracking_number}</div>
+                <div className="font-mono text-xs bg-muted p-2 rounded flex justify-between items-center">
+                  <span>Resi: {order.tracking_number}</span>
+                </div>
               ) : (
                 <div className="space-y-2">
                   <Input
@@ -230,6 +233,8 @@ function OrderDetail() {
               <Printer className="size-4 mr-1" /> Buka halaman label
             </Button>
           </Card>
+
+          <OrderTrackingCard trackingNumber={order.tracking_number} courier={order.courier} />
 
           <OrderHistoryCard orderId={id} />
         </div>
@@ -273,5 +278,145 @@ function OrderDetail() {
         </div>
       )}
     </div>
+  );
+}
+
+function OrderTrackingCard({ trackingNumber, courier }: { trackingNumber?: string | null; courier?: string | null }) {
+  const fetchTrack = useServerFn(trackLincahOrder);
+  const isCustom = (courier || "").toLowerCase().includes("custom") || (courier || "").toLowerCase().includes("manual");
+  const queryResi = trackingNumber?.trim() || "";
+
+  const trackQ = useQuery({
+    queryKey: ["lincah-track", queryResi],
+    queryFn: async () => {
+      if (!queryResi) return null;
+      return fetchTrack({ data: { resiOrOrderId: queryResi } });
+    },
+    enabled: !!queryResi && !isCustom,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  if (!queryResi) {
+    return (
+      <Card className="p-5">
+        <h2 className="font-semibold text-sm mb-1 flex items-center gap-2">
+          <Truck className="size-4 text-primary" /> Lacak Pengiriman Lincah.id
+        </h2>
+        <p className="text-xs text-muted-foreground">Nomor resi pengiriman belum diinput.</p>
+      </Card>
+    );
+  }
+
+  if (isCustom) {
+    return (
+      <Card className="p-5">
+        <h2 className="font-semibold text-sm mb-1 flex items-center gap-2">
+          <Truck className="size-4 text-primary" /> Lacak Pengiriman
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Ekspedisi <span className="font-medium text-foreground">Custom / Manual</span> tidak terintegrasi ke pelacakan resi otomatis Lincah.id.
+        </p>
+      </Card>
+    );
+  }
+
+  const responseObj = trackQ.data?.data || trackQ.data;
+  const historyList: any[] = Array.isArray(responseObj?.history)
+    ? responseObj.history
+    : Array.isArray(responseObj?.tracks)
+    ? responseObj.tracks
+    : Array.isArray(responseObj?.timeline)
+    ? responseObj.timeline
+    : Array.isArray(responseObj?.pod)
+    ? responseObj.pod
+    : Array.isArray(responseObj)
+    ? responseObj
+    : [];
+
+  const statusText = responseObj?.status || responseObj?.last_status || (historyList.length > 0 ? historyList[0]?.status || historyList[0]?.description : undefined);
+
+  return (
+    <Card className="p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-sm flex items-center gap-2">
+          <Truck className="size-4 text-primary" /> Lacak Pengiriman Lincah.id
+        </h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs px-2"
+          onClick={() => trackQ.refetch()}
+          disabled={trackQ.isFetching}
+        >
+          <RefreshCw className={`size-3 mr-1 ${trackQ.isFetching ? "animate-spin" : ""}`} />
+          {trackQ.isFetching ? "Memuat..." : "Refresh"}
+        </Button>
+      </div>
+
+      <div className="text-xs font-mono bg-muted p-2 rounded flex items-center justify-between gap-2">
+        <span className="truncate">Resi: <strong className="font-bold">{queryResi}</strong></span>
+        {statusText && (
+          <Badge variant="secondary" className="text-[10px] uppercase font-mono tracking-wide shrink-0">
+            {String(statusText).slice(0, 20)}
+          </Badge>
+        )}
+      </div>
+
+      {trackQ.isLoading && (
+        <div className="py-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+          <RefreshCw className="size-4 animate-spin text-primary" />
+          Memuat riwayat resi dari Lincah.id...
+        </div>
+      )}
+
+      {trackQ.isError && (
+        <div className="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded text-xs space-y-1">
+          <div className="font-semibold flex items-center gap-1">
+            <AlertCircle className="size-3.5" /> Pelacakan Belum Tersedia / Terjadi Kendala
+          </div>
+          <div className="text-[11px] leading-relaxed">
+            {trackQ.error instanceof Error ? trackQ.error.message : "Data tracking tidak ditemukan atau resi belum terdaftar di sistem ekspedisi."}
+          </div>
+        </div>
+      )}
+
+      {!trackQ.isLoading && !trackQ.isError && historyList.length === 0 && (
+        <div className="p-3 bg-muted/40 rounded text-xs text-muted-foreground text-center">
+          Belum ada riwayat pergerakan paket untuk resi ini.
+        </div>
+      )}
+
+      {!trackQ.isLoading && historyList.length > 0 && (
+        <div className="relative pl-4 space-y-3.5 border-l-2 border-primary/30 mt-2 max-h-72 overflow-y-auto pr-1">
+          {historyList.map((item: any, idx: number) => {
+            const time = item.date || item.datetime || item.time || item.created_at || "";
+            const desc = item.description || item.desc || item.note || item.message || (typeof item === "string" ? item : JSON.stringify(item));
+            const location = item.location || item.city || "";
+            const isLatest = idx === 0;
+
+            return (
+              <div key={idx} className="relative text-xs">
+                <div
+                  className={`absolute -left-[21px] top-0.5 size-2.5 rounded-full border-2 bg-background ${
+                    isLatest ? "border-primary bg-primary" : "border-muted-foreground/40"
+                  }`}
+                />
+                <div className={`leading-snug ${isLatest ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+                  {desc}
+                </div>
+                {(time || location) && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1.5 font-mono">
+                    {time && <span>{time}</span>}
+                    {time && location && <span>•</span>}
+                    {location && <span>{location}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
   );
 }
