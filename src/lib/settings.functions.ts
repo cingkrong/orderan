@@ -42,6 +42,24 @@ export const getSettings = createServerFn({ method: "GET" })
           ? embeddedLincah.lincah_couriers
           : ["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana"];
 
+    const jne_flat_ongkir_enabled =
+      localConfig.jne_flat_ongkir_enabled ??
+      (data as any)?.jne_flat_ongkir_enabled ??
+      embeddedLincah?.jne_flat_ongkir_enabled ??
+      false;
+
+    const jne_flat_zone_ab_price =
+      localConfig.jne_flat_zone_ab_price ??
+      (data as any)?.jne_flat_zone_ab_price ??
+      embeddedLincah?.jne_flat_zone_ab_price ??
+      9000;
+
+    const jne_flat_zone_cd_price =
+      localConfig.jne_flat_zone_cd_price ??
+      (data as any)?.jne_flat_zone_cd_price ??
+      embeddedLincah?.jne_flat_zone_cd_price ??
+      11000;
+
     const active_couriers = Array.isArray(localConfig.active_couriers)
       ? localConfig.active_couriers
       : Array.isArray((data as any)?.active_couriers)
@@ -57,6 +75,9 @@ export const getSettings = createServerFn({ method: "GET" })
       active_couriers,
       lincah_couriers,
       courier_discounts,
+      jne_flat_ongkir_enabled,
+      jne_flat_zone_ab_price,
+      jne_flat_zone_cd_price,
       lincah_api_key: localConfig.lincah_api_key ?? (data as any)?.lincah_api_key ?? embeddedLincah?.lincah_api_key ?? "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD",
       lincah_partner_id: localConfig.lincah_partner_id ?? (data as any)?.lincah_partner_id ?? embeddedLincah?.lincah_partner_id ?? "6a4617ceb8fd8dd8aa41906e",
       lincah_env: localConfig.lincah_env ?? (data as any)?.lincah_env ?? embeddedLincah?.lincah_env ?? "development",
@@ -94,6 +115,9 @@ const settingsSchema = z.object({
   lincah_env: z.enum(["development", "production"]).optional().default("development"),
   lincah_couriers: z.array(z.string()).optional().default(["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana"]),
   label_paper_size: z.enum(["100x100", "100x150"]).optional().default("100x150"),
+  jne_flat_ongkir_enabled: z.boolean().optional().default(false),
+  jne_flat_zone_ab_price: z.number().min(0).optional().default(9000),
+  jne_flat_zone_cd_price: z.number().min(0).optional().default(11000),
 });
 
 export const updateSettings = createServerFn({ method: "POST" })
@@ -109,36 +133,53 @@ export const updateSettings = createServerFn({ method: "POST" })
       active_couriers: data.active_couriers,
       label_paper_size: data.label_paper_size,
       courier_discounts: data.courier_discounts,
+      jne_flat_ongkir_enabled: data.jne_flat_ongkir_enabled,
+      jne_flat_zone_ab_price: data.jne_flat_zone_ab_price,
+      jne_flat_zone_cd_price: data.jne_flat_zone_cd_price,
     });
 
-    // Embed courier_discounts in custom_couriers under __courier_discounts for DB persistence
-    const rawCustom = Array.isArray(data.custom_couriers) ? data.custom_couriers : [];
-    const customWithDiscounts = (rawCustom as any[]).filter((c) => !c?.__courier_discounts);
-    customWithDiscounts.push({ __courier_discounts: data.courier_discounts });
 
-    // 2. Try updating full settings in Supabase (upsert row with id: 1)
+    // 2. Strip semua kolom yang tidak ada di Supabase settings table,
+    //    dan embed semuanya ke dalam custom_couriers JSONB
+    const {
+      lincah_api_key, lincah_partner_id, lincah_env, lincah_couriers, label_paper_size,
+      courier_discounts, jne_flat_ongkir_enabled, jne_flat_zone_ab_price, jne_flat_zone_cd_price,
+      custom_couriers, active_couriers,
+      ...supabaseData
+    } = data;
+
+    // Build enriched custom_couriers: real custom couriers + embedded config objects
+    const realCustom = (custom_couriers || []).filter((c: any) => !c?.__lincah && !c?.__courier_discounts);
+    const enrichedCustom = [
+      ...realCustom,
+      {
+        __lincah: {
+          lincah_couriers,
+          lincah_api_key,
+          lincah_partner_id,
+          lincah_env,
+          label_paper_size,
+          jne_flat_ongkir_enabled,
+          jne_flat_zone_ab_price,
+          jne_flat_zone_cd_price,
+        },
+      },
+      { __courier_discounts: courier_discounts },
+    ];
+
+    // Try full upsert (includes active_couriers if column exists)
     const { error } = await context.supabase
       .from("settings")
-      .upsert({ id: 1, ...data, custom_couriers: customWithDiscounts } as any);
+      .upsert({ id: 1, ...supabaseData, active_couriers, custom_couriers: enrichedCustom } as any);
 
     if (!error) return { ok: true };
 
-    console.warn("Full settings update failed, trying without lincah/extra columns:", error.message);
+    console.warn("Full settings update failed, trying without active_couriers:", error.message);
 
-    // 3. Fallback: strip lincah_ columns and label_paper_size and embed them inside custom_couriers JSONB
-    const { lincah_api_key, lincah_partner_id, lincah_env, lincah_couriers, label_paper_size, custom_couriers, ...baseData } = data;
-
-    const enrichedCustom = injectLincahIntoCustom(custom_couriers || [], {
-      lincah_couriers,
-      lincah_api_key,
-      lincah_partner_id,
-      lincah_env,
-      label_paper_size,
-    });
-
+    // Fallback: try without active_couriers (in case that column doesn't exist either)
     const { error: err2 } = await context.supabase
       .from("settings")
-      .upsert({ id: 1, ...baseData, custom_couriers: enrichedCustom } as any);
+      .upsert({ id: 1, ...supabaseData, custom_couriers: enrichedCustom } as any);
 
     if (!err2) return { ok: true };
 

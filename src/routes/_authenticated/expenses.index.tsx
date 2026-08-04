@@ -91,19 +91,19 @@ function ExpensesPage() {
         </Button>
       </div>
 
-      <Card className="p-4 grid sm:grid-cols-4 gap-3">
+      <Card className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div>
-          <label className="text-xs text-muted-foreground">Dari</label>
-          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <label className="text-xs text-muted-foreground font-medium">Dari</label>
+          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 text-xs mt-1" />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Sampai</label>
-          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <label className="text-xs text-muted-foreground font-medium">Sampai</label>
+          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 text-xs mt-1" />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Kategori</label>
+          <label className="text-xs text-muted-foreground font-medium">Kategori</label>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua kategori</SelectItem>
               {EXPENSE_CATEGORIES.map((c) => (
@@ -112,9 +112,9 @@ function ExpensesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-col justify-end">
-          <div className="text-xs text-muted-foreground">Total periode</div>
-          <div className="text-2xl font-bold tabular-nums">{formatIDR(totals.total)}</div>
+        <div className="flex flex-col justify-end col-span-2 sm:col-span-1">
+          <div className="text-xs text-muted-foreground font-medium">Total periode</div>
+          <div className="text-xl md:text-2xl font-bold tabular-nums truncate">{formatIDR(totals.total)}</div>
         </div>
       </Card>
 

@@ -165,34 +165,34 @@ function CustomersPage() {
       </div>
 
       {/* METRIC STATS CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-primary/10 text-primary">
-            <Users className="size-6" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+        <Card className="p-3.5 md:p-4 flex items-center gap-3">
+          <div className="p-2.5 md:p-3 rounded-lg bg-primary/10 text-primary shrink-0">
+            <Users className="size-5 md:size-6" />
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-medium">Total Pelanggan</div>
-            <div className="text-2xl font-bold tabular-nums mt-0.5">{allCustomers.length}</div>
-          </div>
-        </Card>
-
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-blue-500/10 text-blue-600">
-            <Truck className="size-6" />
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-medium">Daftar Dropshipper</div>
-            <div className="text-2xl font-bold tabular-nums mt-0.5">{dropshipperList.length}</div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-muted-foreground font-medium">Total Pelanggan</div>
+            <div className="text-xl md:text-2xl font-bold tabular-nums mt-0.5">{allCustomers.length}</div>
           </div>
         </Card>
 
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-600">
-            <ShoppingBag className="size-6" />
+        <Card className="p-3.5 md:p-4 flex items-center gap-3">
+          <div className="p-2.5 md:p-3 rounded-lg bg-blue-500/10 text-blue-600 shrink-0">
+            <Truck className="size-5 md:size-6" />
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-medium">Total Transaksi</div>
-            <div className="text-2xl font-bold tabular-nums mt-0.5">{formatIDR(totalSpent)}</div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-muted-foreground font-medium">Daftar Dropshipper</div>
+            <div className="text-xl md:text-2xl font-bold tabular-nums mt-0.5">{dropshipperList.length}</div>
+          </div>
+        </Card>
+
+        <Card className="p-3.5 md:p-4 flex items-center gap-3">
+          <div className="p-2.5 md:p-3 rounded-lg bg-emerald-500/10 text-emerald-600 shrink-0">
+            <ShoppingBag className="size-5 md:size-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-muted-foreground font-medium">Total Transaksi</div>
+            <div className="text-base md:text-xl xl:text-2xl font-bold tabular-nums mt-0.5 truncate">{formatIDR(totalSpent)}</div>
           </div>
         </Card>
       </div>

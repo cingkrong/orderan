@@ -330,6 +330,9 @@ function OrderForm({ existingId }: { existingId?: string }) {
       const r = await fetchCost({
         data: {
           destination_subdistrict_id: form.destination_subdistrict_id,
+          dest_kecamatan: form.district || "",
+          dest_kota: form.city || "",
+          dest_zip: form.postal_code || "",
           weight_g: effectiveWeight,
           courier: "jne:sap:ninja:sicepat:jnt:pos:tiki:anteraja:ide:wahana:lion",
           origin_subdistrict_id: wh?.origin_subdistrict_id ?? null,

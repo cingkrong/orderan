@@ -78,7 +78,7 @@ function AuthPage() {
           <div className="size-10 rounded-xl bg-primary text-primary-foreground grid place-items-center">
             <Package className="size-5" />
           </div>
-          <span className="text-xl font-bold">OMS Console</span>
+          <span className="text-xl font-bold">Orderan by Maularis</span>
         </div>
         <Card className="p-6">
           <h1 className="text-2xl font-semibold tracking-tight">

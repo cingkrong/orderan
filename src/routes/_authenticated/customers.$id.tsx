@@ -265,47 +265,52 @@ function CustomerDetailPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* HEADER & QUICK ACTIONS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="shrink-0 mt-1" asChild>
             <Link to="/customers">
               <ArrowLeft className="size-4" />
             </Link>
           </Button>
-          <div className="flex items-center gap-4">
-            <div className="size-14 rounded-full bg-primary text-primary-foreground font-bold text-xl grid place-items-center shadow-sm">
-              {c.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{c.name}</h1>
-                <Badge variant="outline" className={cn("text-xs font-semibold px-2.5 py-0.5", customerTypeBadgeColor)}>
-                  {customerTypeLabel}
-                </Badge>
-                <Badge variant="outline" className={cn("text-xs font-semibold px-2.5 py-0.5", tier.color)}>
-                  <Award className="size-3 mr-1" />
-                  {tier.label}
-                </Badge>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="size-12 md:size-14 rounded-full bg-primary text-primary-foreground font-bold text-lg md:text-xl grid place-items-center shadow-sm shrink-0">
+                {c.name.charAt(0).toUpperCase()}
               </div>
-              <p className="text-muted-foreground text-sm font-mono">{c.phone}</p>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-0.5">
-                  {tags.map((t) => (
-                    <Badge key={t} variant="secondary" className="text-[10px] px-2 py-0">
-                      {t}
-                    </Badge>
-                  ))}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h1 className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight truncate">{c.name}</h1>
+                  <Badge variant="outline" className={cn("text-[10px] md:text-xs font-semibold px-2 py-0.5 shrink-0", customerTypeBadgeColor)}>
+                    {customerTypeLabel}
+                  </Badge>
                 </div>
-              )}
+                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                  <Badge variant="outline" className={cn("text-[10px] font-semibold px-2 py-0.5", tier.color)}>
+                    <Award className="size-3 mr-1" />
+                    {tier.label}
+                  </Badge>
+                  <span className="text-muted-foreground text-xs md:text-sm font-mono">{c.phone}</span>
+                </div>
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {tags.map((t) => (
+                      <Badge key={t} variant="secondary" className="text-[10px] px-2 py-0">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* QUICK CRM ACTIONS */}
-        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 pl-11 md:pl-12">
           <Button
             variant="outline"
-            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300"
+            size="sm"
+            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 text-xs"
             asChild
           >
             <a
@@ -313,67 +318,67 @@ function CustomerDetailPage() {
               target="_blank"
               rel="noreferrer"
             >
-              <MessageSquare className="size-4 mr-1.5" /> WhatsApp
+              <MessageSquare className="size-3.5 mr-1" /> WhatsApp
             </a>
           </Button>
 
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" className="text-xs" asChild>
             <a href={`tel:${c.phone}`}>
-              <Phone className="size-4 mr-1.5" /> Hubungi
+              <Phone className="size-3.5 mr-1" /> Hubungi
             </a>
           </Button>
 
-          <Button variant="secondary" onClick={copyAddressToClipboard}>
-            <Copy className="size-4 mr-1.5" /> Salin Alamat
+          <Button variant="secondary" size="sm" className="text-xs" onClick={copyAddressToClipboard}>
+            <Copy className="size-3.5 mr-1" /> Salin Alamat
           </Button>
 
-          <Button asChild>
+          <Button size="sm" className="text-xs" asChild>
             <Link to="/orders/new">
-              <Plus className="size-4 mr-1.5" /> Buat Order Baru
+              <Plus className="size-3.5 mr-1" /> Buat Order Baru
             </Link>
           </Button>
         </div>
       </div>
 
       {/* CRM METRICS CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-primary/10 text-primary">
-            <ShoppingBag className="size-6" />
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
+        <Card className="p-3 md:p-4 flex items-center gap-3">
+          <div className="p-2.5 md:p-3 rounded-xl bg-primary/10 text-primary shrink-0">
+            <ShoppingBag className="size-5 md:size-6" />
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-medium">Total Pesanan</div>
-            <div className="text-2xl font-bold tabular-nums mt-0.5">{totalOrders}</div>
-          </div>
-        </Card>
-
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600">
-            <TrendingUp className="size-6" />
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-medium">Lifetime Value (LTV)</div>
-            <div className="text-2xl font-bold tabular-nums mt-0.5">{formatIDR(totalSpent)}</div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-muted-foreground font-medium">Total Pesanan</div>
+            <div className="text-lg md:text-2xl font-bold tabular-nums mt-0.5">{totalOrders}</div>
           </div>
         </Card>
 
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600">
-            <Award className="size-6" />
+        <Card className="p-3 md:p-4 flex items-center gap-3">
+          <div className="p-2.5 md:p-3 rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0">
+            <TrendingUp className="size-5 md:size-6" />
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-medium">Rata-Rata Order (AOV)</div>
-            <div className="text-2xl font-bold tabular-nums mt-0.5">{formatIDR(aov)}</div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-muted-foreground font-medium">LTV</div>
+            <div className="text-base md:text-xl xl:text-2xl font-bold tabular-nums mt-0.5 truncate">{formatIDR(totalSpent)}</div>
           </div>
         </Card>
 
-        <Card className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600">
-            <Clock className="size-6" />
+        <Card className="p-3 md:p-4 flex items-center gap-3">
+          <div className="p-2.5 md:p-3 rounded-xl bg-blue-500/10 text-blue-600 shrink-0">
+            <Award className="size-5 md:size-6" />
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-medium">Order Terakhir</div>
-            <div className="text-sm font-semibold mt-1">
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-muted-foreground font-medium">AOV</div>
+            <div className="text-base md:text-xl xl:text-2xl font-bold tabular-nums mt-0.5 truncate">{formatIDR(aov)}</div>
+          </div>
+        </Card>
+
+        <Card className="p-3 md:p-4 flex items-center gap-3">
+          <div className="p-2.5 md:p-3 rounded-xl bg-amber-500/10 text-amber-600 shrink-0">
+            <Clock className="size-5 md:size-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs text-muted-foreground font-medium">Order Terakhir</div>
+            <div className="text-xs md:text-sm font-semibold mt-1 truncate">
               {lastOrderDate
                 ? formatDistanceToNow(lastOrderDate, { addSuffix: true, locale: idLocale })
                 : "—"}
@@ -384,7 +389,7 @@ function CustomerDetailPage() {
 
       {/* CRM TABS SECTION */}
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid grid-cols-3 max-w-md">
+        <TabsList className="grid grid-cols-3 w-full max-w-md">
           <TabsTrigger value="profile">Profil & Alamat</TabsTrigger>
           <TabsTrigger value="crm">Tag & Catatan CRM</TabsTrigger>
           <TabsTrigger value="orders">Riwayat Order ({orders.length})</TabsTrigger>

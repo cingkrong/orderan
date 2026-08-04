@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal, Percent, Coins, Info } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal, Percent, Coins, Info, ToggleLeft, ToggleRight } from "lucide-react";
 import { toast } from "sonner";
 import { COURIERS, COURIER_LABEL, formatIDR } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,10 @@ function SettingsPage() {
     label_paper_size: "100x150" as "100x100" | "100x150",
   });
 
+  const [jneFlatEnabled, setJneFlatEnabled] = useState(false);
+  const [jneFlatAbPrice, setJneFlatAbPrice] = useState(9000);
+  const [jneFlatCdPrice, setJneFlatCdPrice] = useState(11000);
+
   const [courierDiscounts, setCourierDiscounts] = useState<
     Record<string, { cod_discount?: number; non_cod_discount?: number }>
   >({});
@@ -98,7 +102,9 @@ function SettingsPage() {
         logo_url: data.logo_url ?? "",
         active_couriers: (data as any).active_couriers ?? [...COURIERS],
         lincah_couriers: (data as any).lincah_couriers ?? ["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana"],
-        custom_couriers: (data as any).custom_couriers ?? [],
+        custom_couriers: ((data as any).custom_couriers ?? []).filter(
+          (c: any) => !c?.__lincah && !c?.__courier_discounts
+        ),
         weight_unit: (data as any).weight_unit === "kg" ? "kg" : "g",
         lincah_api_key: (data as any).lincah_api_key ?? "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD",
         lincah_partner_id: (data as any).lincah_partner_id ?? "6a4617ceb8fd8dd8aa41906e",
@@ -108,6 +114,15 @@ function SettingsPage() {
 
       if ((data as any).courier_discounts) {
         setCourierDiscounts((data as any).courier_discounts);
+      }
+      if (typeof (data as any).jne_flat_ongkir_enabled === "boolean") {
+        setJneFlatEnabled((data as any).jne_flat_ongkir_enabled);
+      }
+      if (typeof (data as any).jne_flat_zone_ab_price === "number") {
+        setJneFlatAbPrice((data as any).jne_flat_zone_ab_price);
+      }
+      if (typeof (data as any).jne_flat_zone_cd_price === "number") {
+        setJneFlatCdPrice((data as any).jne_flat_zone_cd_price);
       }
     }
   }, [data]);
@@ -132,6 +147,9 @@ function SettingsPage() {
           ...form,
           courier_discounts: validatedDiscounts,
           logo_url: form.logo_url || null,
+          jne_flat_ongkir_enabled: jneFlatEnabled,
+          jne_flat_zone_ab_price: jneFlatAbPrice,
+          jne_flat_zone_cd_price: jneFlatCdPrice,
         },
       });
     },
@@ -637,6 +655,103 @@ function SettingsPage() {
             })}
           </div>
         </div>
+      </Card>
+
+      {/* Flat Ongkir JNE */}
+      <Card className="p-5 space-y-4 shadow-sm border-blue-500/20 bg-blue-50/10 dark:bg-blue-950/10">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+              <CourierLogo courier="jne" size="sm" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-base">Flat Ongkir JNE — Pulau Jawa</h2>
+              <p className="text-xs text-muted-foreground">
+                Override harga JNE untuk tujuan Pulau Jawa dengan harga tetap per zona.
+              </p>
+            </div>
+          </div>
+          {/* Toggle switch */}
+          <button
+            type="button"
+            id="jne-flat-toggle"
+            onClick={() => setJneFlatEnabled((v) => !v)}
+            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0 ${
+              jneFlatEnabled ? "bg-blue-500" : "bg-muted"
+            }`}
+            aria-checked={jneFlatEnabled}
+            role="switch"
+          >
+            <span
+              className={`inline-block size-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                jneFlatEnabled ? "translate-x-8" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Info box */}
+        <div className="bg-blue-50/60 dark:bg-blue-950/20 border border-blue-300/40 rounded-lg p-3 text-xs space-y-1">
+          <div className="flex items-center gap-1.5 font-semibold text-blue-800 dark:text-blue-300">
+            <Info className="size-3.5 shrink-0" />
+            <span>Cara Kerja Flat Ongkir JNE:</span>
+          </div>
+          <ul className="text-muted-foreground pl-5 list-disc space-y-0.5 leading-relaxed">
+            <li><strong>Zona A &amp; B</strong> (kota besar &amp; kabupaten utama): harga flat sesuai pengaturan di bawah</li>
+            <li><strong>Zona C &amp; D</strong> (kecamatan lebih jauh): harga flat lebih tinggi</li>
+            <li>Tujuan yang <strong>tidak ada di data zona JNE</strong> tetap menggunakan tarif normal Lincah + diskon</li>
+            <li>Penentuan zona berdasarkan <strong>data spreadsheet JNE resmi (7.408 destinasi)</strong></li>
+          </ul>
+        </div>
+
+        {/* Harga per zona */}
+        <div className={`grid sm:grid-cols-2 gap-4 transition-opacity ${jneFlatEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+          <div>
+            <Label className="text-xs font-semibold flex items-center gap-1.5">
+              <span className="inline-flex items-center justify-center size-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">A/B</span>
+              Harga Flat Zona A &amp; B (Rp)
+            </Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5 mb-1.5">Kota besar &amp; kabupaten utama Pulau Jawa</p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">Rp</span>
+              <Input
+                id="jne-flat-ab-price"
+                type="number"
+                min={0}
+                step={500}
+                value={jneFlatAbPrice}
+                onChange={(e) => setJneFlatAbPrice(Number(e.target.value))}
+                className="pl-9 font-mono text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold flex items-center gap-1.5">
+              <span className="inline-flex items-center justify-center size-5 rounded-full bg-amber-500 text-white text-[10px] font-bold">C/D</span>
+              Harga Flat Zona C &amp; D (Rp)
+            </Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5 mb-1.5">Kecamatan lebih jauh / pedalaman Jawa</p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">Rp</span>
+              <Input
+                id="jne-flat-cd-price"
+                type="number"
+                min={0}
+                step={500}
+                value={jneFlatCdPrice}
+                onChange={(e) => setJneFlatCdPrice(Number(e.target.value))}
+                className="pl-9 font-mono text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {!jneFlatEnabled && (
+          <p className="text-xs text-muted-foreground text-center py-1">
+            Aktifkan toggle di atas untuk menggunakan flat ongkir JNE Pulau Jawa.
+          </p>
+        )}
       </Card>
 
       {/* Ekspedisi Custom */}

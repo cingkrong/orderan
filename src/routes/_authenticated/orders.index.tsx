@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatIDR, STATUS_LABEL, STATUS_TONE, SOURCES, COURIER_LABEL, COURIERS } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Plus, Search, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -79,19 +80,19 @@ function OrdersList() {
         </Button>
       </div>
 
-      <Card className="p-4 space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Cari berdasarkan no. pesanan, pelanggan, telepon, resi"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+      <Card className="p-3 md:p-4 space-y-3">
+        <div className="relative">
+          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9 h-11 md:h-9"
+            placeholder="Cari pesanan, pelanggan, resi…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[110px] h-9 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All status</SelectItem>
               {STATUSES.map((s) => (
@@ -100,14 +101,14 @@ function OrdersList() {
             </SelectContent>
           </Select>
           <Select value={source} onValueChange={setSource}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Sumber" /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[100px] h-9 text-xs"><SelectValue placeholder="Sumber" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All sources</SelectItem>
               {SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={courier} onValueChange={setCourier}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Kurir" /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[100px] h-9 text-xs"><SelectValue placeholder="Kurir" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All couriers</SelectItem>
               {COURIERS.map((c) => <SelectItem key={c} value={c}>{COURIER_LABEL[c]}</SelectItem>)}
@@ -137,7 +138,57 @@ function OrdersList() {
         )}
       </Card>
 
-      <Card className="overflow-hidden">
+      {/* ═══ Mobile: Card-based order list ═══ */}
+      <div className="md:hidden space-y-2">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+        ) : (data ?? []).length === 0 ? (
+          <Card className="p-10 text-center text-muted-foreground">Tidak ada pesanan</Card>
+        ) : (
+          data!.map((o) => (
+            <Card
+              key={o.id}
+              className="p-3 active:bg-accent/50 transition-colors cursor-pointer"
+              onClick={() => navigate({ to: "/orders/$id", params: { id: o.id } })}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-medium">{o.order_number}</span>
+                    <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0 h-5", STATUS_TONE[o.status])}>
+                      {STATUS_LABEL[o.status]}
+                    </Badge>
+                  </div>
+                  <div className="text-sm font-medium mt-1">{o.customer_name}</div>
+                  <div className="text-xs text-muted-foreground">{o.city}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-semibold text-sm tabular-nums">{formatIDR(o.total)}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {format(new Date(o.created_at), "dd MMM HH:mm", { locale: idLocale })}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+                <div className="flex items-center gap-1.5">
+                  {o.courier ? (
+                    <>
+                      <CourierLogo courier={o.courier} size="sm" />
+                      <span className="text-xs font-medium">{COURIER_LABEL[o.courier] ?? o.courier}</span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Belum ada kurir</span>
+                  )}
+                </div>
+                {o.source && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{o.source}</span>}
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* ═══ Desktop: Table view ═══ */}
+      <Card className="overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">

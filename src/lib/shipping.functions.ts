@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getLincahConfig, loadLocalLincahConfig } from "./lincah.functions";
+import { lookupJneZona } from "./jne-zona-map";
 
 const DEFAULT_COURIERS = "jne:sicepat:jnt:pos:tiki:anteraja:ide:wahana";
 const CACHE_TTL_HOURS = 24;
@@ -174,12 +175,43 @@ function bucketWeight(w: number) {
   return Math.max(1, Math.ceil(Math.max(1, w) / 100) * 100);
 }
 
+/**
+ * Terapkan Flat Ongkir JNE berdasarkan zona dari spreadsheet.
+ * Zona A/B -> abPrice, Zona C/D -> cdPrice
+ * Lookup berdasarkan: DEST code, kode pos, atau kecamatan+kota
+ */
+function applyJneFlatOngkir(
+  services: ShippingService[],
+  zona: "A" | "B" | "C" | "D",
+  abPrice: number,
+  cdPrice: number,
+): ShippingService[] {
+  const isZoneAB = zona === "A" || zona === "B";
+  const flatPrice = isZoneAB ? abPrice : cdPrice;
+  const zoneName = isZoneAB ? "A/B" : "C/D";
+
+  return services.map((s) => {
+    if ((s.courier_code || "").toLowerCase() !== "jne" || s.custom) return s;
+    const originalPrice = s.original_value ?? s.value;
+    return {
+      ...s,
+      value: flatPrice,
+      original_value: originalPrice > flatPrice ? originalPrice : flatPrice,
+      discount_percent: originalPrice > flatPrice ? Math.round((1 - flatPrice / originalPrice) * 100) : 0,
+      special_terms: ("Flat Rate Zona " + zoneName + " (" + zona + ")" + (s.special_terms ? " \u2014 " + s.special_terms : "")).trim(),
+    };
+  });
+}
+
 export const getShippingCost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
       .object({
         destination_subdistrict_id: z.string().min(1),
+        dest_kecamatan: z.string().optional().default(""),
+        dest_kota: z.string().optional().default(""),
+        dest_zip: z.string().optional().default(""),
         weight_g: z.number().int().default(1000),
         courier: z.string().optional().default(DEFAULT_COURIERS),
         origin_subdistrict_id: z.string().nullable().optional(),
@@ -367,6 +399,72 @@ export const getShippingCost = createServerFn({ method: "POST" })
         const code = (s.courier_code || "").toLowerCase();
         return active.includes(code);
       });
+    }
+
+    // Terapkan Flat Ongkir JNE jika diaktifkan (lookup zona dari spreadsheet)
+    const flatEnabled =
+      localConfig.jne_flat_ongkir_enabled ??
+      embeddedLincah?.jne_flat_ongkir_enabled ??
+      false;
+    if (flatEnabled) {
+      const flatAbPrice = Number(
+        localConfig.jne_flat_zone_ab_price ??
+        embeddedLincah?.jne_flat_zone_ab_price ??
+        9000
+      );
+      const flatCdPrice = Number(
+        localConfig.jne_flat_zone_cd_price ??
+        embeddedLincah?.jne_flat_zone_cd_price ??
+        11000
+      );
+      const destCode = (data.destination_subdistrict_id || "").toUpperCase();
+
+      console.log("[FlatOngkir] destCode:", destCode);
+
+      // Step 1: Try lookup by Lincah dest code (unlikely to match JNE codes)
+      let zona = lookupJneZona({ destCode });
+      console.log("[FlatOngkir] lookup by destCode:", zona);
+
+      // Step 2: Try lookup by form metadata (kecamatan, kota, zip from destination search)
+      if (!zona && (data.dest_kecamatan || data.dest_kota || data.dest_zip)) {
+        zona = lookupJneZona({
+          zipCode: data.dest_zip,
+          kecamatan: data.dest_kecamatan,
+          kota: data.dest_kota,
+        });
+        console.log("[FlatOngkir] lookup by form metadata:", zona,
+          `(kec=${data.dest_kecamatan}, kota=${data.dest_kota}, zip=${data.dest_zip})`);
+      }
+
+      // Step 3: Fallback - try Lincah API search (last resort)
+      if (!zona) {
+        try {
+          const config = await getLincahConfig(context.supabase);
+          const searchUrl = `${config.baseUrl}/district/search?q=${encodeURIComponent(destCode)}&limit=1`;
+          const destRes = await fetch(searchUrl, {
+            headers: { Authorization: `Bearer ${config.apiKey}`, "partner-id": config.partnerId },
+          });
+          const destJson = await destRes.json();
+          const destInfo = destJson?.data?.[0];
+          if (destInfo) {
+            zona = lookupJneZona({
+              zipCode: destInfo.zipcode || destInfo.zip_code || "",
+              kecamatan: destInfo.name || destInfo.subdistrict_name || "",
+              kota: destInfo.city || destInfo.city_name || "",
+            });
+            console.log("[FlatOngkir] lookup by API fallback:", zona);
+          }
+        } catch (err) {
+          console.error("[FlatOngkir] Lincah API error:", err);
+        }
+      }
+
+      if (zona) {
+        console.log("[FlatOngkir] Applying flat rate zona:", zona);
+        services = applyJneFlatOngkir(services, zona, flatAbPrice, flatCdPrice);
+      } else {
+        console.warn("[FlatOngkir] No zona found for destCode:", destCode, "- using normal rates");
+      }
     }
 
     // Append custom couriers from settings

@@ -141,7 +141,46 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
   }
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ─── Mobile-friendly utilities ─── */
+
+/* Bottom nav safe spacing — add to main content to prevent overlap */
+.pb-mobile-nav {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Touch-friendly minimum tap targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+  button, a, [role="button"], [role="switch"],
+  input[type="checkbox"], input[type="radio"],
+  select, .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Larger select triggers on mobile */
+  [data-slot="select-trigger"] {
+    min-height: 44px;
+  }
+  /* Prevent zoom on input focus (iOS) */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Hide desktop-only elements on mobile and vice versa (used in layout) */
+.mobile-only { display: flex; }
+.desktop-only { display: none; }
+@media (min-width: 768px) {
+  .mobile-only { display: none !important; }
+  .desktop-only { display: flex; }
 }
 
 /* Print: thermal 100 x 150 mm */

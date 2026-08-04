@@ -276,7 +276,7 @@ function CekOngkirLincahCard() {
   const searchDest = useServerFn(searchDestinations);
 
   const [destQ, setDestQ] = useState("");
-  const [selectedDest, setSelectedDest] = useState<{ id: string; label: string } | null>(null);
+  const [selectedDest, setSelectedDest] = useState<{ id: string; label: string; district_name?: string; city_name?: string; zip_code?: string } | null>(null);
   const [weightG, setWeightG] = useState(1000);
   const [isCod, setIsCod] = useState(false);
   const [calculating, setCalculating] = useState(false);
@@ -299,6 +299,9 @@ function CekOngkirLincahCard() {
       const res = await getRates({
         data: {
           destination_subdistrict_id: selectedDest.id,
+          dest_kecamatan: selectedDest.district_name || "",
+          dest_kota: selectedDest.city_name || "",
+          dest_zip: selectedDest.zip_code || "",
           weight_g: Number(weightG),
           is_cod: isCod,
           force_refresh: true,
@@ -365,7 +368,7 @@ function CekOngkirLincahCard() {
                       key={d.id}
                       type="button"
                       onClick={() => {
-                        setSelectedDest({ id: d.id, label: d.label });
+                        setSelectedDest({ id: d.id, label: d.label, district_name: d.district_name, city_name: d.city_name, zip_code: d.zip_code });
                         setDestQ("");
                       }}
                       className="w-full text-left p-2 text-xs hover:bg-accent rounded"
