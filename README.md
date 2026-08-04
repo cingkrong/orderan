@@ -1,6 +1,6 @@
-# ShipWise Operations
+# MAULARIS — Order & Shipping Management System
 
-Build a modern internal web app for Order Management System (OMS) with shipping label generator and shipping cost calculation using RajaOngkir API.
+Modern web application for Order Management System (OMS) featuring real-time shipping calculation (Lincah.id API & JNE Flat Rate Mapping), thermal shipping label generator, customer CRM, financial/expense tracking, and mobile/tablet responsive design.
 
 SYSTEM TYPE:
 
