@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/format";
+import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL, formatCourierName } from "@/lib/format";
 import {
   ArrowLeft,
   X,
@@ -792,7 +792,7 @@ function CustomerDetailPage() {
                           {o.courier ? (
                             <div>
                               <div className="font-medium">
-                                {COURIER_LABEL[o.courier] ?? o.courier}
+                                {formatCourierName(o.courier, (o as any).service)}
                               </div>
                               {o.tracking_number && (
                                 <div className="text-muted-foreground font-mono">

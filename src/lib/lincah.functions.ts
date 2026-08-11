@@ -328,7 +328,7 @@ export const createLincahOrder = createServerFn({ method: "POST" })
           tracking_number: resi,
           courier: `lincah:${data.courier}`,
           service: data.courier_service,
-          status: "processed",
+          status: "processing",
           updated_at: new Date().toISOString(),
         })
         .eq("id", data.order_id);

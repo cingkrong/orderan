@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { trackLincahOrder } from "@/lib/lincah.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ interface TrackingResult {
 type StatusConfig = {
   label: string;
   color: string;
-  icon: typeof CheckCircle2;
+  icon: any;
   bgClass: string;
 };
 
@@ -187,6 +187,27 @@ function TrackingPage() {
 
   const latestStatus = result ? getStatusConfig(result.status) : null;
   const events = result?.history ?? [];
+  const errorText = typeof error === "string" ? error : error ? String(error) : "";
+
+  const errorCard: ReactNode = (!error || loading) ? null : (
+    <Card className="p-5 border-destructive/40 bg-destructive/5">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="size-5 text-destructive shrink-0 mt-0.5" />
+        <div>
+          <div className="font-semibold text-sm text-destructive">Gagal Melacak Resi</div>
+          <p className="text-xs text-muted-foreground mt-1">{errorText}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 h-7 text-xs gap-1.5"
+            onClick={() => handleTrack()}
+          >
+            <RefreshCw className="size-3" /> Coba Lagi
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -217,7 +238,9 @@ function TrackingPage() {
                 placeholder="Contoh: JNE1234567890, LNCH2608A7NVAD3H..."
                 value={resiInput}
                 onChange={(e) => setResiInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleTrack()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleTrack();
+                }}
                 className="pl-9 h-10 font-mono text-sm"
                 autoFocus
               />
@@ -247,7 +270,7 @@ function TrackingPage() {
               <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                 <History className="size-3" /> Riwayat:
               </div>
-              {recentList.map((h) => (
+              {recentList.map((h: string) => (
                 <button
                   key={h}
                   type="button"
@@ -266,25 +289,7 @@ function TrackingPage() {
       </Card>
 
       {/* Error State */}
-      {error && !loading && (
-        <Card className="p-5 border-destructive/40 bg-destructive/5">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="size-5 text-destructive shrink-0 mt-0.5" />
-            <div>
-              <div className="font-semibold text-sm text-destructive">Gagal Melacak Resi</div>
-              <p className="text-xs text-muted-foreground mt-1">{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 h-7 text-xs gap-1.5"
-                onClick={() => handleTrack()}
-              >
-                <RefreshCw className="size-3" /> Coba Lagi
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
+      {(errorCard as any)}
 
       {/* Loading Skeleton */}
       {loading && (

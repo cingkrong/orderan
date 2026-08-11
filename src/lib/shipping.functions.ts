@@ -477,7 +477,7 @@ export const getShippingCost = createServerFn({ method: "POST" })
         service: name,
         courier_code: "custom",
         courier_name: name,
-        description: c?.description ?? "Custom",
+        description: c?.description && c.description !== "Custom" ? c.description : "Jasa Kirim",
         value: price,
         original_value: price,
         discount_percent: 0,

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatIDR, STATUS_LABEL, STATUS_TONE, SOURCES, COURIER_LABEL, COURIERS } from "@/lib/format";
+import { formatIDR, STATUS_LABEL, STATUS_TONE, SOURCES, COURIER_LABEL, COURIERS, formatCourierName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Plus, Search, Printer } from "lucide-react";
 import { toast } from "sonner";
@@ -174,7 +174,7 @@ function OrdersList() {
                   {o.courier ? (
                     <>
                       <CourierLogo courier={o.courier} size="sm" />
-                      <span className="text-xs font-medium">{COURIER_LABEL[o.courier] ?? o.courier}</span>
+                      <span className="text-xs font-medium">{formatCourierName(o.courier, o.service)}</span>
                     </>
                   ) : (
                     <span className="text-xs text-muted-foreground">Belum ada kurir</span>
@@ -243,7 +243,9 @@ function OrdersList() {
                       {o.courier ? (
                         <div className="flex items-center gap-1.5">
                           <CourierLogo courier={o.courier} size="sm" />
-                          <span className="font-medium text-xs">{COURIER_LABEL[o.courier] ?? o.courier} {o.service ?? ""}</span>
+                          <span className="font-medium text-xs">
+                            {formatCourierName(o.courier, o.service)} {o.courier !== "custom" && o.service ? o.service : ""}
+                          </span>
                         </div>
                       ) : (
                         "—"

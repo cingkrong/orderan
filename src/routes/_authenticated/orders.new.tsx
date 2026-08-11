@@ -287,7 +287,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
       shipping_cost: price,
       eta: "-",
     }));
-    toast.success(`Jasa kirim custom "${name}" dipilih (${formatIDR(price)})`);
+    toast.success(`Jasa kirim "${name}" dipilih (${formatIDR(price)})`);
 
     if (savePreset) {
       void (async () => {
@@ -305,7 +305,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
               origin_label: s.origin_label ?? "",
               logo_url: s.logo_url ?? null,
               active_couriers: Array.isArray(s.active_couriers) ? s.active_couriers : [],
-              custom_couriers: [...existing, { name, price, description: "Custom", etd: "-" }],
+              custom_couriers: [...existing, { name, price, description: "Jasa Kirim", etd: "-" }],
             },
           });
           toast.success("Preset jasa kirim disimpan");
@@ -319,7 +319,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
     }
   }
 
-  const isCodActive = form.payment_status === "cod" || String(form.source).toLowerCase().includes("cod");
+  const isCodActive = (form.payment_status as string) === "cod" || String(form.source).toLowerCase().includes("cod");
 
   async function calcShipping(force = false) {
     if (!form.destination_subdistrict_id) return;
@@ -1252,7 +1252,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                         {Boolean(s.original_value && s.original_value > s.value) && (
                           <div className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mt-1 border-t pt-1 flex justify-between items-center">
                             <span>Harga setelah diskon</span>
-                            <span>Hemat {formatIDR(s.original_value - s.value)}</span>
+                            <span>Hemat {formatIDR((s.original_value ?? 0) - s.value)}</span>
                           </div>
                         )}
                       </button>
@@ -1267,7 +1267,7 @@ function OrderForm({ existingId }: { existingId?: string }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-sm font-medium cursor-pointer" onClick={() => setShowCustomCourier(!showCustomCourier)}>
-                      Jasa Kirim Custom / Manual
+                      Jasa Kirim Manual
                     </Label>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       Input ongkir manual untuk kurir toko, Gojek, Grab, dll.

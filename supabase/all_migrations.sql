@@ -204,15 +204,12 @@ CREATE OR REPLACE FUNCTION public.set_order_number()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
   IF NEW.order_number IS NULL OR NEW.order_number = '' THEN
-    NEW.order_number := 'INV-' || to_char(now(), 'YYYYMMDD') || '-' ||
-      lpad(nextval('public.order_number_seq')::text, 5, '0');
+    NEW.order_number := '#' || lpad(nextval('public.order_number_seq')::text, 4, '0');
   END IF;
   RETURN NEW;
 END; $$;
 CREATE TRIGGER trg_orders_order_number BEFORE INSERT ON public.orders
   FOR EACH ROW EXECUTE FUNCTION public.set_order_number();
-
--- Order items
 CREATE TABLE IF NOT EXISTS public.order_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,

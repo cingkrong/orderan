@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAnalyzerRouteImport } from './routes/_authenticated/analyzer'
+import { Route as AuthenticatedCekOngkirRouteImport } from './routes/_authenticated/cek-ongkir'
 import { Route as AuthenticatedIntegrationsRouteImport } from './routes/_authenticated/integrations'
 import { Route as AuthenticatedLabelsRouteImport } from './routes/_authenticated/labels'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
@@ -51,6 +52,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedAnalyzerRoute = AuthenticatedAnalyzerRouteImport.update({
   id: '/analyzer',
   path: '/analyzer',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCekOngkirRoute = AuthenticatedCekOngkirRouteImport.update({
+  id: '/cek-ongkir',
+  path: '/cek-ongkir',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedIntegrationsRoute =
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/analyzer': typeof AuthenticatedAnalyzerRoute
+  '/cek-ongkir': typeof AuthenticatedCekOngkirRoute
   '/integrations': typeof AuthenticatedIntegrationsRoute
   '/labels': typeof AuthenticatedLabelsRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/analyzer': typeof AuthenticatedAnalyzerRoute
+  '/cek-ongkir': typeof AuthenticatedCekOngkirRoute
   '/integrations': typeof AuthenticatedIntegrationsRoute
   '/labels': typeof AuthenticatedLabelsRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/analyzer': typeof AuthenticatedAnalyzerRoute
+  '/_authenticated/cek-ongkir': typeof AuthenticatedCekOngkirRoute
   '/_authenticated/integrations': typeof AuthenticatedIntegrationsRoute
   '/_authenticated/labels': typeof AuthenticatedLabelsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/analyzer'
+    | '/cek-ongkir'
     | '/integrations'
     | '/labels'
     | '/profile'
@@ -272,6 +282,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/analyzer'
+    | '/cek-ongkir'
     | '/integrations'
     | '/labels'
     | '/profile'
@@ -298,6 +309,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/analyzer'
+    | '/_authenticated/cek-ongkir'
     | '/_authenticated/integrations'
     | '/_authenticated/labels'
     | '/_authenticated/profile'
@@ -354,6 +366,13 @@ declare module '@tanstack/react-router' {
       path: '/analyzer'
       fullPath: '/analyzer'
       preLoaderRoute: typeof AuthenticatedAnalyzerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cek-ongkir': {
+      id: '/_authenticated/cek-ongkir'
+      path: '/cek-ongkir'
+      fullPath: '/cek-ongkir'
+      preLoaderRoute: typeof AuthenticatedCekOngkirRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/integrations': {
@@ -501,6 +520,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyzerRoute: typeof AuthenticatedAnalyzerRoute
+  AuthenticatedCekOngkirRoute: typeof AuthenticatedCekOngkirRoute
   AuthenticatedIntegrationsRoute: typeof AuthenticatedIntegrationsRoute
   AuthenticatedLabelsRoute: typeof AuthenticatedLabelsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
@@ -526,6 +546,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyzerRoute: AuthenticatedAnalyzerRoute,
+  AuthenticatedCekOngkirRoute: AuthenticatedCekOngkirRoute,
   AuthenticatedIntegrationsRoute: AuthenticatedIntegrationsRoute,
   AuthenticatedLabelsRoute: AuthenticatedLabelsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,

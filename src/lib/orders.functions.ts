@@ -257,12 +257,12 @@ export const saveOrder = createServerFn({ method: "POST" })
       name: orderRest.customer_name,
       phone: orderRest.phone,
       full_address: orderRest.full_address,
-      destination_subdistrict_id: orderRest.destination_subdistrict_id,
-      destination_label: orderRest.destination_label,
-      city: orderRest.city,
-      province: orderRest.province,
-      district: orderRest.district,
-      postal_code: orderRest.postal_code,
+      destination_subdistrict_id: orderRest.destination_subdistrict_id ?? undefined,
+      destination_label: orderRest.destination_label ?? undefined,
+      city: orderRest.city ?? undefined,
+      province: orderRest.province ?? undefined,
+      district: orderRest.district ?? undefined,
+      postal_code: orderRest.postal_code ?? undefined,
       tags: ["Pelanggan"],
       spent: total,
       isNewOrder,
@@ -279,12 +279,12 @@ export const saveOrder = createServerFn({ method: "POST" })
           name: recipientName,
           phone: recipientPhone,
           full_address: orderRest.full_address,
-          destination_subdistrict_id: orderRest.destination_subdistrict_id,
-          destination_label: orderRest.destination_label,
-          city: orderRest.city,
-          province: orderRest.province,
-          district: orderRest.district,
-          postal_code: orderRest.postal_code,
+          destination_subdistrict_id: orderRest.destination_subdistrict_id ?? undefined,
+          destination_label: orderRest.destination_label ?? undefined,
+          city: orderRest.city ?? undefined,
+          province: orderRest.province ?? undefined,
+          district: orderRest.district ?? undefined,
+          postal_code: orderRest.postal_code ?? undefined,
           tags: ["Penerima"],
           spent: 0,
           isNewOrder,
@@ -312,12 +312,36 @@ export const saveOrder = createServerFn({ method: "POST" })
       created_by: context.userId,
     };
 
+async function generateShortOrderNumber(supabase: any): Promise<string> {
+  const { count } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true });
+
+  let seq = (count ?? 0) + 1;
+  while (true) {
+    const candidate = `#${String(seq).padStart(4, "0")}`;
+    const { data: existing } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("order_number", candidate)
+      .maybeSingle();
+
+    if (!existing) {
+      return candidate;
+    }
+    seq++;
+  }
+}
+
     let orderId = id;
     if (id) {
       const { error } = await context.supabase.from("orders").update(orderPayload).eq("id", id);
       if (error) throw new Error(error.message);
       await context.supabase.from("order_items").delete().eq("order_id", id);
     } else {
+      if (!(orderPayload as any).order_number) {
+        (orderPayload as any).order_number = await generateShortOrderNumber(context.supabase as any);
+      }
       const { data: inserted, error } = await context.supabase
         .from("orders")
         .insert(orderPayload)

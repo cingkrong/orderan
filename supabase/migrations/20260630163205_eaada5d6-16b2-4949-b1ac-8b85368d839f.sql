@@ -179,8 +179,7 @@ CREATE OR REPLACE FUNCTION public.set_order_number()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
   IF NEW.order_number IS NULL OR NEW.order_number = '' THEN
-    NEW.order_number := 'INV-' || to_char(now(), 'YYYYMMDD') || '-' ||
-      lpad(nextval('public.order_number_seq')::text, 5, '0');
+    NEW.order_number := '#' || lpad(nextval('public.order_number_seq')::text, 4, '0');
   END IF;
   RETURN NEW;
 END; $$;

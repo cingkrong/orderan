@@ -36,15 +36,22 @@ interface ShippingLabelProps {
   paperSize?: "100x100" | "100x150";
 }
 
+const LINCAH_COURIERS = ["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana", "tiki"];
+
 export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
   const qrRef = useRef<HTMLCanvasElement>(null);
-  const code = data.tracking_number?.trim() || data.order_number;
 
+  const rawCourier = (data.courier ?? "").toLowerCase().replace("lincah:", "").trim();
+  const isLincahCourier = LINCAH_COURIERS.includes(rawCourier);
+  const hasRealResi = !!data.tracking_number?.trim() && data.tracking_number.trim() !== data.order_number;
+  const showBarcodeAndResi = isLincahCourier && hasRealResi;
+
+  const code = showBarcodeAndResi ? data.tracking_number!.trim() : "";
   const is100x100 = paperSize === "100x100";
 
   useEffect(() => {
-    if (barcodeRef.current && code) {
+    if (barcodeRef.current && code && showBarcodeAndResi) {
       try {
         JsBarcode(barcodeRef.current, code, {
           format: "CODE128",
@@ -63,22 +70,30 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
         margin: 0,
       }).catch(() => {});
     }
-  }, [code, data.order_number, is100x100]);
+  }, [code, data.order_number, is100x100, showBarcodeAndResi]);
 
-  const rawCourier = (data.courier ?? "").toLowerCase();
-  const isCustom = rawCourier === "custom";
+  const isCustom = !isLincahCourier || rawCourier === "custom" || rawCourier === "manual";
 
   // Courier brand name display
   let courierBrand = (data.courier || "EXPRESS").toUpperCase();
-  if (courierBrand === "JNT" || courierBrand.includes("J&T")) courierBrand = "J&T EXPRESS";
-  else if (courierBrand === "JNE") courierBrand = "JNE EXPRESS";
-  else if (courierBrand === "SICEPAT") courierBrand = "SiCepat";
-  else if (courierBrand === "NINJA") courierBrand = "Ninja Express";
-  else if (courierBrand === "SAP") courierBrand = "SAPX";
-  else if (courierBrand === "IDE") courierBrand = "IDexpress";
-  else if (courierBrand === "ANTERAJA") courierBrand = "AnterAja";
+  if (isCustom) {
+    const customName = (data.service || "").trim();
+    if (customName && customName.toUpperCase() !== "CUSTOM" && customName.toUpperCase() !== "MANUAL") {
+      courierBrand = customName.toUpperCase();
+    } else {
+      courierBrand = "MANUAL";
+    }
+  } else {
+    if (courierBrand === "JNT" || courierBrand.includes("J&T")) courierBrand = "J&T EXPRESS";
+    else if (courierBrand === "JNE") courierBrand = "JNE EXPRESS";
+    else if (courierBrand === "SICEPAT") courierBrand = "SiCepat";
+    else if (courierBrand === "NINJA") courierBrand = "Ninja Express";
+    else if (courierBrand === "SAP") courierBrand = "SAPX";
+    else if (courierBrand === "IDE") courierBrand = "IDexpress";
+    else if (courierBrand === "ANTERAJA") courierBrand = "AnterAja";
+  }
 
-  const serviceName = (data.service || (isCustom ? "CUSTOM" : "EZ")).toUpperCase();
+  const serviceName = isCustom ? "MANUAL" : (data.service || "EZ").toUpperCase();
 
   // Weight formatting
   const weightKg = (data.weight_g || 1000) / 1000;
@@ -139,11 +154,24 @@ export function ShippingLabel({ data, paperSize = "100x150" }: ShippingLabelProp
           </div>
 
           {/* Right Column: Barcode & Resi No */}
-          <div className="col-span-8 pl-2 flex flex-col items-center justify-center">
-            <svg ref={barcodeRef} className="w-full max-w-[54mm]" />
-            <div className="font-sans text-center mt-0.5 text-[8.5pt]">
-              No. Resi: <span className="font-bold">{code}</span>
-            </div>
+          <div className="col-span-8 pl-2 flex flex-col items-center justify-center min-h-[14mm]">
+            {showBarcodeAndResi ? (
+              <>
+                <svg ref={barcodeRef} className="w-full max-w-[54mm]" />
+                <div className="font-sans text-center mt-0.5 text-[8.5pt]">
+                  No. Resi: <span className="font-bold">{data.tracking_number}</span>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-1.5 px-2 border border-dashed border-gray-300 rounded bg-gray-50/50 w-full">
+                <div className="font-bold text-[8.5pt] uppercase tracking-wider text-gray-700">
+                  {data.courier && data.courier.toLowerCase() !== "custom"
+                    ? `PENGIRIMAN ${data.courier.toUpperCase().replace("LINCAH:", "")}`
+                    : `PENGIRIMAN ${data.service ? data.service.toUpperCase() : "MANUAL"}`}
+                </div>
+                <div className="text-[7pt] text-gray-500 italic mt-0.5">Tanpa Barcode Resi</div>
+              </div>
+            )}
           </div>
         </div>
 

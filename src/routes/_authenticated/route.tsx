@@ -21,6 +21,8 @@ import {
   Plug,
   ChevronLeft,
   ChevronRight,
+  PackageSearch,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,21 +38,53 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
-const NAV: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/orders", label: "Pesanan", icon: ShoppingCart },
-  { to: "/shipping", label: "Pengiriman", icon: Truck },
-  { to: "/products", label: "Produk", icon: Package },
-  { to: "/customers", label: "Pelanggan", icon: Users },
-  { to: "/analyzer", label: "Analyzer", icon: BarChart3 },
-  { to: "/integrations", label: "Integrasi Addons", icon: Plug },
-  { to: "/labels", label: "Label", icon: Printer },
-  { to: "/expenses", label: "Pengeluaran", icon: Wallet },
-  { to: "/reports", label: "Laporan L/R", icon: TrendingUp },
-  { to: "/warehouses", label: "Gudang", icon: Warehouse },
-  { to: "/profile", label: "Profil Saya", icon: UserCircle },
-  { to: "/settings", label: "Pengaturan", icon: Settings },
+type NavGroup = { title: string; items: NavItem[] };
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: "Menu Utama",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+    ],
+  },
+  {
+    title: "Operasional & Penjualan",
+    items: [
+      { to: "/orders", label: "Pesanan", icon: ShoppingCart },
+      { to: "/shipping", label: "Pengiriman", icon: Truck },
+      { to: "/cek-ongkir", label: "Cek Ongkir", icon: Calculator },
+      { to: "/tracking", label: "Lacak Resi", icon: PackageSearch },
+      { to: "/labels", label: "Label Thermal", icon: Printer },
+    ],
+  },
+  {
+    title: "Katalog & Stok",
+    items: [
+      { to: "/products", label: "Produk", icon: Package },
+      { to: "/warehouses", label: "Gudang", icon: Warehouse },
+      { to: "/customers", label: "Pelanggan", icon: Users },
+    ],
+  },
+  {
+    title: "Keuangan & Analisis",
+    items: [
+      { to: "/expenses", label: "Pengeluaran", icon: Wallet },
+      { to: "/reports", label: "Laporan L/R", icon: TrendingUp },
+      { to: "/analyzer", label: "Analyzer", icon: BarChart3 },
+    ],
+  },
+  {
+    title: "Sistem & Pengaturan",
+    items: [
+      { to: "/integrations", label: "Integrasi Addons", icon: Plug },
+      { to: "/profile", label: "Profil Saya", icon: UserCircle },
+      { to: "/settings", label: "Pengaturan", icon: Settings },
+    ],
+  },
 ];
+
+// Flat array for quick lookups if needed
+const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 function ProtectedLayout() {
   const { user } = Route.useRouteContext();
@@ -152,29 +186,40 @@ function ProtectedLayout() {
           </Link>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 px-2.5 space-y-1 overflow-y-auto">
-          {NAV.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.to, item.exact);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                title={collapsed ? item.label : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-md text-sm transition-colors",
-                  collapsed ? "justify-center p-2.5" : "px-3 py-2",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                )}
-              >
-                <Icon className="size-4 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
+        {/* Navigation Items (Grouped by Category) */}
+        <nav className="flex-1 px-2.5 pb-4 space-y-4 overflow-y-auto">
+          {NAV_GROUPS.map((group, groupIdx) => (
+            <div key={group.title} className="space-y-1">
+              {!collapsed ? (
+                <div className="px-3 pt-1 pb-1 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+                  {group.title}
+                </div>
+              ) : (
+                groupIdx > 0 && <div className="my-2 border-t border-sidebar-border/40" />
+              )}
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.to, item.exact);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    title={collapsed ? `${group.title}: ${item.label}` : undefined}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md text-sm transition-colors",
+                      collapsed ? "justify-center p-2.5" : "px-3 py-2",
+                      active
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Sidebar Footer / User Profile */}
@@ -277,40 +322,49 @@ function ProtectedLayout() {
         })}
       </nav>
 
-      {/* ═══ "Lainnya" bottom drawer ═══ */}
+      {/* ═══ "Lainnya" bottom drawer (Grouped by Category) ═══ */}
       {moreOpen && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setMoreOpen(false)} />
           <div
-            className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-background rounded-t-2xl shadow-2xl border-t animate-in slide-in-from-bottom duration-200"
-            style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)", maxHeight: "75vh" }}
+            className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-background rounded-t-2xl shadow-2xl border-t animate-in slide-in-from-bottom duration-200 overflow-hidden"
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)", maxHeight: "80vh" }}
           >
             <div className="flex justify-center pt-2 pb-1">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
-            <div className="px-4 pb-2 pt-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Menu</p>
+            <div className="px-4 pb-2 pt-1 border-b">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kategori Menu</p>
             </div>
-            <nav className="px-2 pb-3 overflow-y-auto max-h-[55vh] grid grid-cols-4 gap-1">
-              {NAV.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.to, item.exact);
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setMoreOpen(false)}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-3 rounded-xl text-center transition-colors",
-                      active ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground active:bg-accent",
-                    )}
-                  >
-                    <Icon className="size-5" />
-                    <span className="text-[10px] leading-tight">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
+            <div className="px-3 py-3 overflow-y-auto max-h-[60vh] space-y-4">
+              {NAV_GROUPS.map((group) => (
+                <div key={group.title} className="space-y-1.5">
+                  <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                    {group.title}
+                  </h4>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.to, item.exact);
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMoreOpen(false)}
+                          className={cn(
+                            "flex flex-col items-center gap-1 p-2.5 rounded-xl text-center transition-colors",
+                            active ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground active:bg-accent",
+                          )}
+                        >
+                          <Icon className="size-5" />
+                          <span className="text-[10px] leading-tight">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
             <div className="px-3 pb-3 border-t pt-3 flex gap-2">
               <Link
                 to="/profile"

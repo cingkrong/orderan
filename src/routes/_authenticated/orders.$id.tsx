@@ -20,7 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShippingLabel } from "@/components/shipping-label";
 import { OrderHistoryCard } from "@/components/history-cards";
-import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL } from "@/lib/format";
+import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL, formatCourierName } from "@/lib/format";
 import { Pencil, Printer, Truck, RefreshCw, AlertCircle, MapPin, PackageSearch } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
@@ -209,7 +209,9 @@ function OrderDetail() {
             <div className="text-sm space-y-1.5">
               <div className="flex items-center gap-2">
                 <CourierLogo courier={order.courier} size="sm" />
-                <span className="font-semibold text-xs">{order.courier ? COURIER_LABEL[order.courier] ?? order.courier : "—"} {order.service}</span>
+                <span className="font-semibold text-xs">
+                  {formatCourierName(order.courier, order.service)} {order.courier !== "custom" && order.service ? order.service : ""}
+                </span>
               </div>
               {order.eta && <div className="text-muted-foreground text-xs">Estimasi: {order.eta} hari</div>}
               {order.tracking_number ? (
@@ -266,9 +268,9 @@ function OrderDetail() {
                 dropship_name: (order as any).dropship_name,
                 dropship_phone: (order as any).dropship_phone,
                 sender: {
-                  name: s.sender_name,
-                  phone: s.sender_phone,
-                  city: s.sender_city,
+                  name: s.sender_name ?? "",
+                  phone: s.sender_phone ?? "",
+                  city: s.sender_city ?? "",
                   address: s.sender_address,
                   logo_url: s.logo_url,
                 },

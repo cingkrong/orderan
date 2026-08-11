@@ -93,10 +93,10 @@ function SettingsPage() {
   useEffect(() => {
     if (data) {
       setForm({
-        sender_name: data.sender_name,
-        sender_phone: data.sender_phone,
-        sender_city: data.sender_city,
-        sender_address: data.sender_address,
+        sender_name: data.sender_name ?? "",
+        sender_phone: data.sender_phone ?? "",
+        sender_city: data.sender_city ?? "",
+        sender_address: data.sender_address ?? "",
         origin_subdistrict_id: data.origin_subdistrict_id ?? "",
         origin_label: data.origin_label ?? "",
         logo_url: data.logo_url ?? "",
@@ -464,7 +464,7 @@ function SettingsPage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {lincahAvailableList.map((c) => {
+          {lincahAvailableList.map((c: any) => {
             const isActive = form.lincah_couriers.includes(c.code);
             return (
               <button
@@ -498,7 +498,7 @@ function SettingsPage() {
             variant="outline"
             size="sm"
             className="text-xs"
-            onClick={() => setForm({ ...form, lincah_couriers: lincahAvailableList.map(c => c.code) })}
+            onClick={() => setForm({ ...form, lincah_couriers: lincahAvailableList.map((c: any) => c.code) })}
           >
             Aktifkan Semua
           </Button>

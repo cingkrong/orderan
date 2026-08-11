@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { COURIERS, COURIER_LABEL, STATUS_LABEL, STATUS_TONE } from "@/lib/format";
-import { Printer, Truck, Search, Send, ExternalLink, RefreshCw } from "lucide-react";
+import { COURIERS, COURIER_LABEL, STATUS_LABEL, STATUS_TONE, formatCourierName } from "@/lib/format";
+import { Printer, Truck, Search, Send, ExternalLink, RefreshCw, Calculator } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/shipping")({
@@ -73,7 +73,7 @@ function ShippingPage() {
           product_price: !isCod ? Number(order.total) : 0,
           weight_kg: Math.max(0.1, Number(order.weight_g || 1000) / 1000),
           quantity: 1,
-          product_name: `Pesanan #${order.order_number}`,
+          product_name: `Pesanan ${order.order_number.startsWith('#') ? order.order_number : `#${order.order_number}`}`,
           recipient_name: order.customer_name || order.recipient_name || "Pelanggan",
           recipient_phone: order.phone || order.recipient_phone || "081234567890",
           recipient_address: order.full_address || order.city || "Alamat tujuan",
@@ -136,14 +136,18 @@ function ShippingPage() {
           <span className="text-sm text-muted-foreground">{queue.length} pengiriman aktif</span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs bg-emerald-500/10 text-emerald-600 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-          <Truck className="size-4" />
-          <span>Terhubung dengan <strong>Lincah.id API (Cek Ongkir & Booking Resi Instant)</strong></span>
+        <div className="flex items-center justify-between gap-3 text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg border border-emerald-500/20">
+          <div className="flex items-center gap-2">
+            <Truck className="size-4 shrink-0" />
+            <span>Terhubung dengan <strong>Lincah.id API (Booking Resi Instant & Auto Shipping)</strong></span>
+          </div>
+          <Button size="sm" asChild className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0">
+            <Link to="/cek-ongkir">
+              <Calculator className="size-3.5" /> Buka Kalkulator Cek Ongkir
+            </Link>
+          </Button>
         </div>
       </Card>
-
-      {/* Calculator Cek Ongkir Lincah.id */}
-      <CekOngkirLincahCard />
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
@@ -174,7 +178,7 @@ function ShippingPage() {
                     <tr key={o.id} className="border-t hover:bg-muted/30 transition-colors">
                       <td className="p-3">
                         <Link to="/orders/$id" params={{ id: o.id }} className="font-mono text-xs font-semibold text-primary hover:underline">
-                          #{o.order_number}
+                          {(o.order_number || "").startsWith('#') ? o.order_number : `#${o.order_number ?? ""}`}
                         </Link>
                         {((o as any).label_print_count ?? 0) > 0 && (
                           <div className="mt-1">
@@ -190,9 +194,9 @@ function ShippingPage() {
                       </td>
                       <td className="p-3">
                         <div className="font-medium text-xs">
-                          {o.courier ? `${COURIER_LABEL[o.courier.replace("lincah:", "")] ?? o.courier}` : "—"}
+                          {formatCourierName(o.courier, o.service)}
                         </div>
-                        <div className="text-xs text-muted-foreground">{o.service ?? ""}</div>
+                        <div className="text-xs text-muted-foreground">{o.courier !== "custom" ? (o.service ?? "") : ""}</div>
                       </td>
                       <td className="p-3">
                         <Badge variant="secondary" className={STATUS_TONE[o.status]}>
@@ -271,207 +275,3 @@ function ShippingPage() {
   );
 }
 
-function CekOngkirLincahCard() {
-  const getRates = useServerFn(getShippingCost);
-  const searchDest = useServerFn(searchDestinations);
-
-  const [destQ, setDestQ] = useState("");
-  const [selectedDest, setSelectedDest] = useState<{ id: string; label: string; district_name?: string; city_name?: string; zip_code?: string } | null>(null);
-  const [weightG, setWeightG] = useState(1000);
-  const [isCod, setIsCod] = useState(false);
-  const [calculating, setCalculating] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
-
-  const destResults = useQuery({
-    queryKey: ["cek-ongkir-dest", destQ],
-    queryFn: () => searchDest({ data: { q: destQ, limit: 10 } }),
-    enabled: destQ.trim().length >= 3 && !selectedDest,
-  });
-
-  async function handleCheckOngkir(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedDest) {
-      toast.error("Pilih kecamatan/kota tujuan terlebih dahulu");
-      return;
-    }
-    setCalculating(true);
-    try {
-      const res = await getRates({
-        data: {
-          destination_subdistrict_id: selectedDest.id,
-          dest_kecamatan: selectedDest.district_name || "",
-          dest_kota: selectedDest.city_name || "",
-          dest_zip: selectedDest.zip_code || "",
-          weight_g: Number(weightG),
-          is_cod: isCod,
-          force_refresh: true,
-        },
-      });
-      setResults(res || []);
-      if ((res || []).length === 0) {
-        toast.warning("Tidak ada opsi ongkir yang ditemukan dari Lincah.id API.");
-      } else {
-        toast.success(`Ditemukan ${res.length} opsi pengiriman Lincah.id!`);
-      }
-    } catch (err) {
-      toast.error(`Cek ongkir gagal: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setCalculating(false);
-    }
-  }
-
-  return (
-    <Card className="p-5 space-y-4 border-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10">
-      <div className="flex items-center gap-2">
-        <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
-          <Truck className="size-5" />
-        </div>
-        <div>
-          <h2 className="font-semibold text-base">Cek Ongkir Lincah.id API (Diskon & COD Real-Time)</h2>
-          <p className="text-xs text-muted-foreground">
-            Perhitungkan biaya kirim resmi, diskon spesial Lincah.id, dan estimasi waktu sampai dari berbagai ekspedisi.
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleCheckOngkir} className="grid sm:grid-cols-3 gap-3">
-        <div className="sm:col-span-1">
-          <label className="text-xs font-semibold block mb-1">Tujuan (Kecamatan / Kota)</label>
-          {selectedDest ? (
-            <div className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-1.5 text-xs">
-              <span className="font-medium truncate">{selectedDest.label}</span>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-6 px-1.5 text-[11px]"
-                onClick={() => {
-                  setSelectedDest(null);
-                  setDestQ("");
-                }}
-              >
-                Ganti
-              </Button>
-            </div>
-          ) : (
-            <div className="relative">
-              <Input
-                placeholder="Ketik minimal 3 huruf..."
-                value={destQ}
-                onChange={(e) => setDestQ(e.target.value)}
-                className="h-9 text-xs"
-              />
-              {destQ.trim().length >= 3 && destResults.data && destResults.data.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-auto rounded-md border bg-popover p-1 shadow-md">
-                  {destResults.data.map((d: any) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedDest({ id: d.id, label: d.label, district_name: d.district_name, city_name: d.city_name, zip_code: d.zip_code });
-                        setDestQ("");
-                      }}
-                      className="w-full text-left p-2 text-xs hover:bg-accent rounded"
-                    >
-                      <div className="font-medium">{d.label}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold block mb-1">Berat Paket (gram)</label>
-          <Input
-            type="number"
-            min={1}
-            value={weightG}
-            onChange={(e) => setWeightG(Number(e.target.value))}
-            className="h-9 text-xs font-mono"
-            placeholder="1000"
-          />
-        </div>
-
-        <div className="flex items-end gap-3">
-          <label className="flex items-center gap-2 border bg-card p-2 rounded-md h-9 cursor-pointer text-xs font-medium">
-            <input
-              type="checkbox"
-              checked={isCod}
-              onChange={(e) => setIsCod(e.target.checked)}
-              className="rounded text-emerald-600 focus:ring-emerald-500"
-            />
-            Metode COD
-          </label>
-
-          <Button
-            type="submit"
-            disabled={calculating}
-            className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
-          >
-            {calculating ? (
-              <>
-                <RefreshCw className="size-3.5 mr-1.5 animate-spin" /> Menghitung...
-              </>
-            ) : (
-              "Hitung Ongkir Lincah"
-            )}
-          </Button>
-        </div>
-      </form>
-
-      {/* Results view */}
-      {results.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-emerald-500/20">
-          <h3 className="text-xs font-semibold mb-2 text-emerald-700 dark:text-emerald-300">
-            Hasil Opsi Pengiriman Lincah.id ({results.length} opsi):
-          </h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {results.map((r: any, idx: number) => {
-              const hasDiscount = r.discount_percent && r.discount_percent > 0;
-              return (
-                <div
-                  key={idx}
-                  className="p-3 rounded-lg border bg-card shadow-xs space-y-1.5 hover:border-emerald-500/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-bold text-xs uppercase text-emerald-700 dark:text-emerald-400">
-                      {r.courier_name || r.courier_code} ({r.service})
-                    </span>
-                    <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-600">
-                      {r.etd ? `ETD: ${r.etd} hari` : "Reguler"}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-bold text-foreground">
-                      Rp {Number(r.value || 0).toLocaleString("id-ID")}
-                    </span>
-                    {hasDiscount && r.original_value && (
-                      <span className="text-xs line-through text-muted-foreground">
-                        Rp {Number(r.original_value).toLocaleString("id-ID")}
-                      </span>
-                    )}
-                  </div>
-
-                  {hasDiscount && (
-                    <div className="text-[11px] font-medium text-emerald-600">
-                      Diskon Lincah: {r.discount_percent}% OFF
-                    </div>
-                  )}
-
-                  {r.special_terms && (
-                    <div className="text-[10px] text-muted-foreground truncate" title={r.special_terms}>
-                      {r.special_terms}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </Card>
-  );
-}

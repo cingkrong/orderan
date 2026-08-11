@@ -20,6 +20,8 @@ export const Route = createFileRoute("/_authenticated/labels")({
   component: LabelsPage,
 });
 
+const LINCAH_COURIERS = ["jne", "sap", "ninja", "sicepat", "jnt", "anteraja", "lion", "ide", "pos", "wahana", "tiki"];
+
 function LabelsPage() {
   const search = Route.useSearch();
   const fetchOrders = useServerFn(getOrdersByIds);
@@ -28,6 +30,7 @@ function LabelsPage() {
   const qc = useQueryClient();
 
   const [manualIds, setManualIds] = useState(search.ids ?? "");
+  const [filterCourierType, setFilterCourierType] = useState<"all" | "lincah" | "custom">("all");
   const ids = (search.ids ?? manualIds)
     .split(/[\s,]+/)
     .map((s: string) => s.trim())
@@ -55,7 +58,16 @@ function LabelsPage() {
     itemsByOrder.set(it.order_id, arr);
   }
   const s = settingsQ.data;
-  const orders = ordersQ.data?.orders ?? [];
+  const rawOrders = ordersQ.data?.orders ?? [];
+
+  const orders = rawOrders.filter((o) => {
+    const rawCourier = (o.courier || "").toLowerCase().replace("lincah:", "").trim();
+    const isLincah = LINCAH_COURIERS.includes(rawCourier);
+    if (filterCourierType === "lincah") return isLincah;
+    if (filterCourierType === "custom") return !isLincah;
+    return true;
+  });
+
   const alreadyPrinted = orders.filter((o) => ((o as any).label_print_count ?? 0) > 0).length;
 
   async function handlePrint() {
@@ -105,7 +117,7 @@ function LabelsPage() {
       `}</style>
 
       {/* Header controls */}
-      <div className="no-print flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-4 rounded-lg border shadow-xs">
+      <div className="no-print flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card p-4 rounded-lg border shadow-xs">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Label Pengiriman</h1>
           <p className="text-muted-foreground text-xs mt-0.5">
@@ -113,38 +125,69 @@ function LabelsPage() {
           </p>
           {orders.length > 0 && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              {alreadyPrinted} dari {orders.length} label sudah pernah dicetak
+              Menampilkan {orders.length} label ({alreadyPrinted} sudah pernah dicetak)
             </p>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Courier Type Filter */}
+          <div className="flex items-center bg-muted p-1 rounded-md border text-xs">
+            <button
+              type="button"
+              onClick={() => setFilterCourierType("all")}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                filterCourierType === "all" ? "bg-background text-foreground shadow-xs border" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Semua ({rawOrders.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterCourierType("lincah")}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                filterCourierType === "lincah" ? "bg-background text-foreground shadow-xs border" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Lincah.id
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterCourierType("custom")}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                filterCourierType === "custom" ? "bg-background text-foreground shadow-xs border" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Custom / Non-Lincah
+            </button>
+          </div>
+
           {/* Paper Size selector */}
           <div className="flex items-center bg-muted p-1 rounded-md border text-xs">
             <span className="text-[11px] text-muted-foreground font-semibold px-2 flex items-center gap-1">
-              <FileText className="size-3.5" /> Ukuran Kertas:
+              <FileText className="size-3.5" /> Ukuran:
             </span>
             <button
               type="button"
               onClick={() => setPaperSize("100x150")}
-              className={`px-3 py-1 rounded text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
                 paperSize === "100x150"
                   ? "bg-background text-foreground shadow-xs border"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              100 × 150 mm
+              100×150mm
             </button>
             <button
               type="button"
               onClick={() => setPaperSize("100x100")}
-              className={`px-3 py-1 rounded text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
                 paperSize === "100x100"
                   ? "bg-background text-foreground shadow-xs border"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              100 × 100 mm
+              100×100mm
             </button>
           </div>
 

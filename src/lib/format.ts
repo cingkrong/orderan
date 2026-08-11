@@ -47,3 +47,24 @@ export const COURIER_LABEL: Record<string, string> = {
   ide: "ID Express",
   wahana: "Wahana",
 };
+
+export function formatCourierName(courier?: string | null, service?: string | null): string {
+  if (!courier) return "—";
+  const cleanCourier = courier.replace(/^lincah:/i, "").trim();
+  const lower = cleanCourier.toLowerCase();
+
+  if (lower === "custom" || lower === "manual" || lower.startsWith("custom")) {
+    if (service && service.trim() && service.toLowerCase() !== "custom" && service.toLowerCase() !== "manual") {
+      return service.trim();
+    }
+    const customPart = cleanCourier.replace(/^custom[\s:-]*/i, "").trim();
+    if (customPart && customPart.toLowerCase() !== "custom") return customPart;
+    return "Jasa Kirim Manual";
+  }
+
+  const mapped = COURIER_LABEL[lower];
+  if (mapped) return mapped;
+
+  return cleanCourier;
+}
+

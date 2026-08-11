@@ -157,8 +157,9 @@ export function CourierLogo({ courier, className, size = "md", showName = false 
   );
   const courierInfo = infoKey ? COURIER_LOGOS[infoKey] : null;
 
+  const isCustomCode = rawCode === "custom" || rawCode === "manual";
   const logoUrl = courierInfo?.logoUrl || `https://assets.lincah.id/images/logo/${code}.png`;
-  const courierName = courierInfo?.name || courier?.toUpperCase() || "KURIR";
+  const courierName = courierInfo?.name || (isCustomCode ? "MANUAL" : (courier?.toUpperCase() || "KURIR"));
 
   const sizeClasses = {
     sm: "h-5 max-w-[60px]",
@@ -174,7 +175,7 @@ export function CourierLogo({ courier, className, size = "md", showName = false 
     xl: "px-3 py-1 text-sm",
   };
 
-  if (!imageError && code) {
+  if (!imageError && code && !isCustomCode) {
     return (
       <div className={cn("inline-flex items-center gap-2 shrink-0", className)}>
         <img
