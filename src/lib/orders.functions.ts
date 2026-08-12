@@ -313,13 +313,55 @@ export const saveOrder = createServerFn({ method: "POST" })
     };
 
 async function generateShortOrderNumber(supabase: any): Promise<string> {
+  let prefix = "#";
+  let digitLength = 4;
+  let includeDate = "none";
+
+  try {
+    const { data: setRow } = await supabase
+      .from("settings")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (setRow) {
+      const embeddedLincah = Array.isArray(setRow.custom_couriers)
+        ? setRow.custom_couriers.find((c: any) => c?.__lincah)?.__lincah
+        : null;
+
+      prefix = setRow.invoice_prefix ?? embeddedLincah?.invoice_prefix ?? "#";
+      digitLength = typeof setRow.invoice_digit_length === "number"
+        ? setRow.invoice_digit_length
+        : typeof embeddedLincah?.invoice_digit_length === "number"
+          ? embeddedLincah.invoice_digit_length
+          : 4;
+      includeDate = setRow.invoice_include_date ?? embeddedLincah?.invoice_include_date ?? "none";
+    }
+  } catch (e) {
+    console.warn("Failed to fetch settings for order_number format:", e);
+  }
+
   const { count } = await supabase
     .from("orders")
     .select("id", { count: "exact", head: true });
 
+  let dateStr = "";
+  const now = new Date();
+  if (includeDate === "YYMM") {
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    dateStr = `${yy}${mm}-`;
+  } else if (includeDate === "YYYYMMDD") {
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    dateStr = `${yyyy}${mm}${dd}-`;
+  }
+
   let seq = (count ?? 0) + 1;
   while (true) {
-    const candidate = `#${String(seq).padStart(4, "0")}`;
+    const seqStr = String(seq).padStart(digitLength, "0");
+    const candidate = `${prefix}${dateStr}${seqStr}`;
     const { data: existing } = await supabase
       .from("orders")
       .select("id")

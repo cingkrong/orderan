@@ -21,8 +21,10 @@ import {
   Plug,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   PackageSearch,
   Calculator,
+  Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -100,6 +102,22 @@ function ProtectedLayout() {
     return false;
   });
 
+  const isActive = (to: string, exact?: boolean) =>
+    exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+
+  const isGroupActive = (group: NavGroup) =>
+    group.items.some((item) => isActive(item.to, item.exact));
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    NAV_GROUPS.forEach((g) => {
+      initial[g.title] = g.items.some((item) =>
+        item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(item.to + "/")
+      );
+    });
+    return initial;
+  });
+
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
       const next = !prev;
@@ -111,7 +129,17 @@ function ProtectedLayout() {
   useEffect(() => {
     setSidebarOpen(false);
     setMoreOpen(false);
+    // Expand active category group when route changes
+    NAV_GROUPS.forEach((g) => {
+      if (g.items.some((item) => isActive(item.to, item.exact))) {
+        setOpenGroups((prev) => ({ ...prev, [g.title]: true }));
+      }
+    });
   }, [pathname]);
+
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -119,9 +147,6 @@ function ProtectedLayout() {
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
-
-  const isActive = (to: string, exact?: boolean) =>
-    exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
 
   const BOTTOM_NAV = [
     { to: "/", label: "Home", icon: LayoutDashboard, exact: true },
@@ -136,9 +161,9 @@ function ProtectedLayout() {
       {/* ═══ Desktop Sidebar ═══ */}
       <aside
         className={cn(
-          "no-print fixed inset-y-0 left-0 z-40 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex-col transition-all duration-200 ease-in-out",
-          "hidden md:flex md:static md:translate-x-0",
-          sidebarOpen ? "!flex translate-x-0" : "-translate-x-full",
+          "no-print z-40 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex-col transition-all duration-200 ease-in-out h-screen sticky top-0",
+          "hidden md:flex md:sticky md:top-0 md:h-screen md:translate-x-0",
+          sidebarOpen ? "!flex fixed inset-y-0 left-0 translate-x-0" : "-translate-x-full md:translate-x-0",
           collapsed ? "w-16" : "w-64",
         )}
       >
@@ -187,39 +212,61 @@ function ProtectedLayout() {
         </div>
 
         {/* Navigation Items (Grouped by Category) */}
-        <nav className="flex-1 px-2.5 pb-4 space-y-4 overflow-y-auto">
-          {NAV_GROUPS.map((group, groupIdx) => (
-            <div key={group.title} className="space-y-1">
-              {!collapsed ? (
-                <div className="px-3 pt-1 pb-1 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-                  {group.title}
-                </div>
-              ) : (
-                groupIdx > 0 && <div className="my-2 border-t border-sidebar-border/40" />
-              )}
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.to, item.exact);
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    title={collapsed ? `${group.title}: ${item.label}` : undefined}
+        <nav className="flex-1 px-2.5 pb-4 space-y-2 overflow-y-auto">
+          {NAV_GROUPS.map((group, groupIdx) => {
+            const hasActiveItem = isGroupActive(group);
+            const isOpen = openGroups[group.title] ?? hasActiveItem;
+
+            return (
+              <div key={group.title} className="space-y-1">
+                {!collapsed ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.title)}
                     className={cn(
-                      "flex items-center gap-3 rounded-md text-sm transition-colors",
-                      collapsed ? "justify-center p-2.5" : "px-3 py-2",
-                      active
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                      "w-full px-3 py-1.5 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider rounded-md transition-colors text-left select-none",
+                      hasActiveItem
+                        ? "text-sidebar-foreground font-bold"
+                        : "text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/40",
                     )}
                   >
-                    <Icon className="size-4 shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+                    <span className="truncate">{group.title}</span>
+                    <span className="shrink-0 ml-1 opacity-70">
+                      {isOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                    </span>
+                  </button>
+                ) : (
+                  groupIdx > 0 && <div className="my-2 border-t border-sidebar-border/40" />
+                )}
+
+                {(isOpen || collapsed) && (
+                  <div className="space-y-0.5 transition-all">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.to, item.exact);
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          title={collapsed ? `${group.title}: ${item.label}` : undefined}
+                          className={cn(
+                            "flex items-center gap-3 rounded-md text-sm transition-colors",
+                            collapsed ? "justify-center p-2.5" : "px-3 py-2",
+                            active
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                          )}
+                        >
+                          <Icon className="size-4 shrink-0" />
+                          {!collapsed && <span className="truncate">{item.label}</span>}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Sidebar Footer / User Profile */}
@@ -262,8 +309,52 @@ function ProtectedLayout() {
 
       {/* ═══ Main ═══ */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="no-print md:hidden h-12 border-b flex items-center px-4 gap-3 sticky top-0 bg-background/95 backdrop-blur-sm z-20">
-          <span className="font-bold text-sm tracking-tight">MAULARIS</span>
+        <header className="no-print h-14 border-b flex items-center justify-between px-4 md:px-8 sticky top-0 bg-background/85 backdrop-blur-md z-20 transition-colors">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden size-8 text-foreground hover:bg-accent"
+              onClick={() => setSidebarOpen((v) => !v)}
+            >
+              <Menu className="size-5" />
+            </Button>
+            <div className="font-bold text-sm tracking-tight flex items-center gap-2">
+              <span className="bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">MAULARIS</span>
+              <span className="hidden sm:inline-block text-xs font-normal text-muted-foreground">| Order Management</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              to="/settings"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/80 bg-muted/30 hover:bg-accent text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
+              title="Pengaturan Tema & Tampilan Admin"
+            >
+              <Palette className="size-3.5 text-primary" />
+              <span>Tema Admin</span>
+            </Link>
+
+            <Link
+              to="/orders/new"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all shadow-sm"
+            >
+              <Plus className="size-3.5" />
+              <span>Buat Order</span>
+            </Link>
+
+            <div className="h-4 w-[1px] bg-border hidden sm:block" />
+
+            <Link
+              to="/profile"
+              className="flex items-center gap-2 text-xs font-medium text-foreground hover:opacity-80 transition-opacity"
+            >
+              <div className="size-7 rounded-full bg-primary text-primary-foreground text-xs font-bold grid place-items-center shrink-0 shadow-sm">
+                {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+              </div>
+              <span className="hidden md:inline-block max-w-[120px] truncate">{user.email?.split("@")[0]}</span>
+            </Link>
+          </div>
         </header>
         <main className="flex-1 p-3 md:p-8 max-w-[1400px] w-full mx-auto print:p-0 print:max-w-none pb-mobile-nav md:!pb-8">
           <Outlet />

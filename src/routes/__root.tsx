@@ -16,9 +16,9 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/jetbrains-mono/500.css";
 
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredThemeConfig, applyThemeConfig } from "@/lib/theme-manager";
 
 function NotFoundComponent() {
   return (
@@ -45,9 +45,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -88,9 +85,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "MAULARIS — Order Management System" },
       { property: "og:description", content: "Internal order management Maularis" },
       { name: "twitter:description", content: "Internal order management Maularis" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bf946142-5a22-4e2d-870a-23f1a7e8d15f/id-preview-d4905b5d--d0c3c263-060e-438a-a05d-7f39f5890e19.lovable.app-1782876295519.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bf946142-5a22-4e2d-870a-23f1a7e8d15f/id-preview-d4905b5d--d0c3c263-060e-438a-a05d-7f39f5890e19.lovable.app-1782876295519.png" },
-      { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
@@ -118,6 +112,11 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+
+  useEffect(() => {
+    const config = getStoredThemeConfig();
+    applyThemeConfig(config);
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {

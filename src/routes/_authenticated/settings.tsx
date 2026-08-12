@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { CourierLogo } from "@/components/courier-logo";
+import { ThemeCustomizer } from "@/components/theme-customizer";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal, Percent, Coins, Info, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal, Percent, Coins, Info, ToggleLeft, ToggleRight, FileText, Hash, Calendar, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { COURIERS, COURIER_LABEL, formatIDR } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,9 @@ function SettingsPage() {
     lincah_partner_id: "6a4617ceb8fd8dd8aa41906e",
     lincah_env: "development" as "development" | "production",
     label_paper_size: "100x150" as "100x100" | "100x150",
+    invoice_prefix: "#",
+    invoice_digit_length: 4,
+    invoice_include_date: "none" as "none" | "YYMM" | "YYYYMMDD",
   });
 
   const [jneFlatEnabled, setJneFlatEnabled] = useState(false);
@@ -110,6 +114,9 @@ function SettingsPage() {
         lincah_partner_id: (data as any).lincah_partner_id ?? "6a4617ceb8fd8dd8aa41906e",
         lincah_env: (data as any).lincah_env === "production" ? "production" : "development",
         label_paper_size: (data as any).label_paper_size === "100x100" ? "100x100" : "100x150",
+        invoice_prefix: (data as any).invoice_prefix ?? "#",
+        invoice_digit_length: typeof (data as any).invoice_digit_length === "number" ? (data as any).invoice_digit_length : 4,
+        invoice_include_date: (data as any).invoice_include_date ?? "none",
       });
 
       if ((data as any).courier_discounts) {
@@ -351,6 +358,142 @@ function SettingsPage() {
                 }`}
               >
                 {sz === "100x150" ? "📄 Thermal 100 × 150 mm (Standar)" : "📄 Thermal 100 × 100 mm (Square)"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Pengaturan Kode Invoice / Order Number */}
+      <Card className="p-5 space-y-4 shadow-sm border-indigo-500/20 bg-indigo-50/10 dark:bg-indigo-950/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600">
+              <FileText className="size-5" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-base">Format Kode Invoice &amp; Nomor Order</h2>
+              <p className="text-xs text-muted-foreground">Atur awalan, panjang digit, dan format nomor invoice otomatis agar tidak terlalu panjang.</p>
+            </div>
+          </div>
+          <Badge variant="outline" className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-300 text-xs font-mono">
+            {(() => {
+              const now = new Date();
+              const dateStr = form.invoice_include_date === "YYMM" 
+                ? `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}-`
+                : form.invoice_include_date === "YYYYMMDD"
+                ? `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-`
+                : "";
+              return `${form.invoice_prefix || ""}${dateStr}${String(1).padStart(form.invoice_digit_length, "0")}`;
+            })()}
+          </Badge>
+        </div>
+
+        {/* Live Preview Box */}
+        <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-primary/10 border border-indigo-200 dark:border-indigo-800 space-y-2">
+          <div className="text-[11px] font-semibold text-indigo-900 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-indigo-500" />
+            Pratinjau Kode Invoice Otomatis (Order #1)
+          </div>
+          {(() => {
+            const now = new Date();
+            const dateStr = form.invoice_include_date === "YYMM" 
+              ? `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}-`
+              : form.invoice_include_date === "YYYYMMDD"
+              ? `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-`
+              : "";
+            const sample = `${form.invoice_prefix || ""}${dateStr}${String(1).padStart(form.invoice_digit_length, "0")}`;
+            return (
+              <>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-mono text-xl sm:text-2xl font-bold tracking-wider text-indigo-900 dark:text-indigo-100 bg-background/80 px-4 py-1.5 rounded-lg border shadow-xs">
+                    {sample}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Panjang total: <strong className="text-foreground">{sample.length} karakter</strong>
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Nomor order berikutnya akan berurutan: <code className="font-mono text-indigo-700 dark:text-indigo-300">{form.invoice_prefix || ""}{dateStr}{String(2).padStart(form.invoice_digit_length, "0")}</code>, <code className="font-mono text-indigo-700 dark:text-indigo-300">{form.invoice_prefix || ""}{dateStr}{String(3).padStart(form.invoice_digit_length, "0")}</code>, dst.
+                </p>
+              </>
+            );
+          })()}
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4 pt-1">
+          {/* Awalan Prefix */}
+          <div>
+            <Label className="text-xs font-semibold">Awalan / Prefix Kode</Label>
+            <Input
+              value={form.invoice_prefix}
+              onChange={(e) => setForm({ ...form, invoice_prefix: e.target.value })}
+              placeholder="cth. # atau INV- atau ORD-"
+              className="mt-1 font-mono text-xs"
+            />
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {["#", "INV-", "ORD-", ""].map((p) => (
+                <button
+                  key={p || "empty"}
+                  type="button"
+                  onClick={() => setForm({ ...form, invoice_prefix: p })}
+                  className={`px-2 py-0.5 text-[11px] font-mono rounded border transition-all ${
+                    form.invoice_prefix === p ? "border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold" : "hover:bg-accent text-muted-foreground"
+                  }`}
+                >
+                  {p === "" ? "(Tanpa Prefix)" : p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Panjang Digit */}
+          <div>
+            <Label className="text-xs font-semibold">Panjang Digit Nomor Urut</Label>
+            <div className="mt-1.5 grid grid-cols-4 gap-1.5">
+              {[3, 4, 5, 6].map((len) => (
+                <button
+                  key={len}
+                  type="button"
+                  onClick={() => setForm({ ...form, invoice_digit_length: len })}
+                  className={`py-1.5 px-2 text-center text-xs rounded-md border transition-all ${
+                    form.invoice_digit_length === len
+                      ? "border-indigo-500 bg-indigo-500/10 font-bold text-indigo-700 dark:text-indigo-300"
+                      : "hover:bg-accent text-muted-foreground"
+                  }`}
+                >
+                  <div className="font-mono">{len} Digit</div>
+                  <div className="text-[10px] opacity-75 font-mono">{String(1).padStart(len, "0")}</div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Pilih 3 digit (cth. #001) atau 4 digit (cth. #0001) agar nomor invoice tidak terlalu panjang.
+            </p>
+          </div>
+        </div>
+
+        {/* Format Tanggal */}
+        <div>
+          <Label className="text-xs font-semibold">Sertakan Tanggal dalam Kode Invoice (Opsional)</Label>
+          <div className="mt-1.5 grid sm:grid-cols-3 gap-2">
+            {[
+              { key: "none", label: "Tanpa Tanggal (Ringkas)", ex: `${form.invoice_prefix}${String(1).padStart(form.invoice_digit_length, "0")}` },
+              { key: "YYMM", label: "Format YYMM (Bulan/Thn)", ex: `${form.invoice_prefix}${String(new Date().getFullYear()).slice(-2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(1).padStart(form.invoice_digit_length, "0")}` },
+              { key: "YYYYMMDD", label: "Format Tanggal Lengkap", ex: `${form.invoice_prefix}${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}-${String(1).padStart(form.invoice_digit_length, "0")}` },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setForm({ ...form, invoice_include_date: opt.key as any })}
+                className={`p-2.5 rounded-lg border text-left transition-all ${
+                  form.invoice_include_date === opt.key
+                    ? "border-indigo-500 bg-indigo-500/10 font-semibold text-indigo-900 dark:text-indigo-200"
+                    : "hover:bg-accent text-muted-foreground"
+                }`}
+              >
+                <div className="text-xs font-medium">{opt.label}</div>
+                <div className="text-[11px] font-mono mt-0.5 text-indigo-600 dark:text-indigo-400">{opt.ex}</div>
               </button>
             ))}
           </div>
@@ -753,6 +896,9 @@ function SettingsPage() {
           </p>
         )}
       </Card>
+
+      {/* Theme & Tampilan Customizer */}
+      <ThemeCustomizer />
 
       {/* Ekspedisi Custom */}
       <Card className="p-5 space-y-4 shadow-sm border-border">

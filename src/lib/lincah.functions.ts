@@ -431,7 +431,7 @@ export async function autoSubmitOrderToLincah(supabase: any, orderId: string) {
       console.warn("Lincah openapi booking returned error, creating OMS tracking ref:", apiErr);
     }
 
-    const finalResi = resi || `LNC-${Date.now().toString().slice(-8)}`;
+    const finalResi = resi || `LNCH-${Date.now().toString().slice(-8)}`;
 
     await supabase
       .from("orders")

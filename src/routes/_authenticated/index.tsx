@@ -132,24 +132,41 @@ function StatCard({
 }) {
   const toneClass =
     tone === "warning"
-      ? "text-warning-foreground bg-warning/20"
+      ? "text-amber-500 bg-amber-500/10 border-amber-500/20"
       : tone === "info"
-      ? "text-info bg-info/15"
+      ? "text-blue-500 bg-blue-500/10 border-blue-500/20"
       : tone === "primary"
-      ? "text-primary bg-primary/15"
+      ? "text-primary bg-primary/10 border-primary/20"
       : tone === "success"
-      ? "text-success bg-success/15"
-      : "text-muted-foreground bg-muted";
+      ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+      : "text-muted-foreground bg-muted border-border/50";
+
+  const topBorderClass =
+    tone === "warning"
+      ? "before:bg-amber-500"
+      : tone === "info"
+      ? "before:bg-blue-500"
+      : tone === "primary"
+      ? "before:bg-primary"
+      : tone === "success"
+      ? "before:bg-emerald-500"
+      : "before:bg-muted-foreground/30";
+
   return (
-    <Card className={`p-3.5 md:p-4 ${className || ""}`}>
+    <Card className={cn(
+      "p-4 relative overflow-hidden transition-all hover:shadow-md hover:border-primary/40 border border-border/80",
+      "before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px]",
+      topBorderClass,
+      className
+    )}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{label}</span>
-        <span className={`size-7 grid place-items-center rounded-md shrink-0 ${toneClass}`}>
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider truncate">{label}</span>
+        <span className={cn("size-8 grid place-items-center rounded-lg border shrink-0 transition-transform group-hover:scale-105", toneClass)}>
           <Icon className="size-4" />
         </span>
       </div>
-      <div className="mt-2 text-lg md:text-xl xl:text-2xl font-bold tabular-nums truncate">
-        {loading ? <Skeleton className="h-7 w-16" /> : value ?? 0}
+      <div className="mt-3 text-xl md:text-2xl font-bold tabular-nums tracking-tight">
+        {loading ? <Skeleton className="h-8 w-20" /> : value ?? 0}
       </div>
     </Card>
   );
