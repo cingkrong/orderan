@@ -106,12 +106,25 @@ async function fetchLincah(
     },
   });
 
-  const json = await res.json().catch(() => ({}));
+  const text = await res.text();
+  let json: any = {};
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = {};
+  }
+
   if (!res.ok || json.success === false) {
+    if (res.status === 401) {
+      throw new Error("Autentikasi Lincah gagal (HTTP 401). Mohon periksa kembali API Key & Partner ID di Pengaturan.");
+    }
+    if (text.includes("<!doctype html>") || text.includes("<html")) {
+      throw new Error(`Server Lincah (${config.env}) merespon error HTTP ${res.status}. Pastikan Mode Lingkungan (Development / Production) dan API Key di Pengaturan sudah sesuai.`);
+    }
     const msg =
       json.message ||
       json.error ||
-      `Lincah API error (${res.status}): ${JSON.stringify(json)}`;
+      `Lincah API error (${res.status}): ${text || "Tidak ada respon"}`;
     throw new Error(msg);
   }
   return json;
