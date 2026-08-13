@@ -734,7 +734,12 @@ function MainGalleryUploader({
           contentType: file.type,
         });
 
-        if (error) throw error;
+        if (error) {
+          if (error.message?.toLowerCase().includes("bucket not found")) {
+            throw new Error("Bucket Storage 'product-images' belum dibuat di Supabase. Silakan buat bucket 'product-images' (Public) di Dashboard Supabase.");
+          }
+          throw error;
+        }
         newItems.push({ path, type: isVideo ? "video" : "image" });
       }
 
