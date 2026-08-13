@@ -1,57 +1,54 @@
-# 🚀 Panduan Deployment Maularis OMS di ServerAvatar Panel
+# 🚀 Panduan Deployment Maularis OMS di ServerAvatar Panel (Public Git URL)
 
-Dokumen ini berisi panduan langkah demi langkah untuk mengunggah dan mempublikasikan aplikasi **Maularis OMS (`cingkrong/orderan`)** menggunakan **ServerAvatar Panel** pada Server VPS (DigitalOcean, Vultr, Linode, Hetzner, dll).
-
----
-
-## 📋 Syarat & Prasyarat
-1. VPS sudah terhubung dengan **ServerAvatar Panel** (`app.serveravatar.com`).
-2. Domain / Subdomain sudah di-pointing A Record IP VPS Anda (contoh: `oms.domainanda.com`).
-3. Akses ke repository GitHub: `https://github.com/cingkrong/orderan.git`.
+Dokumen ini berisi panduan langkah demi langkah untuk me-deploy aplikasi **Maularis OMS** menggunakan fitur **Git Public / Custom Repository** di **ServerAvatar Panel**.
 
 ---
 
-## 🛠️ Langkah-Langkah Deployment
+## 📋 Data Repository Git Public
+- **Public Git URL**: `https://github.com/cingkrong/orderan.git`
+- **Branch**: `main`
 
-### 1. Buat Aplikasi Node.js di ServerAvatar
+---
+
+## 🛠️ Langkah-Langkah Deployment via Git Public di ServerAvatar
+
+### 1. Buat Node.js Application di ServerAvatar
 1. Login ke Dashboard ServerAvatar (`app.serveravatar.com`).
-2. Pilih Server VPS Anda.
-3. Masuk ke menu **Applications** -> Klik **Create Application**.
-4. Isi data aplikasi:
+2. Pilih Server VPS Anda $\rightarrow$ Masuk ke menu **Applications** $\rightarrow$ Klik **Create Application**.
+3. Isi form pembuatan aplikasi:
    - **Application Name**: `maularis-oms`
-   - **Domain**: `oms.domainanda.com` (atau domain Anda)
-   - **Application Type**: Pilih **Node.js**
-   - **Node.js Version**: Pilih **Node.js v20.x LTS** atau **v22.x LTS**
-5. Klik **Create Application**.
+   - **Domain**: Masukkan domain Anda (contoh: `oms.domainanda.com`).
+   - **Application Type**: Pilih **Node.js**.
+   - **Node.js Version**: Pilih **Node.js v20.x LTS** atau **v22.x LTS**.
+4. Klik **Create Application**.
 
 ---
 
-### 2. Hubungkan Repository GitHub
-1. Di halaman detail aplikasi ServerAvatar, buka tab **Git Deployment**.
-2. Hubungkan ke GitHub Account Anda.
-3. Masukkan rincian repository:
-   - **Repository**: `cingkrong/orderan`
+### 2. Hubungkan via Git Public / Custom Git
+1. Di halaman aplikasi ServerAvatar, buka tab **Git Deployment**.
+2. Pilih opsi **Custom Git** / **Public Repository**.
+3. Masukkan data git:
+   - **Git Repository URL**: `https://github.com/cingkrong/orderan.git`
    - **Branch**: `main`
-4. Aktifkan **Auto Deploy on Push** *(rekomendasi)* agar setiap `git push origin main` otomatis di-build oleh ServerAvatar.
+4. Klik **Save / Connect**.
 
 ---
 
-### 3. Konfigurasi Deployment Script (Build Command)
-Di tab **Git Deployment** -> **Deployment Commands**, masukkan script berikut:
+### 3. Konfigurasi Deployment Script (Build Commands)
+Di bagian **Deployment Commands / Script** pada ServerAvatar, masukkan perintah berikut:
 
 ```bash
-# Install paket dependensi
+# 1. Install dependensi
 npm install
 
-# Build aplikasi ke folder produksi Nitro SSR (.output/)
+# 2. Build aplikasi ke format Nitro SSR (.output/)
 npm run build
 ```
 
 ---
 
 ### 4. Konfigurasi Node.js Startup (Entry Point)
-Di halaman **Node.js Settings / Configuration** pada ServerAvatar:
-- **Environment**: `production`
+Di bagian **Node.js Configuration / Settings** di ServerAvatar:
 - **Application Port**: `3000` (atau port default ServerAvatar)
 - **Entry File / Start Command**:
   ```bash
@@ -80,19 +77,12 @@ LINCAH_ENV=production
 ---
 
 ### 6. Aktifkan SSL Certificate (HTTPS Gratis)
-1. Buka tab **SSL Certificates** pada aplikasi ServerAvatar.
-2. Pilih **Let's Encrypt**.
+1. Buka tab **SSL Certificates** di ServerAvatar.
+2. Pilih **Let's Encrypt Free SSL**.
 3. Klik **Install SSL**.
 
 ---
 
-### 7. Eksekusi Deploy
-1. Klik tombol **Deploy Now** di tab Git Deployment.
-2. ServerAvatar akan me-pull commit terbaru dari GitHub, menjalankan `npm run build`, dan mengaktifkan aplikasi Node.js Anda.
-3. Akses domain Anda di browser (`https://oms.domainanda.com`).
-
----
-
-## ⚡ Verifikasi & Maintenance
-- **Cek Log Aplikasi**: Buka menu **Logs** -> **Node.js Error / Access Logs** di ServerAvatar.
-- **Rollback / Deploy Ulang**: Klik **Deploy** pada commit sebelumnya di tab Git Deployment.
+### 7. Jalankan Deploy
+1. Klik tombol **Deploy Now** di ServerAvatar.
+2. ServerAvatar akan me-clone dari repository public `https://github.com/cingkrong/orderan.git`, meng-install dependensi, membangun paket `.output/server/index.mjs`, dan mengaktifkan SSL pada domain Anda.
