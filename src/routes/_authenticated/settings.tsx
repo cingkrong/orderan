@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { CourierLogo } from "@/components/courier-logo";
 import { ThemeCustomizer } from "@/components/theme-customizer";
+import { ResetSalesDialog } from "@/components/reset-sales-dialog";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -15,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal, Percent, Coins, Info, ToggleLeft, ToggleRight, FileText, Hash, Calendar, Sparkles } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, ShieldAlert, RefreshCw, KeyRound, Truck, Zap, SlidersHorizontal, Percent, Coins, Info, ToggleLeft, ToggleRight, FileText, Hash, Calendar, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { COURIERS, COURIER_LABEL, formatIDR } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -175,7 +176,13 @@ function SettingsPage() {
     setTestingConnection(true);
     setLincahStatus({ tested: false });
     try {
-      const res = await testLincah();
+      const res = await testLincah({
+        data: {
+          apiKey: form.lincah_api_key,
+          partnerId: form.lincah_partner_id,
+          env: form.lincah_env,
+        },
+      });
       if (res.success) {
         setLincahStatus({
           tested: true,
@@ -938,6 +945,30 @@ function SettingsPage() {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* Zona Bahaya / Danger Zone: Reset Data Penjualan */}
+      <Card className="p-5 space-y-4 shadow-sm border-destructive/30 bg-destructive/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="size-4 shrink-0" />
+              <h2 className="font-semibold text-base">Zona Bahaya: Reset Data Penjualan</h2>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+              Bersihkan seluruh atau sebagian riwayat pesanan (orders), item pesanan, dan histori pengiriman toko. Anda juga dapat memilih untuk mereset akumulasi statistik pelanggan.
+            </p>
+          </div>
+
+          <ResetSalesDialog
+            trigger={
+              <Button variant="destructive" size="sm" className="shrink-0 gap-1.5 shadow-sm">
+                <Trash2 className="size-3.5" />
+                Reset Data Penjualan
+              </Button>
+            }
+          />
         </div>
       </Card>
 

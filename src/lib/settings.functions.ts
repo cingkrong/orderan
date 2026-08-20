@@ -72,7 +72,25 @@ export const getSettings = createServerFn({ method: "GET" })
 
     const invoice_prefix = localConfig.invoice_prefix ?? (data as any)?.invoice_prefix ?? embeddedLincah?.invoice_prefix ?? "#";
     const invoice_digit_length = localConfig.invoice_digit_length ?? (data as any)?.invoice_digit_length ?? embeddedLincah?.invoice_digit_length ?? 4;
-    const invoice_include_date = localConfig.invoice_include_date ?? (data as any)?.invoice_include_date ?? embeddedLincah?.invoice_include_date ?? "none";
+    const invoice_include_date = (data as any)?.invoice_include_date ?? embeddedLincah?.invoice_include_date ?? localConfig.invoice_include_date ?? "none";
+
+    const lincah_api_key =
+      (data as any)?.lincah_api_key ||
+      embeddedLincah?.lincah_api_key ||
+      localConfig.lincah_api_key ||
+      "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD";
+
+    const lincah_partner_id =
+      (data as any)?.lincah_partner_id ||
+      embeddedLincah?.lincah_partner_id ||
+      localConfig.lincah_partner_id ||
+      "6a4617ceb8fd8dd8aa41906e";
+
+    const lincah_env =
+      (data as any)?.lincah_env ||
+      embeddedLincah?.lincah_env ||
+      localConfig.lincah_env ||
+      "development";
 
     return {
       ...data,
@@ -85,10 +103,10 @@ export const getSettings = createServerFn({ method: "GET" })
       invoice_prefix,
       invoice_digit_length,
       invoice_include_date,
-      lincah_api_key: localConfig.lincah_api_key ?? (data as any)?.lincah_api_key ?? embeddedLincah?.lincah_api_key ?? "oYeiIJkYFMctQebMQOZfOJYNbHkUzShD",
-      lincah_partner_id: localConfig.lincah_partner_id ?? (data as any)?.lincah_partner_id ?? embeddedLincah?.lincah_partner_id ?? "6a4617ceb8fd8dd8aa41906e",
-      lincah_env: localConfig.lincah_env ?? (data as any)?.lincah_env ?? embeddedLincah?.lincah_env ?? "development",
-      label_paper_size: localConfig.label_paper_size ?? (data as any)?.label_paper_size ?? embeddedLincah?.label_paper_size ?? "100x150",
+      lincah_api_key,
+      lincah_partner_id,
+      lincah_env,
+      label_paper_size: (data as any)?.label_paper_size ?? embeddedLincah?.label_paper_size ?? localConfig.label_paper_size ?? "100x150",
       weight_unit: (data as any)?.weight_unit === "kg" ? "kg" : "g",
     };
   });
@@ -151,11 +169,9 @@ export const updateSettings = createServerFn({ method: "POST" })
       invoice_include_date: data.invoice_include_date,
     });
 
-
-    // 2. Strip semua kolom yang tidak ada di Supabase settings table,
-    //    dan embed semuanya ke dalam custom_couriers JSONB
+    // 2. Prepare payload for Supabase settings table
     const {
-      lincah_api_key, lincah_partner_id, lincah_env, lincah_couriers, label_paper_size,
+      lincah_couriers, label_paper_size,
       courier_discounts, jne_flat_ongkir_enabled, jne_flat_zone_ab_price, jne_flat_zone_cd_price,
       invoice_prefix, invoice_digit_length, invoice_include_date,
       custom_couriers, active_couriers,
@@ -169,9 +185,9 @@ export const updateSettings = createServerFn({ method: "POST" })
       {
         __lincah: {
           lincah_couriers,
-          lincah_api_key,
-          lincah_partner_id,
-          lincah_env,
+          lincah_api_key: data.lincah_api_key,
+          lincah_partner_id: data.lincah_partner_id,
+          lincah_env: data.lincah_env,
           label_paper_size,
           jne_flat_ongkir_enabled,
           jne_flat_zone_ab_price,
@@ -184,22 +200,32 @@ export const updateSettings = createServerFn({ method: "POST" })
       { __courier_discounts: courier_discounts },
     ];
 
-    // Try full upsert (includes active_couriers if column exists)
+    // Try full upsert (includes lincah_api_key, lincah_partner_id, lincah_env, active_couriers)
     const { error } = await context.supabase
       .from("settings")
-      .upsert({ id: 1, ...supabaseData, active_couriers, custom_couriers: enrichedCustom } as any);
+      .upsert({
+        id: 1,
+        ...supabaseData,
+        lincah_api_key: data.lincah_api_key,
+        lincah_partner_id: data.lincah_partner_id,
+        lincah_env: data.lincah_env,
+        active_couriers,
+        custom_couriers: enrichedCustom,
+      } as any);
 
     if (!error) return { ok: true };
 
-    console.warn("Full settings update failed, trying without active_couriers:", error.message);
+    console.warn("Full settings update failed, trying fallback without lincah columns:", error.message);
 
-    // Fallback: try without active_couriers (in case that column doesn't exist either)
+    // Fallback: try without direct lincah columns (in case columns don't exist in DB)
+    const { lincah_api_key, lincah_partner_id, lincah_env, ...fallbackData } = supabaseData as any;
     const { error: err2 } = await context.supabase
       .from("settings")
-      .upsert({ id: 1, ...supabaseData, custom_couriers: enrichedCustom } as any);
+      .upsert({ id: 1, ...fallbackData, custom_couriers: enrichedCustom } as any);
 
     if (!err2) return { ok: true };
 
     console.warn("Fallback settings update also failed:", err2.message);
     throw new Error(err2.message);
   });
+

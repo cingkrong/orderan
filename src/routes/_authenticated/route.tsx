@@ -1,4 +1,11 @@
-import { createFileRoute, Outlet, redirect, Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  Link,
+  useRouterState,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,9 +39,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+    if (typeof window !== "undefined") {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) throw redirect({ to: "/auth" });
+      return { user: data.user };
+    }
+    return { user: null };
   },
   component: ProtectedLayout,
 });
@@ -45,9 +55,7 @@ type NavGroup = { title: string; items: NavItem[] };
 const NAV_GROUPS: NavGroup[] = [
   {
     title: "Menu Utama",
-    items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-    ],
+    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true }],
   },
   {
     title: "Operasional & Penjualan",
@@ -78,7 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Sistem & Pengaturan",
     items: [
-      { to: "/integrations", label: "Integrasi Addons", icon: Plug },
+      { to: "/integrations", label: "Integrasi & Platform API", icon: Plug },
       { to: "/profile", label: "Profil Saya", icon: UserCircle },
       { to: "/settings", label: "Pengaturan", icon: Settings },
     ],
@@ -95,12 +103,27 @@ function ProtectedLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(user);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("maularis_sidebar_collapsed") === "true";
     }
     return false;
   });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      supabase.auth.getUser().then(({ data, error }) => {
+        if (error || !data.user) {
+          navigate({ to: "/auth", replace: true });
+        } else {
+          setCurrentUser(data.user);
+        }
+      });
+    }
+  }, [navigate]);
+
+  const activeUser = currentUser || user || { email: "admin@maularis.com" };
 
   const isActive = (to: string, exact?: boolean) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
@@ -112,7 +135,9 @@ function ProtectedLayout() {
     const initial: Record<string, boolean> = {};
     NAV_GROUPS.forEach((g) => {
       initial[g.title] = g.items.some((item) =>
-        item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(item.to + "/")
+        item.exact
+          ? pathname === item.to
+          : pathname === item.to || pathname.startsWith(item.to + "/"),
       );
     });
     return initial;
@@ -163,7 +188,9 @@ function ProtectedLayout() {
         className={cn(
           "no-print z-40 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex-col transition-all duration-200 ease-in-out h-screen sticky top-0",
           "hidden md:flex md:sticky md:top-0 md:h-screen md:translate-x-0",
-          sidebarOpen ? "!flex fixed inset-y-0 left-0 translate-x-0" : "-translate-x-full md:translate-x-0",
+          sidebarOpen
+            ? "!flex fixed inset-y-0 left-0 translate-x-0"
+            : "-translate-x-full md:translate-x-0",
           collapsed ? "w-16" : "w-64",
         )}
       >
@@ -232,7 +259,11 @@ function ProtectedLayout() {
                   >
                     <span className="truncate">{group.title}</span>
                     <span className="shrink-0 ml-1 opacity-70">
-                      {isOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                      {isOpen ? (
+                        <ChevronDown className="size-3.5" />
+                      ) : (
+                        <ChevronRight className="size-3.5" />
+                      )}
                     </span>
                   </button>
                 ) : (
@@ -273,18 +304,18 @@ function ProtectedLayout() {
         <div className="p-2.5 border-t border-sidebar-border space-y-1">
           <Link
             to="/profile"
-            title={collapsed ? user.email : undefined}
+            title={collapsed ? activeUser?.email : undefined}
             className={cn(
               "flex items-center gap-2.5 rounded-md hover:bg-sidebar-accent text-sm text-sidebar-foreground transition-colors",
               collapsed ? "justify-center p-2" : "px-3 py-2",
             )}
           >
             <div className="size-7 rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold grid place-items-center shrink-0">
-              {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+              {activeUser?.email ? activeUser.email.charAt(0).toUpperCase() : "U"}
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium truncate">{user.email}</div>
+                <div className="text-xs font-medium truncate">{activeUser?.email}</div>
                 <div className="text-[10px] text-sidebar-foreground/60">Lihat Profil</div>
               </div>
             )}
@@ -304,7 +335,10 @@ function ProtectedLayout() {
       </aside>
 
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* ═══ Main ═══ */}
@@ -320,8 +354,12 @@ function ProtectedLayout() {
               <Menu className="size-5" />
             </Button>
             <div className="font-bold text-sm tracking-tight flex items-center gap-2">
-              <span className="bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">MAULARIS</span>
-              <span className="hidden sm:inline-block text-xs font-normal text-muted-foreground">| Order Management</span>
+              <span className="bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
+                MAULARIS
+              </span>
+              <span className="hidden sm:inline-block text-xs font-normal text-muted-foreground">
+                | Order Management
+              </span>
             </div>
           </div>
 
@@ -350,9 +388,11 @@ function ProtectedLayout() {
               className="flex items-center gap-2 text-xs font-medium text-foreground hover:opacity-80 transition-opacity"
             >
               <div className="size-7 rounded-full bg-primary text-primary-foreground text-xs font-bold grid place-items-center shrink-0 shadow-sm">
-                {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+                {activeUser?.email ? activeUser.email.charAt(0).toUpperCase() : "U"}
               </div>
-              <span className="hidden md:inline-block max-w-[120px] truncate">{user.email?.split("@")[0]}</span>
+              <span className="hidden md:inline-block max-w-[120px] truncate">
+                {activeUser?.email?.split("@")[0]}
+              </span>
             </Link>
           </div>
         </header>
@@ -374,7 +414,11 @@ function ProtectedLayout() {
 
           if (isFab) {
             return (
-              <Link key="fab" to="/orders/new" className="flex flex-col items-center justify-center -mt-4">
+              <Link
+                key="fab"
+                to="/orders/new"
+                className="flex flex-col items-center justify-center -mt-4"
+              >
                 <div className="size-12 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-transform">
                   <Plus className="size-6" />
                 </div>
@@ -416,7 +460,10 @@ function ProtectedLayout() {
       {/* ═══ "Lainnya" bottom drawer (Grouped by Category) ═══ */}
       {moreOpen && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setMoreOpen(false)} />
+          <div
+            className="fixed inset-0 bg-black/30 z-40 md:hidden"
+            onClick={() => setMoreOpen(false)}
+          />
           <div
             className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-background rounded-t-2xl shadow-2xl border-t animate-in slide-in-from-bottom duration-200 overflow-hidden"
             style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)", maxHeight: "80vh" }}
@@ -425,7 +472,9 @@ function ProtectedLayout() {
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
             <div className="px-4 pb-2 pt-1 border-b">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kategori Menu</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Kategori Menu
+              </p>
             </div>
             <div className="px-3 py-3 overflow-y-auto max-h-[60vh] space-y-4">
               {NAV_GROUPS.map((group) => (
@@ -444,7 +493,9 @@ function ProtectedLayout() {
                           onClick={() => setMoreOpen(false)}
                           className={cn(
                             "flex flex-col items-center gap-1 p-2.5 rounded-xl text-center transition-colors",
-                            active ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground active:bg-accent",
+                            active
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground active:bg-accent",
                           )}
                         >
                           <Icon className="size-5" />
@@ -463,10 +514,10 @@ function ProtectedLayout() {
                 className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-accent text-sm"
               >
                 <div className="size-8 rounded-full bg-primary text-primary-foreground text-xs font-bold grid place-items-center">
-                  {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+                  {activeUser?.email ? activeUser.email.charAt(0).toUpperCase() : "U"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium truncate">{user.email}</div>
+                  <div className="text-xs font-medium truncate">{activeUser?.email}</div>
                 </div>
               </Link>
               <button

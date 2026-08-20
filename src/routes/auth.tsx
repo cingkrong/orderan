@@ -11,8 +11,10 @@ import { Package } from "lucide-react";
 export const Route = createFileRoute("/auth")({
   ssr: false,
   beforeLoad: async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) throw redirect({ to: "/" });
+    if (typeof window !== "undefined") {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) throw redirect({ to: "/" });
+    }
   },
   component: AuthPage,
 });

@@ -527,3 +527,188 @@ export const dashboardStats = createServerFn({ method: "GET" })
       recent: all.slice(0, 8),
     };
   });
+
+export const deleteOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        ids: z.array(z.string().uuid()).min(1),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    // 1. Fetch customer IDs from the orders before deleting
+    const { data: targetOrders, error: fetchErr } = await context.supabase
+      .from("orders")
+      .select("id, customer_id")
+      .in("id", data.ids);
+
+    if (fetchErr) throw new Error(fetchErr.message);
+
+    // 2. Perform delete (cascades to order_items and order_history)
+    const { error: delErr } = await context.supabase
+      .from("orders")
+      .delete()
+      .in("id", data.ids);
+
+    if (delErr) throw new Error(delErr.message);
+
+    // 3. Recalculate customer order count and spent for affected customers
+    const customerIds = Array.from(
+      new Set(
+        (targetOrders || [])
+          .map((o: any) => o.customer_id)
+          .filter((id: any): id is string => Boolean(id)),
+      ),
+    );
+
+    for (const cid of customerIds) {
+      const { data: remainingOrders } = await context.supabase
+        .from("orders")
+        .select("total, created_at")
+        .eq("customer_id", cid)
+        .order("created_at", { ascending: false });
+
+      const totalOrders = remainingOrders?.length || 0;
+      const totalSpent = (remainingOrders || []).reduce(
+        (acc: number, curr: any) => acc + Number(curr.total || 0),
+        0,
+      );
+      const lastOrderAt =
+        remainingOrders && remainingOrders.length > 0
+          ? remainingOrders[0].created_at
+          : null;
+
+      await context.supabase
+        .from("customers")
+        .update({
+          total_orders: totalOrders,
+          total_spent: totalSpent,
+          last_order_at: lastOrderAt,
+        })
+        .eq("id", cid);
+    }
+
+    return { ok: true, count: data.ids.length };
+  });
+
+export const resetSalesData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        mode: z.enum(["all", "by_date", "by_status"]),
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+        status: z.string().optional(),
+        resetCustomerStats: z.boolean().default(true),
+        deleteExpenses: z.boolean().default(false),
+        confirmationKeyword: z.string().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.mode === "all" && (data.confirmationKeyword || "").trim().toUpperCase() !== "RESET") {
+      throw new Error("Kata kunci konfirmasi tidak valid. Harap ketik RESET untuk melanjutkan.");
+    }
+
+    // 1. Fetch matching orders to identify IDs and customer_ids
+    let selectQuery = context.supabase.from("orders").select("id, customer_id, created_at");
+
+    if (data.mode === "by_date") {
+      if (data.fromDate) {
+        selectQuery = selectQuery.gte("created_at", `${data.fromDate}T00:00:00.000Z`);
+      }
+      if (data.toDate) {
+        selectQuery = selectQuery.lte("created_at", `${data.toDate}T23:59:59.999Z`);
+      }
+    } else if (data.mode === "by_status") {
+      if (data.status && data.status !== "all") {
+        selectQuery = selectQuery.eq("status", data.status);
+      }
+    }
+
+    const { data: matchedOrders, error: selErr } = await selectQuery;
+    if (selErr) throw new Error(selErr.message);
+
+    const orderIds = (matchedOrders || []).map((o: any) => o.id);
+    const affectedCustomerIds = Array.from(
+      new Set(
+        (matchedOrders || [])
+          .map((o: any) => o.customer_id)
+          .filter((id: any): id is string => Boolean(id)),
+      ),
+    );
+
+    if (orderIds.length === 0) {
+      return { ok: true, count: 0, message: "Tidak ada pesanan yang sesuai kriteria untuk direset." };
+    }
+
+    // 2. Delete orders (in chunks if there are many)
+    const chunkSize = 200;
+    for (let i = 0; i < orderIds.length; i += chunkSize) {
+      const chunk = orderIds.slice(i, i + chunkSize);
+      const { error: delErr } = await context.supabase
+        .from("orders")
+        .delete()
+        .in("id", chunk);
+
+      if (delErr) throw new Error(delErr.message);
+    }
+
+    // 3. Handle Customer metrics
+    if (data.mode === "all" && data.resetCustomerStats) {
+      // Full reset of customer order metrics
+      await context.supabase
+        .from("customers")
+        .update({
+          total_orders: 0,
+          total_spent: 0,
+          last_order_at: null,
+        })
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+    } else if (affectedCustomerIds.length > 0) {
+      // Recalculate remaining for affected customers
+      for (const cid of affectedCustomerIds) {
+        const { data: remainingOrders } = await context.supabase
+          .from("orders")
+          .select("total, created_at")
+          .eq("customer_id", cid)
+          .order("created_at", { ascending: false });
+
+        const totalOrders = remainingOrders?.length || 0;
+        const totalSpent = (remainingOrders || []).reduce(
+          (acc: number, curr: any) => acc + Number(curr.total || 0),
+          0,
+        );
+        const lastOrderAt =
+          remainingOrders && remainingOrders.length > 0
+            ? remainingOrders[0].created_at
+            : null;
+
+        await context.supabase
+          .from("customers")
+          .update({
+            total_orders: totalOrders,
+            total_spent: totalSpent,
+            last_order_at: lastOrderAt,
+          })
+          .eq("id", cid);
+      }
+    }
+
+    // 4. Optionally delete expenses
+    if (data.deleteExpenses) {
+      let expDel = context.supabase.from("expenses").delete();
+      if (data.mode === "by_date") {
+        if (data.fromDate) expDel = expDel.gte("date", data.fromDate);
+        if (data.toDate) expDel = expDel.lte("date", data.toDate);
+      } else if (data.mode === "all") {
+        expDel = expDel.neq("id", "00000000-0000-0000-0000-000000000000");
+      }
+      await expDel;
+    }
+
+    return { ok: true, count: orderIds.length };
+  });

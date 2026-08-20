@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function syncCustomersFromOrdersHandler(supabase: any) {
+export async function syncCustomersFromOrdersHandler(supabase: any) {
   const { data: orders, error } = await supabase
     .from("orders")
     .select("*");

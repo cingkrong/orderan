@@ -3,7 +3,7 @@ import { CourierLogo } from "@/components/courier-logo";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { getOrder, updateOrderStatus, setTracking, markLabelPrinted } from "@/lib/orders.functions";
+import { getOrder, updateOrderStatus, setTracking, markLabelPrinted, deleteOrders } from "@/lib/orders.functions";
 import { getSettings } from "@/lib/settings.functions";
 import { trackLincahOrder } from "@/lib/lincah.functions";
 import { Card } from "@/components/ui/card";
@@ -17,11 +17,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShippingLabel } from "@/components/shipping-label";
 import { OrderHistoryCard } from "@/components/history-cards";
 import { formatIDR, STATUS_LABEL, STATUS_TONE, COURIER_LABEL, formatCourierName } from "@/lib/format";
-import { Pencil, Printer, Truck, RefreshCw, AlertCircle, MapPin, PackageSearch } from "lucide-react";
+import { Pencil, Printer, Truck, RefreshCw, AlertCircle, MapPin, PackageSearch, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -38,6 +49,7 @@ function OrderDetail() {
   const qc = useQueryClient();
   const fetchOrder = useServerFn(getOrder);
   const updateStatus = useServerFn(updateOrderStatus);
+  const delOrders = useServerFn(deleteOrders);
   const setTrack = useServerFn(setTracking);
   const fetchSettings = useServerFn(getSettings);
   const markPrinted = useServerFn(markLabelPrinted);
@@ -68,6 +80,18 @@ function OrderDetail() {
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
     },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => delOrders({ data: { ids: [id] } }),
+    onSuccess: () => {
+      toast.success("Pesanan berhasil dihapus");
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      navigate({ to: "/orders" });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal menghapus pesanan"),
   });
 
   const trackMut = useMutation({
@@ -108,15 +132,45 @@ function OrderDetail() {
             Dibuat {format(new Date(order.created_at), "dd MMM yyyy HH:mm", { locale: idLocale })}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handlePrint}>
+        <div className="flex gap-2 flex-wrap items-center">
+          <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="size-4 mr-1" />
             {((order as any).label_print_count ?? 0) > 0 ? "Cetak ulang label" : "Cetak label"}
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link to="/orders/$id/edit" params={{ id }}><Pencil className="size-4 mr-1" /> Ubah</Link>
           </Button>
 
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                disabled={deleteMut.isPending}
+              >
+                <Trash2 className="size-4 mr-1" />
+                Hapus
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Hapus Pesanan {order.order_number}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Pesanan untuk pelanggan <strong>{order.customer_name}</strong> akan dihapus permanen. Total transaksi pelanggan terkait akan disesuaikan otomatis.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteMut.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Ya, Hapus Pesanan
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 

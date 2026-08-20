@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { listCustomers, syncCustomersFromOrders, createCustomer } from "@/lib/customers.functions";
+import { syncCustomersFromLincah } from "@/lib/lincah.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { formatIDR } from "@/lib/format";
-import { Search, RefreshCw, Users, UserCheck, Truck, ShoppingBag, Plus, UserPlus, ChevronRight } from "lucide-react";
+import { Search, RefreshCw, Users, UserCheck, Truck, ShoppingBag, Plus, UserPlus, ChevronRight, CloudDownload } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/customers/")({
@@ -30,13 +31,14 @@ export const Route = createFileRoute("/_authenticated/customers/")({
 function CustomersPage() {
   const fetchAll = useServerFn(listCustomers);
   const syncFn = useServerFn(syncCustomersFromOrders);
+  const syncLincahFn = useServerFn(syncCustomersFromLincah);
   const createFn = useServerFn(createCustomer);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["customers"], queryFn: () => fetchAll() });
   const [q, setQ] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "regular" | "dropshipper">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "regular" | "dropshipper" | "lincah">("all");
   const [openAddModal, setOpenAddModal] = useState(false);
 
   // Form state for creating customer
@@ -60,6 +62,20 @@ function CustomersPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Gagal sinkronisasi data");
+    },
+  });
+
+  const syncLincahMutation = useMutation({
+    mutationFn: () => syncLincahFn(),
+    onSuccess: (res) => {
+      const total = (res.totalAddressFetched || 0) + (res.totalOrdersFetched || 0);
+      toast.success(
+        `Berhasil menyinkronkan ${res.uniqueCustomersCount || res.count} pelanggan unik dari total ${total} transaksi & alamat Lincah (${res.createdCount || 0} baru, ${res.updatedCount || 0} diperbarui)`
+      );
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Gagal mengambil data dari Lincah API");
     },
   });
 
@@ -118,15 +134,21 @@ function CustomersPage() {
   const isDropshipper = (c: any) =>
     Array.isArray(c.tags) && c.tags.some((t: string) => t.toLowerCase().includes("dropship"));
 
+  const isLincahCust = (c: any) =>
+    Array.isArray(c.tags) && c.tags.some((t: string) => t.toLowerCase().includes("lincah"));
+
   const dropshipperList = allCustomers.filter(isDropshipper);
+  const lincahList = allCustomers.filter(isLincahCust);
   const regularList = allCustomers.filter((c) => !isDropshipper(c));
 
   const currentTabList =
     activeTab === "dropshipper"
       ? dropshipperList
-      : activeTab === "regular"
-        ? regularList
-        : allCustomers;
+      : activeTab === "lincah"
+        ? lincahList
+        : activeTab === "regular"
+          ? regularList
+          : allCustomers;
 
   const filtered = currentTabList.filter(
     (c) =>
@@ -145,10 +167,20 @@ function CustomersPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pelanggan & Dropshipper</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Daftar pelanggan dan dropshipper tersimpan di sistem CRM
+            Daftar pelanggan, kontak Lincah, dan dropshipper tersimpan di sistem CRM
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-300 dark:hover:bg-indigo-950"
+            onClick={() => syncLincahMutation.mutate()}
+            disabled={syncLincahMutation.isPending}
+          >
+            <CloudDownload className={`size-4 mr-2 ${syncLincahMutation.isPending ? "animate-spin" : ""}`} />
+            {syncLincahMutation.isPending ? "Mengambil..." : "Ambil Data Lincah"}
+          </Button>
+
           <Button
             variant="outline"
             onClick={() => syncMutation.mutate()}
@@ -204,7 +236,7 @@ function CustomersPage() {
           onValueChange={(v) => setActiveTab(v as any)}
           className="w-full md:w-auto"
         >
-          <TabsList className="grid grid-cols-3 w-full md:w-auto">
+          <TabsList className="grid grid-cols-4 w-full md:w-auto">
             <TabsTrigger value="all" className="text-xs sm:text-sm">
               Semua ({allCustomers.length})
             </TabsTrigger>
@@ -213,6 +245,9 @@ function CustomersPage() {
             </TabsTrigger>
             <TabsTrigger value="dropshipper" className="text-xs sm:text-sm">
               Dropshipper ({dropshipperList.length})
+            </TabsTrigger>
+            <TabsTrigger value="lincah" className="text-xs sm:text-sm">
+              Lincah ({lincahList.length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
